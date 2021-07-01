@@ -21,10 +21,7 @@ jobs:
       - run: npm run deploy --prefix ./assets
       - run: mix phx.digest
       - run: MIX_ENV=prod mix release
-      - run: cd _build/prod/rel/trade_machine
-      - run: tar czf ../out.tar.gz ./
-      - run: ls -la
-      - run: cd ..
+      - run: cd _build/prod/rel/trade_machine && tar czf ../../../../out.tar.gz .
       - run: ls -la
       - name: Upload to server
         uses: appleboy/scp-action@master
