@@ -1,0 +1,48 @@
+name: CD Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build an Elixir release and zip the artifact
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: '22.2'
+          elixir-version: '1.9.4'
+      - run: mix deps.get --only prod
+      - run: MIX_ENV=prod mix compile
+      - run: npm install --prefix ./assets
+      - run: npm run deploy --prefix ./assets
+      - run: mix phx.digest
+      - run: MIX_ENV=prod mix release
+      - run: cd _build/prod/rel/trade_machine
+      - run: cd _build/prod/rel/trade_machine
+      - run: cd tar czf ../../../../out.tar.gz .
+      - name: Upload to server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "out.tar.gz"
+          target: "/opt/Apps/TradeMachineEx"
+      - name: Unzip and restart the server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd /opt/Apps/TradeMachineEx
+#            _build/prod/rel/trade_machine/bin/trade_machine stop
+            tar -xzf out.tar.gz --overwrite
+            _build/prod/rel/trade_machine/bin/trade_machine start
+            rm out.tar.gz
