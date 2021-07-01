@@ -41,6 +41,7 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             cd /opt/Apps/TradeMachineEx
+            bin/trade_machine stop
             tar -xzf out.tar.gz --overwrite
-            bin/trade_machine start
+            bin/trade_machine daemon
             rm out.tar.gz
