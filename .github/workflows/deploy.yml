@@ -42,7 +42,6 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             cd /opt/Apps/TradeMachineEx
-#            _build/prod/rel/trade_machine/bin/trade_machine stop
             tar -xzf out.tar.gz --overwrite
             _build/prod/rel/trade_machine/bin/trade_machine start
             rm out.tar.gz
