@@ -13,8 +13,8 @@ jobs:
       - uses: actions/checkout@v2
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: '22.2'
-          elixir-version: '1.9.4'
+          otp-version: '24.0'
+          elixir-version: '1.12'
       - run: mix deps.get --only prod
       - run: MIX_ENV=prod mix compile
       - run: npm install --prefix ./assets
