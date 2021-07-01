@@ -22,7 +22,7 @@ jobs:
       - run: mix phx.digest
       - run: MIX_ENV=prod mix release
       - run: cd _build/prod/rel/trade_machine
-      - run: tar czf out.tar.gz ../
+      - run: tar czf ../out.tar.gz ./
       - run: ls -la
       - run: cd ..
       - run: ls -la
