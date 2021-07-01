@@ -42,5 +42,5 @@ jobs:
           script: |
             cd /opt/Apps/TradeMachineEx
             tar -xzf out.tar.gz --overwrite
-            _build/prod/rel/trade_machine/bin/trade_machine start
+            bin/trade_machine start
             rm out.tar.gz

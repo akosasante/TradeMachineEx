@@ -25,7 +25,7 @@ secret_key_base = "example"
 
 config :trade_machine, TradeMachineWeb.Endpoint,
   http: [
-    port: String.to_integer(System.get_env("PORT") || "4000"),
+    port: String.to_integer(System.get_env("PORT") || "4001"),
     transport_options: [socket_opts: [:inet6]]
   ],
   secret_key_base: secret_key_base
