@@ -1,13 +1,17 @@
 use Mix.Config
 
+# Configuring postgres schema to use for all queries
+query_args = ["SET search_path TO dev", []]
+
 # Configure your database
 config :trade_machine, TradeMachine.Repo,
-  username: "postgres",
-  password: "postgres",
-  database: "trade_machine_dev",
+  username: "trader_dev",
+  password: "caputo",
+  database: "trade_machine",
   hostname: "localhost",
   show_sensitive_data_on_connection_error: true,
-  pool_size: 10
+  pool_size: 10,
+  after_connect: {Postgrex, :query!, query_args}
 
 # For development, we disable any cache and enable
 # debugging and code reloading.

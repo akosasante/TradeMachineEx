@@ -8,7 +8,7 @@ defmodule TradeMachine.Application do
   def start(_type, _args) do
     children = [
       # Start the Ecto repository
-#      TradeMachine.Repo,
+      TradeMachine.Repo,
       # Start the Telemetry supervisor
       TradeMachineWeb.Telemetry,
       # Start the PubSub system
