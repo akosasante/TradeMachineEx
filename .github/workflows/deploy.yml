@@ -15,7 +15,7 @@ jobs:
         with:
           otp-version: '24.0'
           elixir-version: '1.12'
-      - run: mix deps.get --only prod
+      - run: mix deps.gets
       - run: MIX_ENV=prod mix compile
       - run: npm install --prefix ./assets
       - run: npm run deploy --prefix ./assets
