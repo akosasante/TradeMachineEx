@@ -2,6 +2,7 @@ defmodule TradeMachine.Data.Team do
   use TradeMachine.Schema
 
   alias TradeMachine.Data.DraftPick
+  alias TradeMachine.Data.User
 
   schema "team" do
     field :name, :string
@@ -11,6 +12,7 @@ defmodule TradeMachine.Data.Team do
 
     has_many :held_picks, DraftPick, foreign_key: :currentOwnerId
     has_many :original_picks, DraftPick, foreign_key: :originalOwnerId
+    has_many :current_owners, User, foreign_key: :teamId
 
     timestamps()
   end
