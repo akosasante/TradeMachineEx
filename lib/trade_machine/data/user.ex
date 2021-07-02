@@ -17,6 +17,8 @@ defmodule TradeMachine.Data.User do
     field :password_reset_token, :string, load_in_query: false
 
     belongs_to :current_team, Team, source: :teamId, foreign_key: :teamId
+
+    timestamps()
   end
 
   def changeset(struct \\ %__MODULE__{}, params \\ %{}) do

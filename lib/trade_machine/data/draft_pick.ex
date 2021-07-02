@@ -9,7 +9,7 @@ defmodule TradeMachine.Data.DraftPick do
     field :round, :decimal # TODO: Maybe decimal? Maybe eventually only allow integers?
     field :pick_number, :integer
 
-    belongs_to :held_by, Team, source: :currentOwnerId, foreign_key: :currentOwnerId
+    belongs_to :owned_by, Team, source: :currentOwnerId, foreign_key: :currentOwnerId
     belongs_to :original_owner, Team, source: :originalOwnerId, foreign_key: :originalOwnerId
 
     timestamps()
