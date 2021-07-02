@@ -17,6 +17,7 @@ defmodule TradeMachine.Data.User do
     field :password_reset_token, :string, load_in_query: false
 
     belongs_to :current_team, Team, source: :teamId, foreign_key: :teamId
+    has_many :declined_trades, Trade, foreign_key: :declinedById
 
     timestamps()
   end
