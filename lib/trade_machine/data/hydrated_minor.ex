@@ -1,4 +1,4 @@
-defmodule TradeMachine.Data.HydratedMinors do
+defmodule TradeMachine.Data.HydratedMinor do
   use TradeMachine.Schema
 
   schema "hydrated_minors" do

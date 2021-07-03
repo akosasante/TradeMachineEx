@@ -1,4 +1,4 @@
-defmodule TradeMachine.Data.HydratedMajors do
+defmodule TradeMachine.Data.HydratedMajor do
   use TradeMachine.Schema
 
   schema "hydrated_majors" do
