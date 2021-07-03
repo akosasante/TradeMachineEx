@@ -1,6 +1,8 @@
 defmodule TradeMachine.Data.HydratedMajor do
   use TradeMachine.Schema
 
+  alias TradeMachine.Data.Types.EligiblePositions
+
   schema "hydrated_majors" do
     field :name, :string
     field :league,
@@ -11,7 +13,7 @@ defmodule TradeMachine.Data.HydratedMajor do
           ]
     field :mlb_team, :string #TODO: check inclusion at changeset cast
     field :owner_team, :map
-    field :eligible_positions, {:array, TradeMachine.Data.Types.EligiblePositions}
+    field :eligible_positions, {:array, EligiblePositions}
     field :main_position, :string
   end
 

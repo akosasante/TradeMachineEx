@@ -38,9 +38,10 @@ defmodule TradeMachine.Data.Types.EligiblePositions do
 
   # When loading data from the database, convert integers into strings
   def load(eligible_positions_ints) when is_list(eligible_positions_ints) or is_integer(eligible_positions_ints) do
-    IO.inspect(eligible_positions_ints, label: :list)
     {:ok, get_string_positions(eligible_positions_ints)}
   end
+
+  def load(nil), do: {:ok, nil}
 
   # When dumping data to the database, we *expect* a list of integers
   # but any value could be inserted into the schema struct at runtime,

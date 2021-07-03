@@ -16,7 +16,9 @@ defmodule TradeMachine.Data.Trade do
 
     belongs_to :declined_by, User, source: :declinedById, foreign_key: :declinedById
     has_many :emails, Email
-    has_many :trade_participants, TradeParticipant
+    has_many :participants, TradeParticipant
+    has_many :recipients, TradeParticipant, where: [participant_type: :recipient]
+    has_one :creator, TradeParticipant, where: [participant_type: :creator]
     has_many :traded_items, TradeItem
 
     many_to_many :traded_players, Player, join_through: TradeItem, join_keys: [trade_id: :id, trade_item_id: :id], join_where: [trade_item_type: :player]
