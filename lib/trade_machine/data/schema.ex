@@ -28,6 +28,7 @@ defmodule TradeMachine.Schema do
       @foreign_key_type Ecto.UUID
       @timestamps_opts inserted_at_source: :dateCreated, updated_at_source: :dateModified, autogenerate: true
       @field_source_mapper &TradeMachine.Schema.convertFieldNameToDatabaseName/1
+      @schema_prefix System.get_env("SCHEMA", "dev")
     end
   end
 end
