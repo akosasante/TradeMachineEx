@@ -5,13 +5,16 @@ defmodule TradeMachine.Data.HydratedMajor do
 
   schema "hydrated_majors" do
     field :name, :string
+
     field :league,
           Ecto.Enum,
           values: [
             major: "1",
             minor: "2"
           ]
-    field :mlb_team, :string #TODO: check inclusion at changeset cast
+
+    # TODO: check inclusion at changeset cast
+    field :mlb_team, :string
     field :owner_team, :map
     field :eligible_positions, {:array, EligiblePositions}
     field :main_position, :string

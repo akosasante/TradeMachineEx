@@ -9,6 +9,7 @@ config :trade_machine, TradeMachine.Repo,
   password: "caputo",
   database: "trade_machine",
   hostname: "localhost",
+  port: 5438,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10,
   after_connect: {Postgrex, :query!, query_args}

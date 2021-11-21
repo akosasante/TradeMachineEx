@@ -11,12 +11,21 @@ config :trade_machine,
   ecto_repos: [TradeMachine.Repo]
 
 # Configures the endpoint
-config :trade_machine, TradeMachineWeb.Endpoint,
-  url: [host: "localhost"],
-  secret_key_base: "Z7REctlbORv2zBbr6+J/uAhh2uzB9/pvnVciY9FGv4BEku0i4u8uL67H+TjjdQwe",
-  render_errors: [view: TradeMachineWeb.ErrorView, accepts: ~w(html json), layout: false],
-  pubsub_server: TradeMachine.PubSub,
-  live_view: [signing_salt: "wKce98o8"]
+config :trade_machine,
+       TradeMachineWeb.Endpoint,
+       url: [
+         host: "localhost"
+       ],
+       secret_key_base: "Z7REctlbORv2zBbr6+J/uAhh2uzB9/pvnVciY9FGv4BEku0i4u8uL67H+TjjdQwe",
+       render_errors: [
+         view: TradeMachineWeb.ErrorView,
+         accepts: ~w(html json),
+         layout: false
+       ],
+       pubsub_server: TradeMachine.PubSub,
+       live_view: [
+         signing_salt: "wKce98o8"
+       ]
 
 # Configures Elixir's Logger
 config :logger, :console,

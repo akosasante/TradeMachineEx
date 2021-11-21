@@ -20,7 +20,7 @@ defmodule TradeMachine.Data.Types.EligiblePositions do
     15 => "RP",
     16 => "BE",
     17 => "IL",
-    18 => "IF",
+    18 => "IF"
   }
 
   @eligible_positions_str_map Map.new(@eligible_positions_map, fn {k, v} -> {v, k} end)
@@ -37,7 +37,8 @@ defmodule TradeMachine.Data.Types.EligiblePositions do
   def cast(_), do: :error
 
   # When loading data from the database, convert integers into strings
-  def load(eligible_positions_ints) when is_list(eligible_positions_ints) or is_integer(eligible_positions_ints) do
+  def load(eligible_positions_ints)
+      when is_list(eligible_positions_ints) or is_integer(eligible_positions_ints) do
     {:ok, get_string_positions(eligible_positions_ints)}
   end
 
@@ -53,13 +54,16 @@ defmodule TradeMachine.Data.Types.EligiblePositions do
       :error
     end
   end
+
   def dump(_), do: :error
 
-  defp parse_string_positions(eligible_positions_strings) when is_list(eligible_positions_strings) do
+  defp parse_string_positions(eligible_positions_strings)
+       when is_list(eligible_positions_strings) do
     Enum.map(eligible_positions_strings, &parse_string_positions/1)
   end
 
-  defp parse_string_positions(eligible_positions_string) when is_binary(eligible_positions_string) do
+  defp parse_string_positions(eligible_positions_string)
+       when is_binary(eligible_positions_string) do
     Map.get(@eligible_positions_str_map, eligible_positions_string, :unknown_position)
   end
 

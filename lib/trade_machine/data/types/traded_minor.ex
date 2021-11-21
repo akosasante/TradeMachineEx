@@ -61,7 +61,7 @@ defmodule TradeMachine.Data.Types.TradedMinor do
       minor_team: Map.get(traded_minor, "minorTeam"),
       name: Map.get(traded_minor, "name"),
       owned_by: Map.get(traded_minor, "ownerTeam"),
-      position:  Map.get(traded_minor, "position"),
+      position: Map.get(traded_minor, "position"),
       recipient: Map.get(traded_minor, "recipient"),
       sender: Map.get(traded_minor, "sender"),
       trade_id: Map.get(traded_minor, "tradeId")

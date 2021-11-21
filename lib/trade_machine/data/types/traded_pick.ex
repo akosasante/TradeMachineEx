@@ -61,7 +61,7 @@ defmodule TradeMachine.Data.Types.TradedPick do
       pick_number: Map.get(traded_pick, "pickNumber"),
       round: Map.get(traded_pick, "round"),
       season: Map.get(traded_pick, "season"),
-      type:  Map.get(traded_pick, "type"),
+      type: Map.get(traded_pick, "type"),
       recipient: Map.get(traded_pick, "recipient"),
       sender: Map.get(traded_pick, "sender"),
       trade_id: Map.get(traded_pick, "tradeId")

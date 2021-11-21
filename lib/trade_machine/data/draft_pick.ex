@@ -6,7 +6,8 @@ defmodule TradeMachine.Data.DraftPick do
   schema "draft_pick" do
     field :season, :integer
     field :type, Ecto.Enum, values: [majors: "1", high: "2", low: "3"]
-    field :round, :decimal # TODO: Maybe decimal? Maybe eventually only allow integers?
+    # TODO: Maybe decimal? Maybe eventually only allow integers?
+    field :round, :decimal
     field :pick_number, :integer
 
     belongs_to :owned_by, Team, source: :currentOwnerId, foreign_key: :currentOwnerId

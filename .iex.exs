@@ -20,11 +20,9 @@ defmodule StartupModule do
   def get_all_schema_modules() do
     get_all_modules()
     |> filter_and_return_schema_modules()
-    |> Enum.each(
-         fn module ->
-           IO.puts("alias #{module}")
-         end
-       )
+    |> Enum.each(fn module ->
+      IO.puts("alias #{module}")
+    end)
   end
 
   defp get_all_modules() do
@@ -35,14 +33,12 @@ defmodule StartupModule do
 
   defp filter_and_return_schema_modules(list_of_modules) do
     list_of_modules
-    |> Enum.flat_map(
-         fn module ->
-           case is_schema_module(Module.split(module)) do
-             true -> [module]
-             false -> []
-           end
-         end
-       )
+    |> Enum.flat_map(fn module ->
+      case is_schema_module(Module.split(module)) do
+        true -> [module]
+        false -> []
+      end
+    end)
   end
 
   defp is_schema_module(["TradeMachine", "Data", _]), do: true

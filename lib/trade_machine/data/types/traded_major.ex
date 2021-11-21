@@ -38,6 +38,7 @@ defmodule TradeMachine.Data.Types.TradedMajor do
 
   defp parse(traded_major) when is_map(traded_major) do
     {:ok, eligible_positions} = EligiblePositions.cast(Map.get(traded_major, :eligible_positions))
+
     %{
       "eligiblePositions" => eligible_positions,
       "id" => Map.get(traded_major, :id),
@@ -58,6 +59,7 @@ defmodule TradeMachine.Data.Types.TradedMajor do
 
   defp load_majors(traded_major) when is_map(traded_major) do
     {:ok, eligible_positions} = EligiblePositions.load(Map.get(traded_major, "eligiblePositions"))
+
     %{
       eligible_positions: eligible_positions,
       id: Map.get(traded_major, "id"),

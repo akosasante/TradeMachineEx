@@ -10,7 +10,18 @@ defmodule TradeMachine.Data.HydratedTrade do
   schema "hydrated_trades" do
     field :trade_id, Ecto.UUID
     field :date_created, :naive_datetime
-    field :status, Ecto.Enum, values: [draft: "1", requested: "2", pending: "3", accepted: "4", rejected: "5", submitted: "6"], source: :tradeStatus
+
+    field :status, Ecto.Enum,
+      values: [
+        draft: "1",
+        requested: "2",
+        pending: "3",
+        accepted: "4",
+        rejected: "5",
+        submitted: "6"
+      ],
+      source: :tradeStatus
+
     field :creator, :string, source: :tradeCreator
     field :recipients, {:array, :string}, source: :tradeRecipients
     field :declined_by, :string, source: :decliningUser
