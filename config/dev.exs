@@ -1,7 +1,7 @@
 use Mix.Config
 
 # Configuring postgres schema to use for all queries
-query_args = ["SET search_path TO dev", []]
+query_args = ["SET search_path TO #{System.get_env("SCHEMA", "dev")}", []]
 
 # Configure your database
 config :trade_machine, TradeMachine.Repo,
