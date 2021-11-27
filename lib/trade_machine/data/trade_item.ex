@@ -17,6 +17,8 @@ defmodule TradeMachine.Data.TradeItem do
 
   def changeset(struct \\ %__MODULE__{}, params \\ %{}) do
     struct
-    |> cast(params, [])
+    |> cast(params, [:trade_item_type, :trade_item_id, :senderId, :recipientId])
+    |> cast_assoc(:sender)
+    |> cast_assoc(:recipient)
   end
 end

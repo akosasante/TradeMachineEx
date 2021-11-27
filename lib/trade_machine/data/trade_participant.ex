@@ -15,6 +15,6 @@ defmodule TradeMachine.Data.TradeParticipant do
 
   def changeset(struct \\ %__MODULE__{}, params \\ %{}) do
     struct
-    |> cast(params, [])
+    |> cast(params, [:participant_type, :team_id, :trade_id])
   end
 end

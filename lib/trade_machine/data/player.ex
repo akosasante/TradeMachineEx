@@ -50,7 +50,7 @@ defmodule TradeMachine.Data.Player do
     timestamps()
   end
 
-  def new_changeset(params \\ %{}) do
+  def new(params \\ %{}) do
     changeset(%__MODULE__{}, params)
   end
 
@@ -62,7 +62,7 @@ defmodule TradeMachine.Data.Player do
 
   def group_by_validity(list_of_maps) do
     list_of_maps
-    |> Enum.map(fn m -> new_changeset(m) end)
+    |> Enum.map(fn m -> new(m) end)
     |> Enum.group_by(& &1.valid?)
   end
 
@@ -186,7 +186,7 @@ defmodule TradeMachine.Data.Player do
 
                  nil ->
                    IO.puts "Did not find a matching player for #{inspect(player)}"
-                   new_changeset(
+                   new(
                      player
                      |> Map.put(:leagueTeamId, player.owned_by)
                      |> Map.put(

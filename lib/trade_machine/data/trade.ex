@@ -8,15 +8,18 @@ defmodule TradeMachine.Data.Trade do
   alias TradeMachine.Data.Player
   alias TradeMachine.Data.DraftPick
 
+  alias TradeMachine.Data.Trade
+
   schema "trade" do
-    field :status, Ecto.Enum,
-      values: [
-        draft: "1",
-        requested: "2",
-        pending: "3",
-        accepted: "4",
-        rejected: "5",
-        submitted: "6"
+    field :status,
+          Ecto.Enum,
+          values: [
+            draft: "1",
+            requested: "2",
+            pending: "3",
+            accepted: "4",
+            rejected: "5",
+            submitted: "6"
       ]
 
     field :declined_reason, :string
@@ -72,16 +75,32 @@ defmodule TradeMachine.Data.Trade do
       where: [type: :high]
 
     many_to_many :traded_low_minor_picks, DraftPick,
-      join_through: TradeItem,
-      join_keys: [trade_id: :id, trade_item_id: :id],
-      join_where: [trade_item_type: :pick],
-      where: [type: :low]
+                 join_through: TradeItem,
+                 join_keys: [
+                   trade_id: :id,
+                   trade_item_id: :id
+                 ],
+                 join_where: [
+                   trade_item_type: :pick
+                 ],
+                 where: [
+                   type: :low
+                 ]
 
     timestamps()
   end
 
   def changeset(struct \\ %__MODULE__{}, params \\ %{}) do
     struct
-    |> cast(params, [])
+    |> cast(params, [:status, :declined_reason, :accepted_on_date, :accepted_by])
+    |> cast_assoc(:creator)
+    |> cast_assoc(:recipients)
+    |> cast_assoc(:traded_item_players)
+    |> cast_assoc(:traded_item_picks)
+  end
+
+  def new(params \\ %{}) do
+    %__MODULE__{}
+    |> changeset(params)
   end
 end
