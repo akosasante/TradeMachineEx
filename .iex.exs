@@ -14,15 +14,19 @@ alias Elixir.TradeMachine.Data.User
 
 alias TradeMachine.Repo
 
+require Ecto.Query
+
 defmodule StartupModule do
   require Kernel.SpecialForms
 
   def get_all_schema_modules() do
     get_all_modules()
     |> filter_and_return_schema_modules()
-    |> Enum.each(fn module ->
-      IO.puts("alias #{module}")
-    end)
+    |> Enum.each(
+         fn module ->
+           IO.puts("alias #{module}")
+         end
+       )
   end
 
   defp get_all_modules() do
