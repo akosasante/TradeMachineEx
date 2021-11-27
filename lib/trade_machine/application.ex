@@ -6,7 +6,17 @@ defmodule TradeMachine.Application do
   use Application
 
   def start(_type, _args) do
+    # TODO: Replace this with an application var for deployment
+    credentials =
+      "/Users/aasante/dev/TradeMachine/TradeMachineServer/sheet_creds.json"
+      |> File.read!()
+      |> Jason.decode!()
+
+    source =
+      {:service_account, credentials, scopes: ["https://www.googleapis.com/auth/spreadsheets"]}
+
     children = [
+      {Goth, name: TradeMachine.Goth, source: source},
       # Start the Ecto repository
       TradeMachine.Repo,
       # Start the Telemetry supervisor

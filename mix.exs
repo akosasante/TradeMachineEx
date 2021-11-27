@@ -45,7 +45,10 @@ defmodule TradeMachine.MixProject do
       {:gettext, "~> 0.11"},
       {:jason, "~> 1.0"},
       {:plug_cowboy, "~> 2.0"},
-      {:oban, "~> 2.7"}
+      {:oban, "~> 2.7"},
+      {:goth, "~> 1.3-rc"},
+      {:google_api_sheets, "~> 0.29.2"},
+      {:hackney, "~> 1.17"}
     ]
   end
 
