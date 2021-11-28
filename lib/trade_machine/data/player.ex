@@ -149,20 +149,54 @@ defmodule TradeMachine.Data.Player do
             existing_list_with_fields_of_interest
           )
 
-        {:ok, filtered_list_of_players}
+        players_to_clear_ownership =
+          MapSet.difference(
+            existing_list_with_fields_of_interest,
+            changeset_list_with_fields_of_interest
+          )
+          |> then(fn player_maps_to_filter ->
+            Enum.filter(
+              existing_players,
+              &Enum.member?(
+                player_maps_to_filter,
+                %{
+                  name: &1.name,
+                  league: &1.league,
+                  owned_by: &1.owned_by.id,
+                  position: &1.meta["minorLeaguePlayerFromSheet"]["position"],
+                  league_level: &1.meta["minorLeaguePlayerFromSheet"]["leagueLevel"],
+                  mlb_team: &1.meta["minorLeaguePlayerFromSheet"]["mlbTeam"]
+                }
+              )
+            )
+          end)
+
+        {
+          :ok,
+          [
+            players_to_upsert: filtered_list_of_players,
+            players_to_clear: players_to_clear_ownership
+          ]
+        }
       end
     )
     # (3) build a list of entries that have the same name+league+mlb_team+position, but different owner. Only the owner needs to be updated; filter the db list.
     |> Ecto.Multi.run(
       :build_upsert_list,
       fn _repo,
-         %{fetch_existing: existing_players, drop_existing_entries: list_of_players_to_upsert} ->
-        changesets =
+         %{
+           fetch_existing: existing_players,
+           drop_existing_entries: [
+             players_to_upsert: list_of_players_to_upsert,
+             players_to_clear: list_of_players_to_clear
+           ]
+         } ->
+        {changesets, players_to_clear} =
           Enum.reduce(
             list_of_players_to_upsert,
-            [],
+            {[], list_of_players_to_clear},
             fn player, acc ->
-              cs =
+              {cs, updated_players_to_clear} =
                 case Enum.find(
                        existing_players,
                        fn existing_player ->
@@ -200,45 +234,75 @@ defmodule TradeMachine.Data.Player do
                       "Found a matching existing player: #{player.name} vs #{matching_existing_player.name}. Just gonna update the league team id"
                     )
 
-                    changeset(
-                      matching_existing_player,
-                      player
-                      |> Map.put(:leagueTeamId, player.owned_by)
-                    )
+                    cs =
+                      changeset(
+                        matching_existing_player,
+                        player
+                        |> Map.put(:leagueTeamId, player.owned_by)
+                      )
+
+                    {cs, Enum.reject(elem(acc, 1), &(&1 == matching_existing_player))}
 
                   nil ->
                     IO.puts("Did not find a matching player for #{inspect(player)}")
 
-                    new(
-                      player
-                      |> Map.put(:leagueTeamId, player.owned_by)
-                      |> Map.put(
-                        :meta,
-                        %{
-                          "minorLeaguePlayerFromSheet" => %{
-                            "position" => player.position,
-                            "mlbTeam" => player.mlb_team,
-                            "leagueLevel" => player.league_level
+                    cs =
+                      new(
+                        player
+                        |> Map.put(:leagueTeamId, player.owned_by)
+                        |> Map.put(
+                          :meta,
+                          %{
+                            "minorLeaguePlayerFromSheet" => %{
+                              "position" => player.position,
+                              "mlbTeam" => player.mlb_team,
+                              "leagueLevel" => player.league_level
+                            }
                           }
-                        }
+                        )
                       )
-                    )
+
+                    {cs, elem(acc, 1)}
                 end
 
-              [cs | acc]
+              {[cs | elem(acc, 0)], updated_players_to_clear}
             end
           )
 
-        {:ok, changesets}
+        {:ok, [changesets_to_upsert: changesets, players_to_clear: players_to_clear]}
       end
     )
     # (3a) update in db
     |> Ecto.Multi.run(
       :upsert,
-      fn repo, %{build_upsert_list: changesets_to_upsert} ->
+      fn repo,
+         %{
+           build_upsert_list: [
+             changesets_to_upsert: changesets_to_upsert,
+             players_to_clear: _
+           ]
+         } ->
         results = Enum.map(changesets_to_upsert, fn cs -> repo.insert_or_update(cs) end)
         {:ok, results}
       end
+    )
+    # (3b) update existing players to unset the league_team_id field
+    |> Ecto.Multi.update_all(
+      :unset_existing_player_teams,
+      fn %{
+           build_upsert_list: [
+             changesets_to_upsert: _,
+             players_to_clear: players_to_clear
+           ]
+         } ->
+        ids = Enum.map(players_to_clear, & &1.id)
+
+        Player
+        |> Ecto.Query.where([p], p.id in ^ids)
+      end,
+      set: [
+        leagueTeamId: nil
+      ]
     )
     |> TradeMachine.Repo.transaction()
   end

@@ -13,7 +13,7 @@ defmodule TradeMachine.SheetReader do
   end
 
   def get_spreadsheet(conn, spreadsheet_id) do
-    {:ok, spreadsheet} =
+    {:ok, _spreadsheet} =
       GoogleApi.Sheets.V4.Api.Spreadsheets.sheets_spreadsheets_get(conn, spreadsheet_id)
   end
 
@@ -80,7 +80,29 @@ defmodule TradeMachine.SheetReader do
             low_range
           )
 
-        [{name, %{high: high_minors_players, low: low_minors_players}}]
+        if name == "Jeremiah" do
+          IO.inspect(low_minors_players)
+        end
+
+        [
+          {
+            name,
+            %{
+              high:
+                high_minors_players
+                |> Enum.reject(fn
+                  ["#N/A", _, _] -> true
+                  _ -> false
+                end),
+              low:
+                low_minors_players
+                |> Enum.reject(fn
+                  ["#N/A", _, _] -> true
+                  _ -> false
+                end)
+            }
+          }
+        ]
         |> Map.new()
       end)
 
