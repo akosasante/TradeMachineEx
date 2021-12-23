@@ -7,9 +7,7 @@ defmodule TradeMachine.Data.Trade do
   alias TradeMachine.Data.TradeItem
   alias TradeMachine.Data.Player
   alias TradeMachine.Data.DraftPick
-
-  alias TradeMachine.Data.Trade
-
+  
   schema "trade" do
     field :status,
           Ecto.Enum,
