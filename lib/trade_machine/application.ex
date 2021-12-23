@@ -8,7 +8,7 @@ defmodule TradeMachine.Application do
   def start(_type, _args) do
     # TODO: Replace this with an application var for deployment
     credentials =
-      "/Users/aasante/dev/TradeMachine/TradeMachineServer/sheet_creds.json"
+      Application.get_env(:trade_machine, :sheets_creds_filepath)
       |> File.read!()
       |> Jason.decode!()
 

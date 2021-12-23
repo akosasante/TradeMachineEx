@@ -39,7 +39,7 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             cd /opt/Apps/TradeMachineEx
-            sudo fuser -k 4001/tcp
+            fuser -k 4001/tcp
             tar -xzf out.tar.gz --overwrite
             bin/trade_machine daemon
             rm out.tar.gz

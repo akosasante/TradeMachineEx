@@ -8,7 +8,8 @@
 use Mix.Config
 
 config :trade_machine,
-  ecto_repos: [TradeMachine.Repo]
+       ecto_repos: [TradeMachine.Repo],
+       sheets_creds_filepath: "/Users/aasante/dev/TradeMachine/TradeMachineServer/sheet_creds.json"
 
 # Configures the endpoint
 config :trade_machine,

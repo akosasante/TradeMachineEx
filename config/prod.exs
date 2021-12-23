@@ -10,11 +10,14 @@ use Mix.Config
 # which you should run after static files are built and
 # before starting your production server.
 config :trade_machine, TradeMachineWeb.Endpoint,
-  #  url: [host: "localhost", port: 4000],
-  cache_static_manifest: "priv/static/cache_manifest.json"
+       #  url: [host: "localhost", port: 4000],
+       cache_static_manifest: "priv/static/cache_manifest.json"
 
 # Do not print debug messages in production
 config :logger, level: :info
+
+config :trade_machine,
+       sheets_creds_filepath: "../TradeMachine/sheets_creds.json"
 
 # ## SSL Support
 #
