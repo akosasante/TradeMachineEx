@@ -18,7 +18,10 @@ jobs:
       - run: mix deps.get
       - run: MIX_ENV=prod mix compile
       - run: mix assets.deploy
-      - run: MIX_ENV=prod mix release
+      - name: "Build the release"
+          run: MIX_ENV=prod mix release
+          env:
+            DB_PASSWORD: ${{ secrets.DB_PASS }}
       - run: cd _build/prod/rel/trade_machine && tar czf ../../../../out.tar.gz .
       - run: ls -la
       - name: Upload to server

@@ -19,6 +19,21 @@ config :logger, level: :info
 config :trade_machine,
        sheets_creds_filepath: "../TradeMachine/sheets_creds.json"
 
+# Configuring postgres schema to use for all queries
+query_args = ["SET search_path TO #{System.get_env("SCHEMA", "staging")}", []]
+
+# Configure your database
+config :trade_machine,
+       TradeMachine.Repo,
+       username: "trader_dev",
+       password: System.get_env("DB_PASSWORD"),
+       database: "trade_machine",
+       hostname: "localhost",
+       port: 5432,
+       show_sensitive_data_on_connection_error: false,
+       pool_size: 10,
+       after_connect: {Postgrex, :query!, query_args}
+
 # ## SSL Support
 #
 # To get SSL working, you will need to add the `https` key
