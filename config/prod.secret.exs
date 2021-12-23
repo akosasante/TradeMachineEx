@@ -11,10 +11,10 @@ database_url = "example"
 #    For example: ecto://USER:PASS@HOST/DATABASE
 #    """
 
-config :trade_machine, TradeMachine.Repo,
-  # ssl: true,
-  url: database_url,
-  pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10")
+#config :trade_machine, TradeMachine.Repo,
+# ssl: true,
+#  url: database_url,
+#  pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10")
 
 secret_key_base = "example"
 #  System.get_env("SECRET_KEY_BASE") ||
@@ -23,8 +23,9 @@ secret_key_base = "example"
 #    You can generate one by calling: mix phx.gen.secret
 #    """
 
-config :trade_machine, TradeMachineWeb.Endpoint,
-  http: [
+config :trade_machine,
+       TradeMachineWeb.Endpoint,
+       http: [
     port: String.to_integer(System.get_env("PORT") || "4001"),
     transport_options: [socket_opts: [:inet6]]
   ],
