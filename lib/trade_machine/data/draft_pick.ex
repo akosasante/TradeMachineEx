@@ -3,9 +3,22 @@ defmodule TradeMachine.Data.DraftPick do
 
   alias TradeMachine.Data.Team
 
+  require Ecto.Query
+
+  @required_fields [:round, :season, :type]
+  @optional_fields [:pick_number, :currentOwnerId, :originalOwnerId]
+
   schema "draft_pick" do
     field :season, :integer
-    field :type, Ecto.Enum, values: [majors: "1", high: "2", low: "3"]
+
+    field :type,
+          Ecto.Enum,
+          values: [
+            majors: "1",
+            high: "2",
+            low: "3"
+          ]
+
     # TODO: Maybe decimal? Maybe eventually only allow integers?
     field :round, :decimal
     field :pick_number, :integer
@@ -16,8 +29,13 @@ defmodule TradeMachine.Data.DraftPick do
     timestamps()
   end
 
-  def changeset(struct \\ %__MODULE__{}, params \\ %{}) do
+  def new(params \\ %{}) do
+    changeset(%__MODULE__{}, params)
+  end
+
+  def changeset(struct = %__MODULE__{}, params \\ %{}) do
     struct
-    |> cast(params, [])
+    |> cast(params, @required_fields ++ @optional_fields)
+    |> validate_required(@required_fields)
   end
 end
