@@ -1,5 +1,8 @@
 use Mix.Config
 
+# Initialize plugs at runtime for faster test compilation
+config :phoenix, :plug_init_mode, :runtime
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used

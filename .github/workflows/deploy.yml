@@ -17,9 +17,7 @@ jobs:
           elixir-version: '1.12'
       - run: mix deps.get
       - run: MIX_ENV=prod mix compile
-      - run: npm install --prefix ./assets
-      - run: npm run deploy --prefix ./assets
-      - run: mix phx.digest
+      - run: mix assets.deploy
       - run: MIX_ENV=prod mix release
       - run: cd _build/prod/rel/trade_machine && tar czf ../../../../out.tar.gz .
       - run: ls -la

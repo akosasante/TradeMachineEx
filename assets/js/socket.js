@@ -1,6 +1,7 @@
 // NOTE: The contents of this file will only be executed if
 // you uncomment its entry in "assets/js/app.js".
 
+// Bring in Phoenix channels client functionality:
 // To use Phoenix channels, the first step is to import Socket,
 // and connect at the socket path in "lib/web/endpoint.ex".
 //
@@ -8,6 +9,8 @@
 // from the params if you are not using authentication.
 import {Socket} from "phoenix"
 
+// And connect to the path in "lib/web/endpoint.ex". We pass the
+// token for authentication. Read below how it should be used.
 let socket = new Socket("/socket", {params: {token: window.userToken}})
 
 // When you connect, you'll often need to authenticate the client.
@@ -34,7 +37,7 @@ let socket = new Socket("/socket", {params: {token: window.userToken}})
 //     end
 //
 // Now you need to pass this token to JavaScript. You can do so
-// inside a script tag in "lib/web/templates/layout/app.html.eex":
+// inside a script tag in "lib/web/templates/layout/app.html.heex":
 //
 //     <script>window.userToken = "<%= assigns[:user_token] %>";</script>
 //
