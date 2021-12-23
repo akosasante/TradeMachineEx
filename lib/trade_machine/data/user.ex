@@ -2,6 +2,7 @@ defmodule TradeMachine.Data.User do
   use TradeMachine.Schema
 
   alias TradeMachine.Data.Team
+  alias TradeMachine.Data.Trade
 
   schema "user" do
     field :display_name, :string
