@@ -10,7 +10,12 @@ defmodule TradeMachine.MixProject do
       compilers: [:phoenix, :gettext] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      releases: [
+        trade_machine: [
+          cookie: "TEST_COOKIE",
+        ]
+      ]
     ]
   end
 
