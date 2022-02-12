@@ -30,3 +30,8 @@ config :trade_machine, TradeMachineWeb.Endpoint,
 
 # Print only warnings and errors during test
 config :logger, level: :warn
+
+# Turn off Oban queues during testing
+config :trade_machine, Oban,
+       plugins: false,
+       queues: false

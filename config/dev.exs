@@ -74,3 +74,11 @@ config :phoenix, :stacktrace_depth, 20
 
 # Initialize plugs at runtime for faster development compilation
 config :phoenix, :plug_init_mode, :runtime
+
+# Configure Oban for job processing
+config :trade_machine, Oban,
+       prefix: System.get_env("SCHEMA", "dev"),
+       plugins: [
+         {Oban.Plugins.Pruner, max_age: 300},
+         {Oban.Plugins.Cron, crontab: [{"*/2 * * * *", TradeMachine.Jobs.MinorsSync, args: %{sheet_id: "16SjDZBO2vY6rGj9CM7nW2pG21i4pZ85LGlbMCODVQtk"}}]}
+       ]

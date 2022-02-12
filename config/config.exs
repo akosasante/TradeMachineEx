@@ -48,6 +48,15 @@ config :esbuild,
          }
        ]
 
+# Configure Oban for job processing
+config :trade_machine, Oban,
+  repo: TradeMachine.Repo,
+  plugins: [
+    {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
+    {Oban.Plugins.Cron, crontab: [{"*/15 * * * *", TradeMachine.Jobs.MinorsSync}]}
+  ],
+  queues: [minors_sync: 1, draft_sync: 1]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{Mix.env()}.exs"

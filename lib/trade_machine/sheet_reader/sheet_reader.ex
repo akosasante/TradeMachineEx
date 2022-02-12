@@ -23,6 +23,8 @@ defmodule TradeMachine.SheetReader do
       spreadsheet.sheets
       |> Enum.find(&(Map.get(&1.properties, :title) == "Minor League Rosters"))
 
+    Logger.debug("Minor league sheet: #{inspect(minor_league_sheet, pretty: true)}")
+
     # Merged cells indicate places where we have team owner names or the high/low minors labels
     merged_cells = minor_league_sheet.merges
 
@@ -63,6 +65,8 @@ defmodule TradeMachine.SheetReader do
           list_of_appended_merges
         )
       end)
+
+    Logger.debug("Player ranges: #{inspect(player_ranges_by_owner_name, pretty: true)}")
 
     get_players_by_owner_name =
       player_ranges_by_owner_name
@@ -111,6 +115,7 @@ defmodule TradeMachine.SheetReader do
           |> convert_sheet_names_to_incoming_players())
       )
 
+    Logger.debug("Finalized list of incoming players: #{inspect(list_of_incoming_players, pretty: true)}")
     Player.batch_insert_minor_leaguers(list_of_incoming_players)
   end
 
@@ -447,6 +452,8 @@ defmodule TradeMachine.SheetReader do
           nil
       end
 
+    IO.inspect(team_id, label: :team_id)
+
     Enum.concat(
       Enum.map(
         high_minors,
@@ -474,6 +481,6 @@ defmodule TradeMachine.SheetReader do
           }
         end
       )
-    )
+    ) |> IO.inspect(label: :concatted)
   end
 end

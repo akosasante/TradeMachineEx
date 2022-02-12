@@ -27,6 +27,7 @@ defmodule TradeMachine.Data.Player do
   alias TradeMachine.Data.Team
 
   require Ecto.Query
+  require Logger
 
   @required_fields [:name, :league]
   @optional_fields [:mlb_team, :player_data_id, :meta, :leagueTeamId]
@@ -296,6 +297,8 @@ defmodule TradeMachine.Data.Player do
            ]
          } ->
         ids = Enum.map(players_to_clear, & &1.id)
+
+        Logger.debug("Final multi step")
 
         Player
         |> Ecto.Query.where([p], p.id in ^ids)

@@ -24,7 +24,9 @@ defmodule TradeMachine.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: TradeMachine.PubSub},
       # Start the Endpoint (http/https)
-      TradeMachineWeb.Endpoint
+      TradeMachineWeb.Endpoint,
+      # Start Oban
+      {Oban, oban_config()}
       # Start a worker by calling: TradeMachine.Worker.start_link(arg)
       # {TradeMachine.Worker, arg}
     ]
@@ -40,5 +42,9 @@ defmodule TradeMachine.Application do
   def config_change(changed, _new, removed) do
     TradeMachineWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+
+  defp oban_config() do
+    Application.fetch_env!(:trade_machine, Oban)
   end
 end
