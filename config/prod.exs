@@ -68,6 +68,12 @@ config :trade_machine,
 #
 # Check `Plug.SSL` for all available options in `force_ssl`.
 
+# Configure Oban for job processing
+
+cron_plugin = if System.get_env("SCHEMA") == "staging", do: {Oban.Plugins.Cron, crontab: [{"*/15 * * * *", TradeMachine.Jobs.MinorsSync}]}, else: false
+config :trade_machine, Oban,
+       plugins: [cron_plugin]
+
 # Finally import the config/prod.secret.exs which loads secrets
 # and configuration from environment variables.
 import_config "prod.secret.exs"
