@@ -24,6 +24,7 @@ jobs:
         env:
           DB_PASSWORD: ${{ secrets.DB_PASS }}
           SCHEMA: staging
+          PORT: 4002
       - run: cd _build/prod/rel/trade_machine && tar czf ../../../../staging_out.tar.gz .
       - run: ls -la
       - name: Upload to server
@@ -44,7 +45,7 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             cd /opt/Apps/TradeMachineEx/staging
-            fuser -k 4001/tcp
+            fuser -k 4002/tcp
             tar -xzf staging_out.tar.gz --overwrite
             bin/trade_machine daemon
             rm staging_out.tar.gz
