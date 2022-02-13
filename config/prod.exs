@@ -17,7 +17,7 @@ config :trade_machine, TradeMachineWeb.Endpoint,
 config :logger, level: :info
 
 config :trade_machine,
-       sheets_creds_filepath: "../TradeMachine/sheets_creds.json"
+       sheets_creds_filepath: "./sheets_creds.json"
 
 # Configuring postgres schema to use for all queries
 query_args = ["SET search_path TO #{System.get_env("SCHEMA", "staging")}", []]
