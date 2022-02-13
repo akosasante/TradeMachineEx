@@ -30,3 +30,7 @@ npm-debug.log
 
 # Ignore assets that are produced by build tools.
 /priv/static/assets/
+
+# Ignore intellij idea IDE specific stuff
+.idea/
+*.iml
