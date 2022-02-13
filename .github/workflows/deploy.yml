@@ -32,7 +32,7 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           source: "out.tar.gz"
-          target: "/opt/Apps/TradeMachineEx"
+          target: "/opt/Apps/TradeMachineEx/prod"
       - name: Unzip and restart the server
         uses: appleboy/ssh-action@master
         with:
@@ -41,7 +41,7 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            cd /opt/Apps/TradeMachineEx
+            cd /opt/Apps/TradeMachineEx/prod
             fuser -k 4001/tcp
             tar -xzf out.tar.gz --overwrite
             bin/trade_machine daemon
