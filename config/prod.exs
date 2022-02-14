@@ -15,11 +15,15 @@ config :trade_machine, TradeMachineWeb.Endpoint,
 
 # Do not print debug messages in production
 config :logger,
-       backends: [{LoggerFileBackend, :debug_log}]
+       backends: [{LoggerFileBackend, :debug_log}],
+       utc_log: true,
+       handle_otp_reports: true
 
 config :logger, :debug_log,
        path: "/var/log/trade_machine_ex/debug.log",
-       level: :debug
+       level: :debug,
+       metadata: :all,
+       format: {Formatter.Log, :format}
 
 config :trade_machine,
        sheets_creds_filepath: "./sheets_creds.json"

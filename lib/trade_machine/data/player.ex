@@ -1,6 +1,7 @@
 defmodule TradeMachine.Data.Player do
   defmodule IncomingMinorLeaguer do
     use Ecto.Schema
+    require Logger
 
     embedded_schema do
       field :name, :string
@@ -231,7 +232,7 @@ defmodule TradeMachine.Data.Player do
                        end
                      ) do
                   %__MODULE__{} = matching_existing_player ->
-                    IO.puts(
+                    Logger.debug(
                       "Found a matching existing player: #{player.name} vs #{matching_existing_player.name}. Just gonna update the league team id"
                     )
 
@@ -245,7 +246,7 @@ defmodule TradeMachine.Data.Player do
                     {cs, Enum.reject(elem(acc, 1), &(&1 == matching_existing_player))}
 
                   nil ->
-                    IO.puts("Did not find a matching player for #{inspect(player)}")
+                    Logger.debug("Did not find a matching player for #{inspect(player)}")
 
                     cs =
                       new(

@@ -280,7 +280,7 @@ defmodule TradeMachine.SheetReader do
                           end
                         ) do
                      %DraftPick{} = matching_pick ->
-                       IO.puts(
+                       Logger.debug(
                          "Found a matching existing pick: #{inspect(pick)} vs #{
                            inspect(matching_pick)
                          }. Just gonna update the current owner team id"
@@ -297,7 +297,7 @@ defmodule TradeMachine.SheetReader do
                        {cs, Enum.reject(elem(acc, 1), &(&1 == matching_pick))}
 
                      nil ->
-                       IO.puts("Did not find a matching pick for #{inspect(pick)}")
+                       Logger.debug("Did not find a matching pick for #{inspect(pick)}")
 
                        cs =
                          DraftPick.new(
@@ -452,7 +452,7 @@ defmodule TradeMachine.SheetReader do
           nil
       end
 
-    IO.inspect(team_id, label: :team_id)
+    Logger.debug("team_id: #{inspect(team_id)}")
 
     Enum.concat(
       Enum.map(
@@ -481,6 +481,6 @@ defmodule TradeMachine.SheetReader do
           }
         end
       )
-    ) |> IO.inspect(label: :concatted)
+    )
   end
 end
