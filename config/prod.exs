@@ -79,9 +79,10 @@ config :trade_machine,
 
 # Configure Oban for job processing
 
-cron_plugin = if System.get_env("SCHEMA") == "staging", do: {Oban.Plugins.Cron, crontab: [{"*/15 * * * *", TradeMachine.Jobs.MinorsSync}]}, else: false
+cron_plugin = if System.get_env("SCHEMA") == "staging", do: {Oban.Plugins.Cron, crontab: [{"0 2 * * *", TradeMachine.Jobs.MinorsSync}]}, else: false
 config :trade_machine, Oban,
-       plugins: [cron_plugin]
+       plugins: [cron_plugin],
+       prefix: System.get_env("SCHEMA", "staging")
 
 # Finally import the config/prod.secret.exs which loads secrets
 # and configuration from environment variables.
