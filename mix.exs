@@ -25,7 +25,7 @@ defmodule TradeMachine.MixProject do
   def application do
     [
       mod: {TradeMachine.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :logger_file_backend],
     ]
   end
 
@@ -55,7 +55,8 @@ defmodule TradeMachine.MixProject do
       {:oban, "~> 2.10"},
       {:goth, "~> 1.3-rc"},
       {:google_api_sheets, "~> 0.29.2"},
-      {:hackney, "~> 1.17"}
+      {:hackney, "~> 1.17"},
+      {:logger_file_backend, "~> 0.0.10"}
     ]
   end
 

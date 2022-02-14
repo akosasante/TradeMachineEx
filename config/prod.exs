@@ -14,7 +14,12 @@ config :trade_machine, TradeMachineWeb.Endpoint,
        cache_static_manifest: "priv/static/cache_manifest.json"
 
 # Do not print debug messages in production
-config :logger, level: :info
+config :logger,
+       backends: [{LoggerFileBackend, :debug_log}]
+
+config :logger, :debug_log,
+       path: "/var/log/trade_machine_ex/debug.log",
+       level: :debug
 
 config :trade_machine,
        sheets_creds_filepath: "./sheets_creds.json"
