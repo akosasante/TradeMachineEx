@@ -17,19 +17,21 @@ defmodule TradeMachine.Application do
       {:service_account, credentials, scopes: ["https://www.googleapis.com/auth/spreadsheets"]}
 
     children = [
+      # Google OAuth library. Used to connect to and read from the Minor League and Draft Picks Google Sheet
       {Goth, name: TradeMachine.Goth, source: source},
-      # Start the Ecto repository
+      # Start the Ecto repository (we connect to the same postgres db as TradeMachineServer)
       TradeMachine.Repo,
       # Start the Telemetry supervisor
       TradeMachineWeb.Telemetry,
-      # Start the PubSub system
+      # Start the PubSub system (not currently in use for anything)
       {Phoenix.PubSub, name: TradeMachine.PubSub},
-      # Start the Endpoint (http/https)
-      TradeMachineWeb.Endpoint,
-      # Start Oban
-      {Oban, oban_config()}
-      # Start a worker by calling: TradeMachine.Worker.start_link(arg)
-      # {TradeMachine.Worker, arg}
+      # Start Oban. This is the queue/job runner that we use to periodically process changes from the Google Sheet
+#      {Oban, oban_config()},
+      # Start a GenServer whose job is just to keep the spreadsheet id and
+      # Google OAuth (Goth) connection in-memory/state
+      {TradeMachine.SheetReader, Application.get_env(:trade_machine, :spreadsheet_id)},
+      # Start the Phoenix Endpoint (http/https)
+      TradeMachineWeb.Endpoint
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
@@ -46,7 +48,7 @@ defmodule TradeMachine.Application do
     :ok
   end
 
-  defp oban_config() do
+  defp oban_config do
     Application.fetch_env!(:trade_machine, Oban)
   end
 end

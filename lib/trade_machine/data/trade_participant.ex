@@ -1,11 +1,11 @@
 defmodule TradeMachine.Data.TradeParticipant do
   use TradeMachine.Schema
 
-  alias TradeMachine.Data.Trade
   alias TradeMachine.Data.Team
+  alias TradeMachine.Data.Trade
 
-  schema "trade_participant" do
-    field :participant_type, Ecto.Enum, values: [creator: "1", recipient: "2"]
+  typed_schema "trade_participant" do
+    field(:participant_type, Ecto.Enum, values: [creator: "1", recipient: "2"], null: false)
 
     belongs_to :trade, Trade
     belongs_to :team, Team

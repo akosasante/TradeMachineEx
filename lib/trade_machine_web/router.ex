@@ -19,6 +19,15 @@ defmodule TradeMachineWeb.Router do
     get "/", PageController, :index
   end
 
+  # Health check endpoints for container orchestration
+  scope "/", TradeMachineWeb do
+    pipe_through :api
+
+    get "/health", HealthController, :health
+    get "/ready", HealthController, :ready
+    get "/live", HealthController, :live
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", TradeMachineWeb do
   #   pipe_through :api

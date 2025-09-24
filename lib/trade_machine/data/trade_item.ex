@@ -4,9 +4,9 @@ defmodule TradeMachine.Data.TradeItem do
   alias TradeMachine.Data.Team
   alias TradeMachine.Data.Trade
 
-  schema "trade_item" do
-    field :trade_item_type, Ecto.Enum, values: [player: "1", pick: "2"]
-    field :trade_item_id, Ecto.UUID
+  typed_schema "trade_item" do
+    field(:trade_item_type, Ecto.Enum, values: [player: "1", pick: "2"], null: false)
+    field(:trade_item_id, Ecto.UUID, null: false)
 
     belongs_to :sender, Team, source: :senderId, foreign_key: :senderId
     belongs_to :recipient, Team, source: :recipientId, foreign_key: :recipientId

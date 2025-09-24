@@ -33,5 +33,5 @@ config :logger, level: :warn
 
 # Turn off Oban queues during testing
 config :trade_machine, Oban,
-       plugins: false,
-       queues: false
+  plugins: false,
+  queues: false

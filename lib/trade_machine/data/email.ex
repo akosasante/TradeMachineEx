@@ -5,8 +5,8 @@ defmodule TradeMachine.Data.Email do
 
   @primary_key {:message_id, :string, autogenerate: false}
 
-  schema "email" do
-    field :status, :string
+  typed_schema "email" do
+    field :status, :string, null: false
 
     belongs_to :trade, Trade
 

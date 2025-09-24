@@ -8,8 +8,8 @@
 use Mix.Config
 
 config :trade_machine,
-       ecto_repos: [TradeMachine.Repo],
-       sheets_creds_filepath: "/Users/aasante/dev/TradeMachine/TradeMachineServer/sheet_creds.json"
+  ecto_repos: [TradeMachine.Repo],
+  sheets_creds_filepath: "/Users/aasante/dev/TradeMachine/TradeMachineServer/sheet_creds.json"
 
 # Configures the endpoint
 config :trade_machine,
@@ -39,14 +39,14 @@ config :phoenix, :json_library, Jason
 
 # Configure esbuild (the version is required)
 config :esbuild,
-       version: "0.12.18",
-       default: [
-         args: ~w(js/app.js --bundle --target=es2016 --outdir=../priv/static/assets),
-         cd: Path.expand("../assets", __DIR__),
-         env: %{
-           "NODE_PATH" => Path.expand("../deps", __DIR__)
-         }
-       ]
+  version: "0.12.18",
+  default: [
+    args: ~w(js/app.js --bundle --target=es2016 --outdir=../priv/static/assets),
+    cd: Path.expand("../assets", __DIR__),
+    env: %{
+      "NODE_PATH" => Path.expand("../deps", __DIR__)
+    }
+  ]
 
 # Configure Oban for job processing
 config :trade_machine, Oban,

@@ -3,20 +3,22 @@ defmodule TradeMachine.Data.HydratedMajor do
 
   alias TradeMachine.Data.Types.EligiblePositions
 
-  schema "hydrated_majors" do
-    field :name, :string
+  typed_schema "hydrated_majors" do
+    field :name, :string, null: false
 
-    field :league,
-          Ecto.Enum,
-          values: [
-            major: "1",
-            minor: "2"
-          ]
+    field(
+      :league,
+      Ecto.Enum,
+      values: [
+        major: "1"
+      ],
+      null: false
+    )
 
     # TODO: check inclusion at changeset cast
     field :mlb_team, :string
     field :owner_team, :map
-    field :eligible_positions, {:array, EligiblePositions}
+    field :eligible_positions, EligiblePositions.type()
     field :main_position, :string
   end
 

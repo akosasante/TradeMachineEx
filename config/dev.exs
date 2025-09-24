@@ -1,15 +1,19 @@
 use Mix.Config
 
+config :trade_machine,
+  # id of "Copy of Copy of Minor League" sheet
+  spreadsheet_id: "16SjDZBO2vY6rGj9CM7nW2pG21i4pZ85LGlbMCODVQtk"
+
 # Configuring postgres schema to use for all queries
-query_args = ["SET search_path TO #{System.get_env("SCHEMA", "dev")}", []]
+query_args = ["SET search_path TO #{System.get_env("SCHEMA", "public")}", []]
 
 # Configure your database
 config :trade_machine, TradeMachine.Repo,
   username: "trader_dev",
-  password: "caputo",
+  password: "blawrie13",
   database: "trade_machine",
-  hostname: "localhost",
-  port: 5438,
+  hostname: "159.89.122.97",
+  port: 5432,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10,
   after_connect: {Postgrex, :query!, query_args}
@@ -66,7 +70,18 @@ config :trade_machine, TradeMachineWeb.Endpoint,
   ]
 
 # Do not include metadata nor timestamps in development logs
-config :logger, :console, format: "[$level] $message\n"
+# config :logger, :console, format: "[$level] $message\n"
+
+config :logger,
+  backends: [{LoggerFileBackend, :debug_log}],
+  utc_log: true,
+  handle_otp_reports: true
+
+config :logger, :debug_log,
+  path: "./test_log.log",
+  level: :debug,
+  metadata: :all,
+  format: {Formatter.Log, :format}
 
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.
@@ -77,8 +92,12 @@ config :phoenix, :plug_init_mode, :runtime
 
 # Configure Oban for job processing
 config :trade_machine, Oban,
-       prefix: System.get_env("SCHEMA", "dev"),
-       plugins: [
-         {Oban.Plugins.Pruner, max_age: 300},
-         {Oban.Plugins.Cron, crontab: [{"*/2 * * * *", TradeMachine.Jobs.MinorsSync, args: %{sheet_id: "16SjDZBO2vY6rGj9CM7nW2pG21i4pZ85LGlbMCODVQtk"}}]}
-       ]
+  prefix: System.get_env("SCHEMA", "dev"),
+  plugins: [
+    {Oban.Plugins.Pruner, max_age: 300},
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"*/2 * * * *", TradeMachine.Jobs.MinorsSync,
+        args: %{sheet_id: "16SjDZBO2vY6rGj9CM7nW2pG21i4pZ85LGlbMCODVQtk"}}
+     ]}
+  ]

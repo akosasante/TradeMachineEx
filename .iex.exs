@@ -1,16 +1,16 @@
-alias Elixir.TradeMachine.Data.DraftPick
-alias Elixir.TradeMachine.Data.Email
-alias Elixir.TradeMachine.Data.HydratedMajor
-alias Elixir.TradeMachine.Data.HydratedMinor
-alias Elixir.TradeMachine.Data.HydratedPick
-alias Elixir.TradeMachine.Data.HydratedTrade
-alias Elixir.TradeMachine.Data.Player
-alias Elixir.TradeMachine.Data.Settings
-alias Elixir.TradeMachine.Data.Team
-alias Elixir.TradeMachine.Data.Trade
-alias Elixir.TradeMachine.Data.TradeItem
-alias Elixir.TradeMachine.Data.TradeParticipant
-alias Elixir.TradeMachine.Data.User
+#alias Elixir.TradeMachine.Data.DraftPick
+#alias Elixir.TradeMachine.Data.Email
+#alias Elixir.TradeMachine.Data.HydratedMajor
+#alias Elixir.TradeMachine.Data.HydratedMinor
+#alias Elixir.TradeMachine.Data.HydratedPick
+#alias Elixir.TradeMachine.Data.HydratedTrade
+#alias Elixir.TradeMachine.Data.Player
+#alias Elixir.TradeMachine.Data.Settings
+#alias Elixir.TradeMachine.Data.Team
+#alias Elixir.TradeMachine.Data.Trade
+#alias Elixir.TradeMachine.Data.TradeItem
+#alias Elixir.TradeMachine.Data.TradeParticipant
+#alias Elixir.TradeMachine.Data.User
 
 alias TradeMachine.Repo
 
@@ -23,7 +23,8 @@ defmodule StartupModule do
     get_all_modules()
     |> filter_and_return_schema_modules()
     |> Enum.each(fn module ->
-      IO.puts("alias #{module}")
+    IO.inspect(module)
+#      alias module
     end)
   end
 
@@ -46,3 +47,5 @@ defmodule StartupModule do
   defp is_schema_module(["TradeMachine", "Data", _]), do: true
   defp is_schema_module(_), do: false
 end
+
+StartupModule.get_all_schema_modules()

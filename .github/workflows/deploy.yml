@@ -1,48 +1,166 @@
-name: CD Workflow
+name: Docker Build and Deploy
 
 on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/trade-machine-ex
 
 jobs:
-  build:
-    name: Build an Elixir release and zip the artifact
-    runs-on: ubuntu-18.04
+  # Security scanning and linting
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: erlef/setup-beam@v1
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
         with:
-          otp-version: '24.0'
-          elixir-version: '1.12'
-      - run: mix deps.get
-      - run: MIX_ENV=prod mix compile
-      - run: mix assets.deploy
-      - name: "Build the release"
-        run: MIX_ENV=prod mix release
-        env:
-          DB_PASSWORD: ${{ secrets.DB_PASS }}
-      - run: cd _build/prod/rel/trade_machine && tar czf ../../../../out.tar.gz .
-      - run: ls -la
-      - name: Upload to server
-        uses: appleboy/scp-action@master
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          port: ${{ secrets.SSH_PORT }}
-          source: "out.tar.gz"
-          target: "/opt/Apps/TradeMachineEx/prod"
-      - name: Unzip and restart the server
-        uses: appleboy/ssh-action@master
+          sarif_file: 'trivy-results.sarif'
+
+  # Build and push Docker image
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: security
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          port: ${{ secrets.SSH_PORT }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: Output image
+        id: image
+        run: |
+          echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+
+  # Deploy to production (only on main branch)
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Deploy to DigitalOcean
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DIGITALOCEAN_HOST }}
+          username: ${{ secrets.DIGITALOCEAN_USERNAME }}
+          key: ${{ secrets.DIGITALOCEAN_SSH_KEY }}
+          port: ${{ secrets.DIGITALOCEAN_SSH_PORT || 22 }}
           script: |
-            cd /opt/Apps/TradeMachineEx/prod
-            fuser -k 4001/tcp
-            tar -xzf out.tar.gz --overwrite
-            bin/trade_machine daemon
-            rm out.tar.gz
+            # Navigate to application directory
+            cd /opt/Apps/TradeMachineEx
+
+            # Create docker-compose.prod.yml if it doesn't exist (first deployment)
+            if [ ! -f docker-compose.prod.yml ]; then
+              echo "Downloading docker-compose.prod.yml from repository..."
+              curl -o docker-compose.prod.yml https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.prod.yml
+            fi
+
+            # Pull the latest image
+            docker pull ${{ needs.build-and-push.outputs.image }}
+
+            # Update the image tag in docker-compose
+            export IMAGE_TAG=${{ needs.build-and-push.outputs.image }}
+
+            # Stop and remove old container
+            docker compose -f docker-compose.prod.yml down
+
+            # Start with new image
+            docker compose -f docker-compose.prod.yml up -d
+
+            # Clean up old images (keep last 3)
+            docker image prune -f
+            docker images ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} --format "{{.Repository}}:{{.Tag}}" | tail -n +4 | xargs -r docker rmi
+
+            # Verify deployment
+            sleep 10
+            if ! curl -f http://localhost:4001/health; then
+              echo "Health check failed, rolling back..."
+              docker compose -f docker-compose.prod.yml logs app
+              exit 1
+            fi
+
+            echo "Deployment successful!"
+
+  # Post-deployment verification
+  verify:
+    name: Post-Deployment Verification
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Health Check
+        run: |
+          # Wait a bit for the service to fully start
+          sleep 30
+
+          # Verify the health endpoint is responding
+          curl -f http://${{ secrets.DIGITALOCEAN_HOST }}:4001/health || exit 1
+
+          # Verify metrics endpoint is available
+          curl -f http://${{ secrets.DIGITALOCEAN_HOST }}:9090/metrics || exit 1
+
+          echo "All health checks passed!"

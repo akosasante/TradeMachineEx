@@ -1,0 +1,66 @@
+# Git and version control
+.git
+.github
+.gitignore
+
+# Build artifacts and dependencies
+_build
+deps
+node_modules
+assets/node_modules
+
+# IDE and editor files
+.vscode
+.idea
+*.iml
+.DS_Store
+Thumbs.db
+
+# OS specific files
+.DS_Store
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Test files and coverage reports
+test/
+cover/
+doc/
+docs/
+
+# Development and debugging
+.iex.exs
+.dialyzer.ignore-warnings.exs
+
+# Logs and temporary files
+*.log
+erl_crash.dump
+*.tmp
+*.temp
+
+# Docker related files (avoid recursion)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Environment specific files
+.env
+.env.*
+
+# Documentation
+README.md
+*.md
+
+# Deployment artifacts
+out.tar.gz
+*.tar.gz
+
+# IDE workspace files
+*.code-workspace
+
+# Tool version files
+.tool-versions
+
+# Mix lock file (copied separately)
+# Commented out because we need it for dependency resolution
+# mix.lock

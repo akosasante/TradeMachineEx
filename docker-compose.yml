@@ -1,0 +1,138 @@
+version: '3.8'
+
+services:
+  # TradeMachineEx Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    ports:
+      - "4000:4000"  # Phoenix application
+      - "9090:9090"  # Prometheus metrics
+    environment:
+      - MIX_ENV=dev
+      - PORT=4000
+      - METRICS_PORT=9090
+      - DATABASE_HOST=postgres
+      - DATABASE_USER=trader_dev
+      - DATABASE_PASSWORD=caputo
+      - DATABASE_NAME=trade_machine
+      - DATABASE_PORT=5432
+      - DATABASE_POOL_SIZE=10
+      - DATABASE_SCHEMA=staging
+      - SECRET_KEY_BASE=development_secret_key_base_change_in_production
+      - PHX_HOST=localhost
+      - LOG_LEVEL=debug
+      - GOOGLE_SHEETS_CREDS_PATH=./sheets_creds.json
+      - GOOGLE_SPREADSHEET_ID=${GOOGLE_SPREADSHEET_ID:-}
+      - ENABLE_CRON=true
+      - OBAN_MINORS_SYNC_CONCURRENCY=1
+      - OBAN_DRAFT_SYNC_CONCURRENCY=1
+    volumes:
+      # Mount source code for development
+      - .:/app
+      - /app/_build
+      - /app/deps
+      - /app/assets/node_modules
+      # Mount Google Sheets credentials if available locally
+      - ${GOOGLE_SHEETS_CREDS_FILE:-./sheets_creds.json}:/app/sheets_creds.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - trade_machine_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    ports:
+      - "5438:5432"  # Expose on different port to avoid conflicts
+    environment:
+      - POSTGRES_USER=trader_dev
+      - POSTGRES_PASSWORD=caputo
+      - POSTGRES_DB=trade_machine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./priv/repo/structure.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks:
+      - trade_machine_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trader_dev -d trade_machine"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Oban job queues
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - trade_machine_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Optional: Prometheus for metrics collection (development)
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9091:9090"  # Avoid conflict with app metrics port
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - trade_machine_network
+    profiles:
+      - monitoring
+
+  # Optional: Grafana for metrics visualization (development)
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - trade_machine_network
+    profiles:
+      - monitoring
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  trade_machine_network:
+    driver: bridge

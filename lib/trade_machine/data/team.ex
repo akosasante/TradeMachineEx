@@ -3,15 +3,15 @@ defmodule TradeMachine.Data.Team do
 
   alias TradeMachine.Data.DraftPick
   alias TradeMachine.Data.Player
-  alias TradeMachine.Data.User
   alias TradeMachine.Data.Trade
-  alias TradeMachine.Data.TradeParticipant
   alias TradeMachine.Data.TradeItem
+  alias TradeMachine.Data.TradeParticipant
+  alias TradeMachine.Data.User
 
-  schema "team" do
-    field :name, :string
+  typed_schema "team" do
+    field :name, :string, null: false
     field :espn_id, :integer
-    field :status, Ecto.Enum, values: [active: "1", disabled: "2"]
+    field(:status, Ecto.Enum, values: [active: "1", disabled: "2"], null: false)
     field :espn_team, :map, load_in_query: false
 
     has_many :owned_picks, DraftPick, foreign_key: :currentOwnerId

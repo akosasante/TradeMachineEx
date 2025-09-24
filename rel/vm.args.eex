@@ -1,11 +1,41 @@
 ## Customize flags given to the VM: https://erlang.org/doc/man/erl.html
 ## -mode/-name/-sname/-setcookie are configured via env vars, do not set them here
 
-## Number of dirty schedulers doing IO work (file, sockets, and others)
-##+SDio 5
+## Container-optimized VM arguments for TradeMachine Ex
 
-## Increase number of concurrent ports/sockets
-##+Q 65536
+## Number of dirty schedulers doing IO work (Google Sheets API, database)
++SDio 8
 
-## Tweak GC to run more often
-##-env ERL_FULLSWEEP_AFTER 10
+## Increase number of concurrent ports/sockets for web requests and DB connections
++Q 65536
+
+## Memory management optimizations for containers
+## Enable more aggressive garbage collection
+-env ERL_FULLSWEEP_AFTER 20
+
+## Async thread pool size (for file I/O and network operations)
++A 32
+
+## Enable SMP and set scheduler threads to match container CPU allocation
++S auto:auto
+
+## Memory allocator optimizations for containers
++MBas aobf
++MHas aobf
++MBlmbcs 512
++MHlmbcs 512
+
+## Enable load balancing of scheduler threads
++scl false
+
+## Disable kernel polling (better for containers)
++K false
+
+## Set process limit (appropriate for scheduled job processing)
++P 1048576
+
+## Enable heartbeat for health monitoring
++c true
+
+## Crash dump settings for debugging
+-env ERL_CRASH_DUMP /tmp/erl_crash.dump

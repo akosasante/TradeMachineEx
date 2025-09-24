@@ -1,15 +1,17 @@
 defmodule TradeMachine.Data.HydratedMinor do
   use TradeMachine.Schema
 
-  schema "hydrated_minors" do
-    field :name, :string
+  typed_schema "hydrated_minors" do
+    field :name, :string, null: false
 
-    field :league,
-          Ecto.Enum,
-          values: [
-            major: "1",
-            minor: "2"
-          ]
+    field(
+      :league,
+      Ecto.Enum,
+      values: [
+        minor: "2"
+      ],
+      null: false
+    )
 
     # TODO: check inclusion at changeset cast
     field :minor_team, :string

@@ -1,23 +1,27 @@
 defmodule TradeMachine.Data.Player do
   defmodule IncomingMinorLeaguer do
-    use Ecto.Schema
+    # Not using TradeMachine.Schema because this doesn't have primary key, or other shared fields
+    use TypedEctoSchema
     require Logger
 
-    embedded_schema do
-      field :name, :string
+    typed_embedded_schema do
+      field :name, :string, null: false
 
-      field :league,
-            Ecto.Enum,
-            values: [
-              minor: "2"
-            ]
+      field(
+        :league,
+        Ecto.Enum,
+        values: [
+          minor: "2"
+        ],
+        null: false
+      )
 
       # TODO can this be DRY-ed?
-      field :owner_id, Ecto.UUID
+      field(:owner_id, Ecto.UUID, null: false)
       # TODO We can make this Enum probably
       field :position, :string
       field :mlb_team, :string
-      field :league_level, :string
+      field(:league_level, :string, null: false)
     end
   end
 
@@ -30,18 +34,25 @@ defmodule TradeMachine.Data.Player do
   require Ecto.Query
   require Logger
 
+  # Used for creating maps for making some of our multis more efficient
+  # Currently this is always a concatenated string of these fields: name+league+level+mlb_team+position+owner
+  @type search_key() :: String.t()
+
   @required_fields [:name, :league]
   @optional_fields [:mlb_team, :player_data_id, :meta, :leagueTeamId]
 
-  schema "player" do
-    field :name, :string
+  typed_schema "player" do
+    field :name, :string, null: false
 
-    field :league,
-          Ecto.Enum,
-          values: [
-            major: "1",
-            minor: "2"
-          ]
+    field(
+      :league,
+      Ecto.Enum,
+      values: [
+        major: "1",
+        minor: "2"
+      ],
+      null: false
+    )
 
     # TODO: check inclusion at changeset cast
     field :mlb_team, :string
@@ -63,7 +74,8 @@ defmodule TradeMachine.Data.Player do
     |> validate_required(@required_fields)
   end
 
-  def get_all_minor_leaguers() do
+  @spec get_all_minor_leaguers() :: list(__MODULE__.t())
+  def get_all_minor_leaguers do
     __MODULE__
     # TODO: maybe import ecto.query so we don't need all this
     |> Ecto.Query.where(
@@ -73,6 +85,7 @@ defmodule TradeMachine.Data.Player do
     # TODO Potentially make this part optional
     |> Ecto.Query.preload(:owned_by)
     # TODO: Potentially make this part optional
+    # TODO: What exactly does this do?? oh because that field is not automatically pulled
     |> Ecto.Query.select([p], %Player{p | meta: p.meta})
     # TODO This is just for testing
     #    |> Ecto.Query.limit(5)
@@ -80,224 +93,98 @@ defmodule TradeMachine.Data.Player do
     |> TradeMachine.Repo.all()
   end
 
-  def batch_insert_minor_leaguers(incoming_major_leaguers) do
+  @spec batch_insert_minor_leaguers(list(IncomingMinorLeaguer.t())) ::
+          {:ok,
+           %{
+             fetch_existing: list(__MODULE__.t()),
+             calculate_diffs: [
+               players_to_insert: MapSet.t(String.t()),
+               players_to_clear: MapSet.t(String.t()),
+               players_to_update: list(String.t()),
+               existing_player_map: %{String.t() => __MODULE__.t()},
+               incoming_player_map: %{String.t() => IncomingMinorLeaguer.t()}
+             ],
+             upsert: list({:ok, __MODULE__.t()} | {:error, Ecto.Changeset.t()}),
+             unset_existing_player_teams: {integer(), nil | [term()]}
+           }}
+  def batch_insert_minor_leaguers(incoming_minor_leaguers) do
     Ecto.Multi.new()
     # (1) fetch current minor leaguers that are owned
+    |> Ecto.Multi.run(:fetch_existing, fn _repo, _changes -> {:ok, get_all_minor_leaguers()} end)
+    # (2) filter the incoming list into 3 lists of `search_key_without_owner`, this will give us the data
+    # to set up the changesets for the next few steps
     |> Ecto.Multi.run(
-      :fetch_existing,
-      fn _repo, _changes ->
-        {:ok, get_all_minor_leaguers()}
-      end
-    )
-    # (2) filter the incoming list: drop entries from both that have the same name+league+mlb_team+position+owner as in the db; no change needed
-    |> Ecto.Multi.run(
-      :drop_existing_entries,
+      :calculate_diffs,
       fn _repo, %{fetch_existing: existing_players} ->
-        changeset_list_with_fields_of_interest =
-          Enum.map(
-            incoming_major_leaguers,
-            fn %IncomingMinorLeaguer{
-                 league: league,
-                 name: name,
-                 position: position,
-                 owner_id: owner_id,
-                 mlb_team: mlb_team,
-                 league_level: league_level
-               } ->
-              %{
-                name: name,
-                league: league,
-                position: position,
-                mlb_team: mlb_team,
-                league_level: league_level,
-                owned_by: owner_id
-              }
-            end
-          )
-          |> MapSet.new()
-
-        existing_list_with_fields_of_interest =
-          Enum.map(
-            existing_players,
-            fn %__MODULE__{
-                 league: league,
-                 name: name,
-                 owned_by: %Team{
-                   id: owner_id
-                 },
-                 meta: %{
-                   "minorLeaguePlayerFromSheet" => %{
-                     "position" => position,
-                     "mlbTeam" => mlb_team,
-                     "leagueLevel" => league_level
-                   }
-                 }
-               } ->
-              %{
-                name: name,
-                league: league,
-                position: position,
-                mlb_team: mlb_team,
-                league_level: league_level,
-                owned_by: owner_id
-              }
-            end
-          )
-          |> MapSet.new()
-
-        filtered_list_of_players =
-          MapSet.difference(
-            changeset_list_with_fields_of_interest,
-            existing_list_with_fields_of_interest
-          )
-
-        players_to_clear_ownership =
-          MapSet.difference(
-            existing_list_with_fields_of_interest,
-            changeset_list_with_fields_of_interest
-          )
-          |> then(fn player_maps_to_filter ->
-            Enum.filter(
-              existing_players,
-              &Enum.member?(
-                player_maps_to_filter,
-                %{
-                  name: &1.name,
-                  league: &1.league,
-                  owned_by: &1.owned_by.id,
-                  position: &1.meta["minorLeaguePlayerFromSheet"]["position"],
-                  league_level: &1.meta["minorLeaguePlayerFromSheet"]["leagueLevel"],
-                  mlb_team: &1.meta["minorLeaguePlayerFromSheet"]["mlbTeam"]
-                }
-              )
-            )
-          end)
+        {incoming_minor_leaguers_not_yet_in_db, players_in_db_but_not_in_sheets,
+         players_with_new_owners, existing_map_without_owners,
+         incoming_map_without_owners} =
+          calculate_diff_from_incoming_prospects(incoming_minor_leaguers, existing_players)
 
         {
           :ok,
           [
-            players_to_upsert: filtered_list_of_players,
-            players_to_clear: players_to_clear_ownership
+            players_to_insert: incoming_minor_leaguers_not_yet_in_db,
+            players_to_clear: players_in_db_but_not_in_sheets,
+            players_to_update: players_with_new_owners,
+            existing_player_map: existing_map_without_owners,
+            incoming_player_map: incoming_map_without_owners
           ]
         }
       end
     )
-    # (3) build a list of entries that have the same name+league+mlb_team+position, but different owner. Only the owner needs to be updated; filter the db list.
+    # (3) use the mapsets from step (2) to build changesets that are either entries to insert or update in the db
     |> Ecto.Multi.run(
       :build_upsert_list,
       fn _repo,
          %{
-           fetch_existing: existing_players,
-           drop_existing_entries: [
-             players_to_upsert: list_of_players_to_upsert,
-             players_to_clear: list_of_players_to_clear
+           calculate_diffs: [
+             players_to_insert: mapset_of_search_keys_to_insert,
+             players_to_clear: _,
+             players_to_update: mapset_of_search_keys_to_update,
+             existing_player_map: existing_player_map,
+             incoming_player_map: incoming_player_map
            ]
          } ->
-        {changesets, players_to_clear} =
-          Enum.reduce(
-            list_of_players_to_upsert,
-            {[], list_of_players_to_clear},
-            fn player, acc ->
-              {cs, updated_players_to_clear} =
-                case Enum.find(
-                       existing_players,
-                       fn existing_player ->
-                         existing_player.name == player.name and
-                           existing_player.league == player.league and
-                           get_in(
-                             existing_player,
-                             [
-                               Access.key(:meta, %{}),
-                               Access.key("minorLeaguePlayerFromSheet", %{}),
-                               Access.key("position")
-                             ]
-                           ) ==
-                             player.position and
-                           get_in(
-                             existing_player,
-                             [
-                               Access.key(:meta, %{}),
-                               Access.key("minorLeaguePlayerFromSheet", %{}),
-                               Access.key("mlbTeam")
-                             ]
-                           ) == player.mlb_team and
-                           get_in(
-                             existing_player,
-                             [
-                               Access.key(:meta, %{}),
-                               Access.key("minorLeaguePlayerFromSheet", %{}),
-                               Access.key("leagueLevel")
-                             ]
-                           ) == player.league_level
-                       end
-                     ) do
-                  %__MODULE__{} = matching_existing_player ->
-                    Logger.debug(
-                      "Found a matching existing player: #{player.name} vs #{matching_existing_player.name}. Just gonna update the league team id"
-                    )
-
-                    cs =
-                      changeset(
-                        matching_existing_player,
-                        player
-                        |> Map.put(:leagueTeamId, player.owned_by)
-                      )
-
-                    {cs, Enum.reject(elem(acc, 1), &(&1 == matching_existing_player))}
-
-                  nil ->
-                    Logger.debug("Did not find a matching player for #{inspect(player)}")
-
-                    cs =
-                      new(
-                        player
-                        |> Map.put(:leagueTeamId, player.owned_by)
-                        |> Map.put(
-                          :meta,
-                          %{
-                            "minorLeaguePlayerFromSheet" => %{
-                              "position" => player.position,
-                              "mlbTeam" => player.mlb_team,
-                              "leagueLevel" => player.league_level
-                            }
-                          }
-                        )
-                      )
-
-                    {cs, elem(acc, 1)}
-                end
-
-              {[cs | elem(acc, 0)], updated_players_to_clear}
-            end
+        changesets =
+          build_upsert_list(
+            mapset_of_search_keys_to_insert,
+            mapset_of_search_keys_to_update,
+            incoming_player_map,
+            existing_player_map
           )
 
-        {:ok, [changesets_to_upsert: changesets, players_to_clear: players_to_clear]}
+        {:ok, [changesets_to_upsert: changesets]}
       end
     )
-    # (3a) update in db
+    # (4) run the upsert transaction
     |> Ecto.Multi.run(
       :upsert,
       fn repo,
          %{
-           build_upsert_list: [
-             changesets_to_upsert: changesets_to_upsert,
-             players_to_clear: _
-           ]
+           build_upsert_list: [changesets_to_upsert: changesets_to_upsert]
          } ->
         results = Enum.map(changesets_to_upsert, fn cs -> repo.insert_or_update(cs) end)
         {:ok, results}
       end
     )
-    # (3b) update existing players to unset the league_team_id field
+    # (5) update existing players not found in the sheet to unset the league_team_id field
     |> Ecto.Multi.update_all(
       :unset_existing_player_teams,
       fn %{
-           build_upsert_list: [
-             changesets_to_upsert: _,
-             players_to_clear: players_to_clear
+           calculate_diffs: [
+             players_to_insert: _,
+             players_to_clear: players_to_clear_ownership,
+             players_to_update: _,
+             existing_player_map: existing_player_map,
+             incoming_player_map: _
            ]
          } ->
-        ids = Enum.map(players_to_clear, & &1.id)
+        ids =
+          Enum.map(players_to_clear_ownership, fn search_key ->
+            Map.get(existing_player_map, search_key)
+            |> Map.get(:id)
+          end)
 
         Logger.debug("Final multi step")
 
@@ -309,5 +196,135 @@ defmodule TradeMachine.Data.Player do
       ]
     )
     |> TradeMachine.Repo.transaction()
+  end
+
+  ## Private
+  @spec calculate_diff_from_incoming_prospects(
+          list(IncomingMinorLeaguer.t()),
+          list(__MODULE__.t())
+        ) ::
+          {MapSet.t(String.t()), MapSet.t(String.t()), list(String.t()),
+           %{String.t() => __MODULE__.t()}, %{String.t() => IncomingMinorLeaguer.t()}}
+  defp calculate_diff_from_incoming_prospects(incoming_minor_leaguers, existing_players) do
+    {mapset_incoming_minor_leaguers_no_owners, incoming_map_without_owners} =
+      generate_mapsets(incoming_minor_leaguers)
+
+    {mapset_existing_minor_leaguers_no_owners, existing_map_without_owners} =
+      generate_mapsets(existing_players)
+
+    # These prospects from the sheet are not found in the db with the same name+league+level+mlb_team+position;
+    # So regardless of owner, they don't exist in db and need to be `inserted`
+    incoming_minor_leaguers_not_yet_in_db =
+      MapSet.difference(
+        mapset_incoming_minor_leaguers_no_owners,
+        mapset_existing_minor_leaguers_no_owners
+      )
+
+    # These players in the db are not found in the sheet with the same name+league+level+mlb_team+position;
+    # So regardless of owner, they don't exist the sheet so they are no longer 'actively owned minors' and
+    # the owner field for this player should be cleared
+    players_in_db_but_not_in_sheets =
+      MapSet.difference(
+        mapset_existing_minor_leaguers_no_owners,
+        mapset_incoming_minor_leaguers_no_owners
+      )
+
+    # First find the union of players whose name+league+level+mlb_team+position exists in both the sheet and the db
+    # Then filter out the ones that have the same owner in the sheet as in the db
+    # The remainder will be the players that we need to update the owners of
+    players_with_new_owners =
+      MapSet.intersection(
+        mapset_incoming_minor_leaguers_no_owners,
+        mapset_existing_minor_leaguers_no_owners
+      )
+      |> Enum.reject(fn same_player_key ->
+        player_in_db = Map.get(existing_map_without_owners, same_player_key)
+        player_in_sheet = Map.get(incoming_map_without_owners, same_player_key)
+        player_in_db.owned_by.id == player_in_sheet.owner_id
+      end)
+
+    {incoming_minor_leaguers_not_yet_in_db, players_in_db_but_not_in_sheets,
+     players_with_new_owners, existing_map_without_owners, incoming_map_without_owners}
+  end
+
+  @spec search_key_without_owner(
+          __MODULE__.t()
+          | %{
+              league: atom(),
+              name: String.t(),
+              position: String.t(),
+              mlb_team: String.t(),
+              league_level: String.t(),
+              owned_by: String.t()
+            }
+        ) :: search_key()
+  defp search_key_without_owner(player = %__MODULE__{}) do
+    "#{player.name};#{player.league};#{player.meta["minorLeaguePlayerFromSheet"]["position"]};" <>
+      "#{player.meta["minorLeaguePlayerFromSheet"]["leagueLevel"]};" <>
+      "#{player.meta["minorLeaguePlayerFromSheet"]["mlbTeam"]}"
+  end
+
+  defp search_key_without_owner(player) when is_map(player) do
+    "#{player.name};#{player.league};#{player.position};#{player.league_level};#{player.mlb_team}"
+  end
+
+  @spec generate_mapsets(list(__MODULE__.t() | IncomingMinorLeaguer.t())) ::
+          {MapSet.t(String.t()), %{String.t() => __MODULE__.t() | IncomingMinorLeaguer.t()}}
+  defp generate_mapsets(prospects) do
+    Enum.reduce(prospects, {MapSet.new(), Map.new()}, fn prospect,
+                                                         {mapset_without_owners,
+                                                          map_without_owners} ->
+      search_key_without_owner = search_key_without_owner(prospect)
+
+      {
+        MapSet.put(mapset_without_owners, search_key_without_owner),
+        Map.put(map_without_owners, search_key_without_owner, prospect)
+      }
+    end)
+  end
+
+  @spec build_upsert_list(
+          MapSet.t(String.t()),
+          MapSet.t(String.t()),
+          %{String.t() => IncomingMinorLeaguer.t()},
+          %{String.t() => __MODULE__.t()}
+        ) :: list(Ecto.Changeset.t(__MODULE__.t()))
+  defp build_upsert_list(
+         mapset_of_search_keys_to_insert,
+         mapset_of_search_keys_to_update,
+         incoming_player_map,
+         existing_player_map
+       ) do
+    changesets_to_insert =
+      Enum.map(mapset_of_search_keys_to_insert, fn search_key ->
+        incoming_player = Map.get(incoming_player_map, search_key)
+        new(incoming_player_to_map(incoming_player))
+      end)
+
+    changesets_to_update =
+      Enum.map(mapset_of_search_keys_to_update, fn search_key ->
+        player_to_update = Map.get(existing_player_map, search_key)
+        incoming_player = Map.get(incoming_player_map, search_key)
+        new_owner = incoming_player.owned_by
+        changeset(player_to_update, %{leagueTeamId: new_owner})
+      end)
+
+    changesets_to_insert ++ changesets_to_update
+  end
+
+  @spec incoming_player_to_map(IncomingMinorLeaguer.t()) :: map()
+  defp incoming_player_to_map(incoming_player) do
+    %{
+      name: incoming_player.name,
+      league: incoming_player.league,
+      mlb_team: incoming_player.mlb_team,
+      meta: %{
+        "minorLeaguePlayerFromSheet" => %{
+          "position" => incoming_player.position,
+          "leagueLevel" => incoming_player.league_level,
+          "mlbTeam" => incoming_player.mlb_team
+        }
+      }
+    }
   end
 end

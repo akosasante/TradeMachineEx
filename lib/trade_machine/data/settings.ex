@@ -3,7 +3,7 @@ defmodule TradeMachine.Data.Settings do
 
   alias TradeMachine.Data.User
 
-  schema "settings" do
+  typed_schema "settings" do
     field :trade_window_start, :time
     field :trade_window_end, :time
     field :downtime, :map

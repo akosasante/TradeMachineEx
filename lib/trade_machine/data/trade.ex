@@ -1,24 +1,27 @@
 defmodule TradeMachine.Data.Trade do
   use TradeMachine.Schema
 
-  alias TradeMachine.Data.User
-  alias TradeMachine.Data.Email
-  alias TradeMachine.Data.TradeParticipant
-  alias TradeMachine.Data.TradeItem
-  alias TradeMachine.Data.Player
   alias TradeMachine.Data.DraftPick
-  
-  schema "trade" do
-    field :status,
-          Ecto.Enum,
-          values: [
-            draft: "1",
-            requested: "2",
-            pending: "3",
-            accepted: "4",
-            rejected: "5",
-            submitted: "6"
-          ]
+  alias TradeMachine.Data.Email
+  alias TradeMachine.Data.Player
+  alias TradeMachine.Data.TradeItem
+  alias TradeMachine.Data.TradeParticipant
+  alias TradeMachine.Data.User
+
+  typed_schema "trade" do
+    field(
+      :status,
+      Ecto.Enum,
+      values: [
+        draft: "1",
+        requested: "2",
+        pending: "3",
+        accepted: "4",
+        rejected: "5",
+        submitted: "6"
+      ],
+      null: false
+    )
 
     field :declined_reason, :string
     field :accepted_on_date, :naive_datetime
