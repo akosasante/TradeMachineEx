@@ -48,7 +48,7 @@ defmodule TradeMachine.Application do
     :ok
   end
 
-  defp oban_config do
-    Application.fetch_env!(:trade_machine, Oban)
-  end
+#  defp oban_config do
+#    Application.fetch_env!(:trade_machine, Oban)
+#  end
 end
