@@ -5,7 +5,7 @@ defmodule TradeMachine.MixProject do
     [
       app: :trade_machine,
       version: "0.1.0",
-      elixir: "~> 1.12",
+      elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       compilers: [:phoenix, :gettext] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
@@ -39,7 +39,7 @@ defmodule TradeMachine.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:phoenix, "~> 1.6"},
+      {:phoenix, "~> 1.7"},
       {:phoenix_html, "~> 3.2"},
       {:phoenix_ecto, "~> 4.4"},
       {:phoenix_live_dashboard, "~> 0.6.5"},
@@ -52,13 +52,13 @@ defmodule TradeMachine.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.19.1"},
       {:jason, "~> 1.3"},
-      {:plug_cowboy, "~> 2.5"},
+      {:plug_cowboy, "~> 2.7"},
       {:oban, "~> 2.11"},
       {:goth, "~> 1.3-rc"},
       {:google_api_sheets, "~> 0.29.3"},
       {:hackney, "~> 1.17"},
       {:logger_file_backend, "~> 0.0.13"},
-      {:prom_ex, "~> 1.7.1"},
+      {:prom_ex, "~> 1.8"},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:typed_ecto_schema, "~> 0.4.0", runtime: false}
