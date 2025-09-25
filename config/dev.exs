@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 config :trade_machine,
   # id of "Copy of Copy of Minor League" sheet
