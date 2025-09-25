@@ -8,7 +8,7 @@ defmodule TradeMachine.SheetReader do
     defstruct [:oauth_connection, :spreadsheet]
   end
 
-  defdelegate process_minor_league_sheet(), to: TradeMachine.SheetReader.MinorLeagueReader
+  # defdelegate process_minor_league_sheet(), to: TradeMachine.SheetReader.MinorLeagueReader
 
   # Client
   @spec start_link(String.t()) :: GenServer.on_start()

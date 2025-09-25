@@ -220,7 +220,7 @@ defmodule TradeMachine.PromEx.CustomMetrics do
   def execute_application_health_metrics do
     # Get database connection pool information
     try do
-      pool_info = Ecto.Adapters.SQL.query!(TradeMachine.Repo, "SELECT 1", [])
+      _pool_info = Ecto.Adapters.SQL.query!(TradeMachine.Repo, "SELECT 1", [])
 
       :telemetry.execute(
         [:prom_ex, :plugin, :trade_machine, :application_health],
