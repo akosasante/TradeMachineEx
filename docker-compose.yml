@@ -36,102 +36,19 @@ services:
       - /app/assets/node_modules
       # Mount Google Sheets credentials if available locally
       - ${GOOGLE_SHEETS_CREDS_FILE:-./sheets_creds.json}:/app/sheets_creds.json:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
-      - trade_machine_network
+      # Connect to shared infrastructure network
+      - trade_machine_shared
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+    # Note: No depends_on since external services might not be defined in this compose file
 
-  # PostgreSQL Database
-  postgres:
-    image: postgres:14-alpine
-    ports:
-      - "5438:5432"  # Expose on different port to avoid conflicts
-    environment:
-      - POSTGRES_USER=${DATABASE_USER}
-      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
-      - POSTGRES_DB=${DATABASE_NAME}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./priv/repo/structure.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-    networks:
-      - trade_machine_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # Redis for Oban job queues
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - trade_machine_network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  # Optional: Prometheus for metrics collection (development)
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9091:9090"  # Avoid conflict with app metrics port
-    volumes:
-      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=200h'
-      - '--web.enable-lifecycle'
-    networks:
-      - trade_machine_network
-    profiles:
-      - monitoring
-
-  # Optional: Grafana for metrics visualization (development)
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
-    networks:
-      - trade_machine_network
-    profiles:
-      - monitoring
-
-volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-  prometheus_data:
-    driver: local
-  grafana_data:
-    driver: local
-
+# Use the shared infrastructure network
 networks:
-  trade_machine_network:
-    driver: bridge
+  trade_machine_shared:
+    external: true
+    name: trade_machine_shared

@@ -2,34 +2,46 @@
 
 ## Development Workflow
 
-This application is designed for **containerized development** using Docker Compose.
+This application uses **shared infrastructure** with other TradeMachine microservices (Server, Client, etc).
 
-### 🐳 Recommended: Containerized Development
+### 🐳 Microservices Development Setup
 
 **First-time setup:**
 
 ```bash
-# 1. Copy development environment template
+# 1. Start shared infrastructure (PostgreSQL, Redis) from parent directory
+cd /path/to/TradeMachine  # Parent directory
+docker-compose -f docker-compose.shared.yml up -d
+
+# 2. Set up TradeMachineEx environment
+cd TradeMachineEx
 cp .env.development .env
 
-# 2. (Optional) Customize your .env file with personal settings
+# 3. (Optional) Customize your .env file with personal settings
 # Note: .env is gitignored, so your changes stay local
 
-# 3. Start all services (PostgreSQL, Redis, App with hot reloading)
+# 4. Start TradeMachineEx app (connects to shared services)
 docker-compose up
 ```
 
 **Daily development:**
 
 ```bash
-# Start services in background
-docker-compose up -d
+# Quick start (automated)
+./start-dev.sh
+
+# OR manual steps:
+# 1. Ensure shared infrastructure is running
+cd /path/to/TradeMachine && docker-compose -f docker-compose.shared.yml up -d
+
+# 2. Start TradeMachineEx app
+cd TradeMachineEx && docker-compose up -d
 
 # View logs
 docker-compose logs -f app
 
 # Stop services
-docker-compose down
+docker-compose down  # Stops only TradeMachineEx
 ```
 
 **Environment Variables:**
@@ -37,12 +49,12 @@ docker-compose down
 - **`.env`** → Your personal copy (gitignored)
 - **`docker-compose.yml`** → References `${VARIABLE}` from `.env`
 
-**Benefits:**
-- ✅ Complete isolated environment
-- ✅ All dependencies (PostgreSQL, Redis) included
-- ✅ Hot reloading enabled (code changes reflected immediately)
-- ✅ No secrets in git
-- ✅ Personal customization without git conflicts
+**Microservices Architecture:**
+- ✅ **Shared Infrastructure**: PostgreSQL + Redis used by all services
+- ✅ **Service Isolation**: Each microservice has its own container
+- ✅ **Network Communication**: Services communicate via Docker network
+- ✅ **Version Parity**: Postgres 10 + Redis 5.0.7 match production
+- ✅ **Resource Efficiency**: No duplicate infrastructure services
 
 ### 🔧 Alternative: Direct Machine Development
 
@@ -74,16 +86,26 @@ docker-compose -f docker-compose.prod.yml up
 # Note: Requires external database and proper environment variables
 ```
 
-## Services
+## Services & Architecture
 
+### Shared Infrastructure (Parent `/docker-compose.shared.yml`)
+| Service | Local Port | Container Port | Purpose | Version |
+|---------|------------|----------------|---------|---------|
+| PostgreSQL | 5438 | 5432 | Shared database | 10.23 (prod parity) |
+| Redis | 6379 | 6379 | Shared job queues | 5.0.7 (prod parity) |
+| Prometheus | 9091 | 9090 | Metrics collection | latest |
+| Grafana | 3000 | 3000 | Metrics visualization | latest |
+
+### TradeMachineEx Application (`/docker-compose.yml`)
 | Service | Local Port | Container Port | Purpose |
 |---------|------------|----------------|---------|
-| App | 4000 | 4000 | Phoenix application |
-| PostgreSQL | 5438 | 5432 | Database |
-| Redis | 6379 | 6379 | Job queues (Oban) |
-| Metrics | 9090 | 9090 | Prometheus metrics |
-| Prometheus | 9091 | 9090 | Metrics collection (optional) |
-| Grafana | 3000 | 3000 | Metrics visualization (optional) |
+| TradeMachineEx | 4000 | 4000 | Phoenix application |
+| Metrics | 9090 | 9090 | App-specific metrics |
+
+**Network Communication:**
+- **`trade_machine_shared`** network connects all services
+- Apps connect to `postgres:5432` and `redis:6379` (Docker DNS)
+- External access via localhost ports (5438, 6379, etc.)
 
 ## Configuration
 
