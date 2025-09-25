@@ -1,21 +1,20 @@
 import Config
 
+# Development configuration - uses environment variables with sensible defaults
 config :trade_machine,
-  # id of "Copy of Copy of Minor League" sheet
-  spreadsheet_id: "16SjDZBO2vY6rGj9CM7nW2pG21i4pZ85LGlbMCODVQtk"
+  spreadsheet_id: System.get_env("GOOGLE_SPREADSHEET_ID", "16SjDZBO2vY6rGj9CM7nW2pG21i4pZ85LGlbMCODVQtk")
 
-# Configuring postgres schema to use for all queries
-query_args = ["SET search_path TO #{System.get_env("SCHEMA", "public")}", []]
+# Database configuration with environment variable support
+query_args = ["SET search_path TO #{System.get_env("DATABASE_SCHEMA", "public")}", []]
 
-# Configure your database
 config :trade_machine, TradeMachine.Repo,
-  username: "trader_dev",
-  password: "blawrie13",
-  database: "trade_machine",
-  hostname: "159.89.122.97",
-  port: 5432,
+  username: System.get_env("DATABASE_USER", "trader_dev"),
+  password: System.get_env("DATABASE_PASSWORD", "blawrie13"),
+  database: System.get_env("DATABASE_NAME", "trade_machine"),
+  hostname: System.get_env("DATABASE_HOST", "159.89.122.97"),
+  port: String.to_integer(System.get_env("DATABASE_PORT", "5432")),
   show_sensitive_data_on_connection_error: true,
-  pool_size: 10,
+  pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE", "10")),
   after_connect: {Postgrex, :query!, query_args}
 
 # For development, we disable any cache and enable
@@ -25,7 +24,7 @@ config :trade_machine, TradeMachine.Repo,
 # watchers to your application. For example, we use it
 # with webpack to recompile .js and .css sources.
 config :trade_machine, TradeMachineWeb.Endpoint,
-  http: [port: 4000],
+  http: [port: String.to_integer(System.get_env("PORT", "4000"))],
   debug_errors: true,
   code_reloader: true,
   check_origin: false,

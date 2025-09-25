@@ -60,18 +60,15 @@ else
 end
 
 # Oban configuration with environment-based settings
-oban_plugins = []
-
-# Only enable cron in staging schema or if explicitly enabled
-if System.get_env("DATABASE_SCHEMA") == "staging" or System.get_env("ENABLE_CRON") == "true" do
-  oban_plugins = [
+oban_plugins = if System.get_env("DATABASE_SCHEMA") == "staging" or System.get_env("ENABLE_CRON") == "true" do
+  [
     {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
     {Oban.Plugins.Cron, crontab: [
       {"0 2 * * *", TradeMachine.Jobs.MinorsSync}
     ]}
   ]
 else
-  oban_plugins = [
+  [
     {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)}
   ]
 end

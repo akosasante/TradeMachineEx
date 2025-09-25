@@ -8,8 +8,7 @@
 import Config
 
 config :trade_machine,
-  ecto_repos: [TradeMachine.Repo],
-  sheets_creds_filepath: "/Users/aasante/dev/TradeMachine/TradeMachineServer/sheet_creds.json"
+  ecto_repos: [TradeMachine.Repo]
 
 # Configures the endpoint
 config :trade_machine,

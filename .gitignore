@@ -34,3 +34,12 @@ npm-debug.log
 # Ignore intellij idea IDE specific stuff
 .idea/
 *.iml
+
+# Ignore secret configuration files
+/config/prod.secret.exs
+/config/*.secret.exs
+
+# Ignore environment variable files
+.env
+.env.*
+!.env.example
