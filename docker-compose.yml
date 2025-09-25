@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   # TradeMachineEx Application
@@ -12,23 +11,23 @@ services:
       - "9090:9090"  # Prometheus metrics
     environment:
       - MIX_ENV=dev
-      - PORT=4000
-      - METRICS_PORT=9090
-      - DATABASE_HOST=postgres
-      - DATABASE_USER=trader_dev
-      - DATABASE_PASSWORD=caputo
-      - DATABASE_NAME=trade_machine
-      - DATABASE_PORT=5432
-      - DATABASE_POOL_SIZE=10
-      - DATABASE_SCHEMA=staging
-      - SECRET_KEY_BASE=development_secret_key_base_change_in_production
-      - PHX_HOST=localhost
-      - LOG_LEVEL=debug
-      - GOOGLE_SHEETS_CREDS_PATH=./sheets_creds.json
-      - GOOGLE_SPREADSHEET_ID=${GOOGLE_SPREADSHEET_ID:-}
-      - ENABLE_CRON=true
-      - OBAN_MINORS_SYNC_CONCURRENCY=1
-      - OBAN_DRAFT_SYNC_CONCURRENCY=1
+      - PORT=${PORT}
+      - METRICS_PORT=${METRICS_PORT}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - DATABASE_POOL_SIZE=${DATABASE_POOL_SIZE}
+      - DATABASE_SCHEMA=${DATABASE_SCHEMA}
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - PHX_HOST=${PHX_HOST}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - GOOGLE_SHEETS_CREDS_PATH=${GOOGLE_SHEETS_CREDS_PATH}
+      - GOOGLE_SPREADSHEET_ID=${GOOGLE_SPREADSHEET_ID}
+      - ENABLE_CRON=${ENABLE_CRON}
+      - OBAN_MINORS_SYNC_CONCURRENCY=${OBAN_MINORS_SYNC_CONCURRENCY}
+      - OBAN_DRAFT_SYNC_CONCURRENCY=${OBAN_DRAFT_SYNC_CONCURRENCY}
     volumes:
       # Mount source code for development
       - .:/app
@@ -57,16 +56,16 @@ services:
     ports:
       - "5438:5432"  # Expose on different port to avoid conflicts
     environment:
-      - POSTGRES_USER=trader_dev
-      - POSTGRES_PASSWORD=caputo
-      - POSTGRES_DB=trade_machine
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./priv/repo/structure.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     networks:
       - trade_machine_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U trader_dev -d trade_machine"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5

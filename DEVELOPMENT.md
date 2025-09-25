@@ -6,13 +6,23 @@ This application is designed for **containerized development** using Docker Comp
 
 ### 🐳 Recommended: Containerized Development
 
-Start the full development environment:
+**First-time setup:**
 
 ```bash
-# Start all services (PostgreSQL, Redis, App with hot reloading)
-docker-compose up
+# 1. Copy development environment template
+cp .env.development .env
 
-# Or run in background
+# 2. (Optional) Customize your .env file with personal settings
+# Note: .env is gitignored, so your changes stay local
+
+# 3. Start all services (PostgreSQL, Redis, App with hot reloading)
+docker-compose up
+```
+
+**Daily development:**
+
+```bash
+# Start services in background
 docker-compose up -d
 
 # View logs
@@ -22,12 +32,17 @@ docker-compose logs -f app
 docker-compose down
 ```
 
+**Environment Variables:**
+- **`.env.development`** → Committed template with safe defaults
+- **`.env`** → Your personal copy (gitignored)
+- **`docker-compose.yml`** → References `${VARIABLE}` from `.env`
+
 **Benefits:**
 - ✅ Complete isolated environment
 - ✅ All dependencies (PostgreSQL, Redis) included
 - ✅ Hot reloading enabled (code changes reflected immediately)
-- ✅ No local service conflicts
-- ✅ Consistent across team members
+- ✅ No secrets in git
+- ✅ Personal customization without git conflicts
 
 ### 🔧 Alternative: Direct Machine Development
 

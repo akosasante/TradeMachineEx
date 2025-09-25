@@ -41,5 +41,9 @@ npm-debug.log
 
 # Ignore environment variable files
 .env
-.env.*
+.env.local
+.env.production
+
+# Commit template/development env files
 !.env.example
+!.env.development
