@@ -5,7 +5,6 @@ services:
     image: ${IMAGE_TAG:-ghcr.io/akosasante/trade-machine-ex:latest}
     ports:
       - "4001:4000"  # Phoenix application
-      - "9090:9090"  # Prometheus metrics
     environment:
       - MIX_ENV=prod
       - PORT=4000
@@ -80,33 +79,8 @@ services:
       - "environment=production"
       - "com.centurylinklabs.watchtower.enable=true"
 
-  # Optional: Grafana Alloy for metrics and log collection
-  alloy:
-    image: grafana/alloy:latest
-    ports:
-      - "12345:12345"  # Alloy UI
-    command:
-      - run
-      - /etc/alloy/config.alloy
-      - --server.http.listen-addr=0.0.0.0:12345
-      - --storage.path=/var/lib/alloy/data
-    environment:
-      - HOSTNAME=${HOSTNAME:-trade-machine-ex}
-    volumes:
-      - ./docker/alloy/config.alloy:/etc/alloy/config.alloy:ro
-      - app_logs:/var/log/trade_machine_ex:ro
-      - alloy_data:/var/lib/alloy/data
-    networks:
-      - trade_machine_network
-    profiles:
-      - observability
-    depends_on:
-      - app
-
 volumes:
   app_logs:
-    driver: local
-  alloy_data:
     driver: local
 
 networks:
