@@ -30,7 +30,7 @@ config :trade_machine, TradeMachineWeb.Endpoint,
 
 # Google Sheets credentials configuration
 # In containers, this should point to a mounted secret or env var
-sheets_creds_path = System.get_env("GOOGLE_SHEETS_CREDS_PATH") || "./sheets_creds.json"
+sheets_creds_path = System.get_env("GOOGLE_SHEETS_CREDS_PATH") || "./sheet_creds.json"
 
 config :trade_machine,
   sheets_creds_filepath: sheets_creds_path,
@@ -90,9 +90,7 @@ config :trade_machine, TradeMachine.PromEx,
   grafana: [
     host: System.get_env("GRAFANA_HOST"),
     auth_token: System.get_env("GRAFANA_TOKEN"),
-    upload_dashboards_on_start: System.get_env("GRAFANA_UPLOAD_DASHBOARDS") == "true"
-  ],
-  metrics_server: [
-    port: String.to_integer(System.get_env("METRICS_PORT") || "9090"),
-    path: "/metrics"
+    annotate_app_lifecycle: true,
+    upload_dashboards_on_start: false,
+    folder_name: "TradeMachine"
   ]

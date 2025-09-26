@@ -4,11 +4,9 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: runtime
+      dockerfile: Dockerfile.dev
     ports:
-      - "4000:4000"  # Phoenix application
-      - "9090:9090"  # Prometheus metrics
+      - "4000:4000"  # Phoenix application (includes /metrics endpoint via PromEx plug)
     environment:
       - MIX_ENV=dev
       - PORT=${PORT}
@@ -28,6 +26,10 @@ services:
       - ENABLE_CRON=${ENABLE_CRON}
       - OBAN_MINORS_SYNC_CONCURRENCY=${OBAN_MINORS_SYNC_CONCURRENCY}
       - OBAN_DRAFT_SYNC_CONCURRENCY=${OBAN_DRAFT_SYNC_CONCURRENCY}
+      - GRAFANA_HOST=${GRAFANA_HOST}
+      - GRAFANA_TOKEN=${GRAFANA_TOKEN}
+      - GRAFANA_UPLOAD_DASHBOARDS=${GRAFANA_UPLOAD_DASHBOARDS}
+      - GIT_SHA=${GIT_SHA}
     volumes:
       # Mount source code for development
       - .:/app
@@ -35,7 +37,7 @@ services:
       - /app/deps
       - /app/assets/node_modules
       # Mount Google Sheets credentials if available locally
-      - ${GOOGLE_SHEETS_CREDS_FILE:-./sheets_creds.json}:/app/sheets_creds.json:ro
+      - ${GOOGLE_SHEETS_CREDS_FILE:-./sheet_creds.json}:/app/sheets_cred.json:ro
     networks:
       # Connect to shared infrastructure network
       - trade_machine_shared

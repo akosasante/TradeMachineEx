@@ -42,6 +42,9 @@ defmodule TradeMachineWeb.Endpoint do
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
+  # PromEx metrics endpoint - serves metrics at /metrics
+  plug PromEx.Plug, prom_ex_module: TradeMachine.PromEx
+
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],

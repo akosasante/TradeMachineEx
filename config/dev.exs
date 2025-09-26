@@ -59,16 +59,18 @@ config :trade_machine, TradeMachineWeb.Endpoint,
 # configured to run both http and https servers on
 # different ports.
 
-# Watch static and templates for browser reloading.
-config :trade_machine, TradeMachineWeb.Endpoint,
-  live_reload: [
-    patterns: [
-      ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
-      ~r"priv/gettext/.*(po)$",
-      ~r"lib/trade_machine_web/(live|views)/.*(ex)$",
-      ~r"lib/trade_machine_web/templates/.*(eex)$"
-    ]
-  ]
+# Live reload disabled for Docker development
+# File watching in containers can cause issues and isn't necessary
+# when code is mounted as a volume
+# config :trade_machine, TradeMachineWeb.Endpoint,
+#   live_reload: [
+#     patterns: [
+#       ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
+#       ~r"priv/gettext/.*(po)$",
+#       ~r"lib/trade_machine_web/(live|views)/.*(ex)$",
+#       ~r"lib/trade_machine_web/templates/.*(eex)$"
+#     ]
+#   ]
 
 # Do not include metadata nor timestamps in development logs
 # config :logger, :console, format: "[$level] $message\n"

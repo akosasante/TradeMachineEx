@@ -1,15 +1,13 @@
-# Multi-stage Dockerfile for TradeMachineEx
+# Production Dockerfile for TradeMachineEx
 # Build stage: compile the application
-FROM hexpm/elixir:1.12.3-erlang-24.0.6-alpine-3.14.2 AS builder
+FROM elixir:1.18-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
     git \
-    build-base \
-    nodejs \
-    npm
+    build-base
 
-# Set build-time environment
+# Set production environment
 ENV MIX_ENV=prod
 
 # Create app directory
@@ -22,19 +20,14 @@ COPY mix.exs mix.lock ./
 RUN mix local.hex --force && \
     mix local.rebar --force
 
-# Install dependencies
+# Install production dependencies only
 RUN mix deps.get --only prod
 
-# Copy assets and build them
+# Copy source code
 COPY assets/ ./assets/
 COPY priv/ ./priv/
 COPY config/ ./config/
 COPY lib/ ./lib/
-
-# Install Node.js dependencies and build assets
-WORKDIR /app/assets
-RUN npm install
-WORKDIR /app
 
 # Build assets and compile application
 RUN mix assets.deploy && \
@@ -44,7 +37,7 @@ RUN mix assets.deploy && \
 RUN mix release
 
 # Runtime stage: minimal image with only the release
-FROM alpine:3.14.2 AS runtime
+FROM alpine:3.19.1 AS runtime
 
 # Install runtime dependencies
 RUN apk add --no-cache \

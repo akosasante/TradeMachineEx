@@ -19,7 +19,7 @@ defmodule TradeMachineWeb do
 
   def controller do
     quote do
-      use Phoenix.Controller, namespace: TradeMachineWeb
+      use Phoenix.Controller, formats: [:html, :json]
 
       import Plug.Conn
       import TradeMachineWeb.Gettext

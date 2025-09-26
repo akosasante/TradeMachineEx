@@ -8,6 +8,7 @@ defmodule TradeMachine.MixProject do
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       compilers: [:gettext] ++ Mix.compilers(),
+      listeners: [Phoenix.CodeReloader],
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       dialyzer: [ignore_warnings: ".dialyzer.ignore-warnings.exs"],
@@ -74,10 +75,16 @@ defmodule TradeMachine.MixProject do
   # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
-      setup: ["deps.get", "ecto.setup"],
-      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
-      "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      # Database migration strategy: Prisma (TypeScript) handles all schema changes
+      # Commented out migration aliases to prevent accidental schema changes from Elixir
+      # setup: ["deps.get", "ecto.setup"],
+      # "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
+      # "ecto.reset": ["ecto.drop", "ecto.setup"],
+      # test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+
+      # Safe aliases that don't modify database schema
+      setup: ["deps.get"],  # Only install dependencies
+      test: ["test"],       # Run tests without migrations
       "assets.deploy": ["esbuild default --minify", "phx.digest"]
     ]
   end

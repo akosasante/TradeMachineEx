@@ -103,17 +103,32 @@ defmodule TradeMachineWeb.Telemetry do
       # VM measurements
       {__MODULE__, :dispatch_vm_stats, []},
       # Custom business metrics
-      {__MODULE__, :dispatch_oban_stats, []},
+#      {__MODULE__, :dispatch_oban_stats, []},
       # Google Sheets connection health
-      {__MODULE__, :dispatch_sheets_health, []}
+#      {__MODULE__, :dispatch_sheets_health, []}
     ]
   end
 
   # Custom measurement functions
   def dispatch_vm_stats do
-    :telemetry.execute([:vm, :memory], :erlang.memory())
-    :telemetry.execute([:vm, :process_count], %{count: :erlang.system_info(:process_count)})
-    :telemetry.execute([:vm, :port_count], %{count: :erlang.system_info(:port_count)})
+    memory_stats = :erlang.memory()
+
+    # Get total run queue lengths (single integer)
+    total_run_queues = :erlang.statistics(:total_run_queue_lengths)
+
+    :telemetry.execute([:vm], %{
+      memory: %{
+        total: memory_stats[:total],
+        processes: memory_stats[:processes],
+        atom: memory_stats[:atom],
+        ets: memory_stats[:ets]
+      },
+      total_run_queue_lengths: %{
+        total: total_run_queues
+      },
+      process_count: :erlang.system_info(:process_count),
+      port_count: :erlang.system_info(:port_count)
+    })
   end
 
   def dispatch_oban_stats do
