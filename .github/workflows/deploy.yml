@@ -113,11 +113,9 @@ jobs:
             # Navigate to application directory
             cd /opt/Apps/TradeMachineEx
 
-            # Create docker-compose.prod.yml if it doesn't exist (first deployment)
-            if [ ! -f docker-compose.prod.yml ]; then
-              echo "Downloading docker-compose.prod.yml from repository..."
-              curl -o docker-compose.prod.yml https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.prod.yml
-            fi
+            # Always download the latest docker-compose.prod.yml from repository
+            echo "Downloading latest docker-compose.prod.yml from repository..."
+            curl -o docker-compose.prod.yml https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.prod.yml
 
             # Authenticate with GitHub Container Registry
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
