@@ -17,7 +17,7 @@ defmodule TradeMachine.Data.User do
     field :espn_member, :map, load_in_query: false
     field :last_logged_in, :naive_datetime
     field :password, :string, redact: true, load_in_query: false
-    field :password_reset_expires_on, :string, load_in_query: false
+    field :password_reset_expires_on, :naive_datetime, load_in_query: false
     field :password_reset_token, :string, load_in_query: false
 
     belongs_to :current_team, Team, source: :teamId, foreign_key: :teamId
