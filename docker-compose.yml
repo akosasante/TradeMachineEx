@@ -36,6 +36,13 @@ services:
       - /app/_build
       - /app/deps
       - /app/assets/node_modules
+      # Prevent Elixir/Erlang cache files from persisting on host
+      - /app/.mix
+      - /app/.hex
+      - /app/.cache
+      - /root/.mix
+      - /root/.hex
+      - /root/.cache
       # Mount Google Sheets credentials if available locally
       - ${GOOGLE_SHEETS_CREDS_FILE:-./sheet_creds.json}:/app/sheet_creds.json:ro
     networks:

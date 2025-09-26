@@ -42,6 +42,12 @@ docker-compose logs -f app
 
 # Stop services
 docker-compose down  # Stops only TradeMachineEx
+
+# Run tests (locally)
+./tests <file_name_optional>
+
+# Run tests in docker (slower)
+docker compose -f docker-compose.yml -f docker-compose.test.yml up --build
 ```
 
 **Environment Variables:**
@@ -161,7 +167,7 @@ A test suite validates that Ecto schemas match the actual database:
 
 ```bash
 # Run schema validation tests
-mix test test/schema_validation_test.exs
+./test.sh test/schema_validation_test.exs
 
 # This test will fail if:
 # - A table referenced by Ecto no longer exists
@@ -195,7 +201,7 @@ mix test test/schema_validation_test.exs
 
 3. **Validate schemas match database:**
    ```bash
-   mix test test/schema_validation_test.exs
+   ./test.sh test/schema_validation_test.exs
    ```
 
 #### **Adding New Tables/Models:**
