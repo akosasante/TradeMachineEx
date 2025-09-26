@@ -37,11 +37,12 @@ RUN mix assets.deploy && \
 RUN mix release
 
 # Runtime stage: minimal image with only the release
-FROM alpine:3.19.1 AS runtime
+FROM alpine:3.20 AS runtime
 
 # Install runtime dependencies
 RUN apk add --no-cache \
     openssl \
+    openssl-dev \
     ncurses-libs \
     libstdc++ \
     bash \
