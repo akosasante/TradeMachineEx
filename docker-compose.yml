@@ -37,7 +37,7 @@ services:
       - /app/deps
       - /app/assets/node_modules
       # Mount Google Sheets credentials if available locally
-      - ${GOOGLE_SHEETS_CREDS_FILE:-./sheet_creds.json}:/app/sheets_cred.json:ro
+      - ${GOOGLE_SHEETS_CREDS_FILE:-./sheet_creds.json}:/app/sheet_creds.json:ro
     networks:
       # Connect to shared infrastructure network
       - trade_machine_shared

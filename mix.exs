@@ -84,7 +84,7 @@ defmodule TradeMachine.MixProject do
 
       # Safe aliases that don't modify database schema
       setup: ["deps.get"],  # Only install dependencies
-      test: ["test"],       # Run tests without migrations
+      "test.local": ["cmd ./test.sh"],       # Run tests without migrations
       "assets.deploy": ["esbuild default --minify", "phx.digest"]
     ]
   end

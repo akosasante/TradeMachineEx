@@ -82,15 +82,20 @@ config :trade_machine, Oban,
   ],
   prefix: System.get_env("DATABASE_SCHEMA", "staging")
 
+if Mix.env() != :test do
 # PromEx (Prometheus metrics) configuration
-config :trade_machine, TradeMachine.PromEx,
-  disabled: false,
-  manual_metrics_start_delay: :no_delay,
-  drop_metrics_groups: [],
-  grafana: [
-    host: System.get_env("GRAFANA_HOST"),
-    auth_token: System.get_env("GRAFANA_TOKEN"),
-    annotate_app_lifecycle: true,
-    upload_dashboards_on_start: false,
-    folder_name: "TradeMachine"
-  ]
+  config :trade_machine, TradeMachine.PromEx,
+    disabled: false,
+    manual_metrics_start_delay: :no_delay,
+    drop_metrics_groups: [],
+    grafana: [
+      host: System.get_env("GRAFANA_HOST"),
+      auth_token: System.get_env("GRAFANA_TOKEN"),
+      annotate_app_lifecycle: true,
+      upload_dashboards_on_start: false,
+      folder_name: "TradeMachine"
+    ]
+else
+  config :trade_machine, TradeMachine.PromEx,
+    disabled: true
+end
