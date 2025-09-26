@@ -82,7 +82,7 @@ config :trade_machine, Oban,
   ],
   prefix: System.get_env("DATABASE_SCHEMA", "staging")
 
-if Mix.env() != :test do
+if config_env() == :dev do
 # PromEx (Prometheus metrics) configuration
   config :trade_machine, TradeMachine.PromEx,
     disabled: false,

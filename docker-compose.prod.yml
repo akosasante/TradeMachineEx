@@ -9,7 +9,6 @@ services:
     environment:
       - MIX_ENV=prod
       - PORT=4000
-      - METRICS_PORT=9090
 
       # Database configuration (external PostgreSQL)
       - DATABASE_HOST=${DATABASE_HOST}
@@ -39,7 +38,6 @@ services:
       # Monitoring configuration
       - GRAFANA_HOST=${GRAFANA_HOST:-}
       - GRAFANA_TOKEN=${GRAFANA_TOKEN:-}
-      - GRAFANA_UPLOAD_DASHBOARDS=${GRAFANA_UPLOAD_DASHBOARDS:-false}
 
     secrets:
       - google_sheets_creds

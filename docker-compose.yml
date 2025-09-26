@@ -10,7 +10,6 @@ services:
     environment:
       - MIX_ENV=dev
       - PORT=${PORT}
-      - METRICS_PORT=${METRICS_PORT}
       - DATABASE_HOST=${DATABASE_HOST}
       - DATABASE_USER=${DATABASE_USER}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}
@@ -28,7 +27,6 @@ services:
       - OBAN_DRAFT_SYNC_CONCURRENCY=${OBAN_DRAFT_SYNC_CONCURRENCY}
       - GRAFANA_HOST=${GRAFANA_HOST}
       - GRAFANA_TOKEN=${GRAFANA_TOKEN}
-      - GRAFANA_UPLOAD_DASHBOARDS=${GRAFANA_UPLOAD_DASHBOARDS}
       - GIT_SHA=${GIT_SHA}
     volumes:
       # Mount source code for development
