@@ -26,9 +26,9 @@ services:
       # Logging configuration
       - LOG_LEVEL=${LOG_LEVEL:-info}
 
-      # Google Sheets integration
-      - GOOGLE_SHEETS_CREDS_PATH=/run/secrets/google_sheets_creds
-      - GOOGLE_SPREADSHEET_ID=${GOOGLE_SPREADSHEET_ID}
+      # Google Sheets integration (optional)
+      - GOOGLE_SHEETS_CREDS_PATH=${GOOGLE_SHEETS_CREDS_PATH:-}
+      - GOOGLE_SPREADSHEET_ID=${GOOGLE_SPREADSHEET_ID:-}
 
       # Job processing configuration
       - ENABLE_CRON=${ENABLE_CRON:-false}
@@ -38,9 +38,6 @@ services:
       # Monitoring configuration
       - GRAFANA_HOST=${GRAFANA_HOST:-}
       - GRAFANA_TOKEN=${GRAFANA_TOKEN:-}
-
-    secrets:
-      - google_sheets_creds
 
     volumes:
       # Mount log directory for external log collection
@@ -105,11 +102,6 @@ services:
       - observability
     depends_on:
       - app
-
-secrets:
-  google_sheets_creds:
-    external: true
-    name: google_sheets_creds_v1
 
 volumes:
   app_logs:

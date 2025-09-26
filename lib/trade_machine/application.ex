@@ -7,18 +7,25 @@ defmodule TradeMachine.Application do
   require Logger
 
   def start(_type, _args) do
-    # TODO: Replace this with an application var for deployment
-    credentials =
-      Application.get_env(:trade_machine, :sheets_creds_filepath)
-      |> File.read!()
-      |> Jason.decode!()
+    # Google Sheets integration is optional
+    goth_child =
+      case Application.get_env(:trade_machine, :sheets_creds_filepath) do
+        nil -> []
+        "" -> []
+        filepath when is_binary(filepath) ->
+          case File.read(filepath) do
+            {:ok, content} ->
+              credentials = Jason.decode!(content)
+              source = {:service_account, credentials, scopes: ["https://www.googleapis.com/auth/spreadsheets"]}
+              [{Goth, name: TradeMachine.Goth, source: source}]
+            {:error, _reason} ->
+              Logger.info("Google Sheets credentials file not found, skipping Goth initialization")
+              []
+          end
+        _ -> []
+      end
 
-    source =
-      {:service_account, credentials, scopes: ["https://www.googleapis.com/auth/spreadsheets"]}
-
-    children = [
-      # Google OAuth library. Used to connect to and read from the Minor League and Draft Picks Google Sheet
-      {Goth, name: TradeMachine.Goth, source: source},
+    children = goth_child ++ [
       # Start the Ecto repository (we connect to the same postgres db as TradeMachineServer)
       TradeMachine.Repo,
       # Start the Telemetry supervisor
