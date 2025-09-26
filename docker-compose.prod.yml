@@ -2,7 +2,7 @@
 services:
   # TradeMachineEx Application (Production)
   app:
-    image: ${IMAGE_TAG:-ghcr.io/aasante/trade-machine-ex:latest}
+    image: ${IMAGE_TAG:-ghcr.io/akosasante/trade-machine-ex:latest}
     ports:
       - "4001:4000"  # Phoenix application
       - "9090:9090"  # Prometheus metrics

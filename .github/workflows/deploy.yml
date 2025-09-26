@@ -125,14 +125,15 @@ jobs:
             # Pull the latest image
             docker pull ${{ needs.build-and-push.outputs.image }}
 
-            # Update the image tag in docker-compose
-            export IMAGE_TAG=${{ needs.build-and-push.outputs.image }}
+            # Debug: Show what image we're using
+            echo "Using image: ${{ needs.build-and-push.outputs.image }}"
 
             # Stop and remove old container
             docker compose -f docker-compose.prod.yml down
 
-            # Start with new image
-            docker compose -f docker-compose.prod.yml up -d
+            # Start with new image using the specific tag
+            echo "Starting docker-compose with IMAGE_TAG=${{ needs.build-and-push.outputs.image }}"
+            IMAGE_TAG="${{ needs.build-and-push.outputs.image }}" docker compose -f docker-compose.prod.yml up -d
 
             # Clean up old images (keep last 3)
             docker image prune -f
