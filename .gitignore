@@ -7,6 +7,12 @@
 # The directory Mix downloads your dependencies sources to.
 /deps/
 
+# Other elixir-related files to ignore
+.mix
+.hex
+.cache
+.bash_history
+
 # Where 3rd-party dependencies like ExDoc output generated docs.
 /doc/
 
@@ -34,3 +40,19 @@ npm-debug.log
 # Ignore intellij idea IDE specific stuff
 .idea/
 *.iml
+
+# Ignore secret configuration files
+/config/prod.secret.exs
+/config/*.secret.exs
+
+# Ignore environment variable files
+.env
+.env.local
+.env.production
+
+# Commit template/development env files
+!.env.example
+!.env.development
+
+# Ignore the secret Excel file
+sheet_creds.json

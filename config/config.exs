@@ -5,11 +5,12 @@
 # is restricted to this project.
 
 # General application configuration
-use Mix.Config
+import Config
 
+# Database migration strategy: Prisma (TypeScript) handles all schema changes
+# Elixir app uses Ecto for data operations only - no migration management
 config :trade_machine,
-  ecto_repos: [TradeMachine.Repo],
-  sheets_creds_filepath: "/Users/aasante/dev/TradeMachine/TradeMachineServer/sheet_creds.json"
+  ecto_repos: []  # Removed TradeMachine.Repo to prevent Mix migration tasks
 
 # Configures the endpoint
 config :trade_machine,
@@ -56,6 +57,8 @@ config :trade_machine, Oban,
     {Oban.Plugins.Cron, crontab: [{"*/5 * * * *", TradeMachine.Jobs.MinorsSync}]}
   ],
   queues: [minors_sync: 1, draft_sync: 1]
+
+config :tesla, disable_deprecated_builder_warning: true
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

@@ -27,7 +27,8 @@ defmodule TradeMachineWeb.HealthController do
 
   def ready(conn, _params) do
     # Readiness check - can the application serve requests?
-    ready = database_ready?() && dependencies_ready?()
+#    ready = database_ready?() && dependencies_ready?()
+    ready = database_ready?()
 
     case ready do
       true ->
@@ -52,8 +53,8 @@ defmodule TradeMachineWeb.HealthController do
   defp perform_health_checks do
     checks = %{
       database: database_check(),
-      google_sheets: sheets_check(),
-      oban: oban_check()
+#      google_sheets: sheets_check(),
+#      oban: oban_check()
     }
 
     healthy = Enum.all?(checks, fn {_service, status} -> status.healthy end)
@@ -82,42 +83,42 @@ defmodule TradeMachineWeb.HealthController do
     end
   end
 
-  defp sheets_check do
-    try do
-      # Check if Google Sheets processes are running
-      goth_alive = Process.whereis(TradeMachine.Goth) != nil
-      reader_alive = Process.whereis(TradeMachine.SheetReader) != nil
+#  defp sheets_check do
+#    try do
+#      # Check if Google Sheets processes are running
+#      goth_alive = Process.whereis(TradeMachine.Goth) != nil
+#      reader_alive = Process.whereis(TradeMachine.SheetReader) != nil
+#
+#      case {goth_alive, reader_alive} do
+#        {true, true} ->
+#          %{healthy: true, message: "Google Sheets integration healthy"}
+#        {false, true} ->
+#          %{healthy: false, message: "Goth (Google Auth) process not running"}
+#        {true, false} ->
+#          %{healthy: false, message: "SheetReader process not running"}
+#        {false, false} ->
+#          %{healthy: false, message: "Both Goth and SheetReader processes not running"}
+#      end
+#    rescue
+#      error ->
+#        %{healthy: false, message: "Sheets check exception: #{inspect(error)}"}
+#    end
+#  end
 
-      case {goth_alive, reader_alive} do
-        {true, true} ->
-          %{healthy: true, message: "Google Sheets integration healthy"}
-        {false, true} ->
-          %{healthy: false, message: "Goth (Google Auth) process not running"}
-        {true, false} ->
-          %{healthy: false, message: "SheetReader process not running"}
-        {false, false} ->
-          %{healthy: false, message: "Both Goth and SheetReader processes not running"}
-      end
-    rescue
-      error ->
-        %{healthy: false, message: "Sheets check exception: #{inspect(error)}"}
-    end
-  end
-
-  defp oban_check do
-    try do
-      # Check if Oban is running and queues are operational
-      case Oban.check_queue(TradeMachine.Repo, queue: "minors_sync") do
-        {:ok, _stats} ->
-          %{healthy: true, message: "Oban job processing healthy"}
-        {:error, error} ->
-          %{healthy: false, message: "Oban error: #{inspect(error)}"}
-      end
-    rescue
-      error ->
-        %{healthy: false, message: "Oban check exception: #{inspect(error)}"}
-    end
-  end
+#  defp oban_check do
+#    try do
+#      # Check if Oban is running and queues are operational
+#      case Oban.check_queue(TradeMachine.Repo, queue: "minors_sync") do
+#        {:ok, _stats} ->
+#          %{healthy: true, message: "Oban job processing healthy"}
+#        {:error, error} ->
+#          %{healthy: false, message: "Oban error: #{inspect(error)}"}
+#      end
+#    rescue
+#      error ->
+#        %{healthy: false, message: "Oban check exception: #{inspect(error)}"}
+#    end
+#  end
 
   defp database_ready? do
     try do
@@ -130,9 +131,9 @@ defmodule TradeMachineWeb.HealthController do
     end
   end
 
-  defp dependencies_ready? do
-    # Check critical dependencies are running
-    Process.whereis(TradeMachine.Goth) != nil &&
-    Process.whereis(TradeMachine.SheetReader) != nil
-  end
+#  defp dependencies_ready? do
+#    # Check critical dependencies are running
+#    Process.whereis(TradeMachine.Goth) != nil &&
+#    Process.whereis(TradeMachine.SheetReader) != nil
+#  end
 end

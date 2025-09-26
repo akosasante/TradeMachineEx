@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 # Production configuration for containerized deployment
 # Most configuration is now handled in runtime.exs for better container support

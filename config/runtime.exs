@@ -30,7 +30,7 @@ config :trade_machine, TradeMachineWeb.Endpoint,
 
 # Google Sheets credentials configuration
 # In containers, this should point to a mounted secret or env var
-sheets_creds_path = System.get_env("GOOGLE_SHEETS_CREDS_PATH") || "./sheets_creds.json"
+sheets_creds_path = System.get_env("GOOGLE_SHEETS_CREDS_PATH") || "./sheet_creds.json"
 
 config :trade_machine,
   sheets_creds_filepath: sheets_creds_path,
@@ -60,18 +60,15 @@ else
 end
 
 # Oban configuration with environment-based settings
-oban_plugins = []
-
-# Only enable cron in staging schema or if explicitly enabled
-if System.get_env("DATABASE_SCHEMA") == "staging" or System.get_env("ENABLE_CRON") == "true" do
-  oban_plugins = [
+oban_plugins = if System.get_env("DATABASE_SCHEMA") == "staging" or System.get_env("ENABLE_CRON") == "true" do
+  [
     {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
     {Oban.Plugins.Cron, crontab: [
       {"0 2 * * *", TradeMachine.Jobs.MinorsSync}
     ]}
   ]
 else
-  oban_plugins = [
+  [
     {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)}
   ]
 end
@@ -85,17 +82,20 @@ config :trade_machine, Oban,
   ],
   prefix: System.get_env("DATABASE_SCHEMA", "staging")
 
+if Mix.env() != :test do
 # PromEx (Prometheus metrics) configuration
-config :trade_machine, TradeMachine.PromEx,
-  disabled: false,
-  manual_metrics_start_delay: :no_delay,
-  drop_metrics_groups: [],
-  grafana: [
-    host: System.get_env("GRAFANA_HOST"),
-    auth_token: System.get_env("GRAFANA_TOKEN"),
-    upload_dashboards_on_start: System.get_env("GRAFANA_UPLOAD_DASHBOARDS") == "true"
-  ],
-  metrics_server: [
-    port: String.to_integer(System.get_env("METRICS_PORT") || "9090"),
-    path: "/metrics"
-  ]
+  config :trade_machine, TradeMachine.PromEx,
+    disabled: false,
+    manual_metrics_start_delay: :no_delay,
+    drop_metrics_groups: [],
+    grafana: [
+      host: System.get_env("GRAFANA_HOST"),
+      auth_token: System.get_env("GRAFANA_TOKEN"),
+      annotate_app_lifecycle: true,
+      upload_dashboards_on_start: false,
+      folder_name: "TradeMachine"
+    ]
+else
+  config :trade_machine, TradeMachine.PromEx,
+    disabled: true
+end

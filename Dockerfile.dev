@@ -1,0 +1,32 @@
+# Development Dockerfile for TradeMachineEx
+FROM elixir:1.18-alpine
+
+# Install development dependencies
+RUN apk add --no-cache \
+    git \
+    build-base \
+    bash \
+    curl
+
+# Install hex and rebar
+RUN mix local.hex --force && \
+    mix local.rebar --force
+
+# Create app directory
+WORKDIR /app
+
+# For development, run as root to avoid permission issues with mounted volumes
+
+# Set development environment
+ENV MIX_ENV=dev
+ENV HOME=/app
+
+# Expose Phoenix port
+EXPOSE 4000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:4000/health || exit 1
+
+# Default command for development - install hex, deps, then start server
+CMD ["sh", "-c", "mix local.hex --force && mix local.rebar --force && mix deps.get && mix phx.server"]

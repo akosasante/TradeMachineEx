@@ -29,14 +29,13 @@ defmodule TradeMachine.Application do
 #      {Oban, oban_config()},
       # Start a GenServer whose job is just to keep the spreadsheet id and
       # Google OAuth (Goth) connection in-memory/state
-      {TradeMachine.SheetReader, Application.get_env(:trade_machine, :spreadsheet_id)},
+#      {TradeMachine.SheetReader, Application.get_env(:trade_machine, :spreadsheet_id)},
       # Start the Phoenix Endpoint (http/https)
       TradeMachineWeb.Endpoint
-    ]
+    ] ++ dashboard_uploader_child()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
-    Logger.debug("Starting application with children: #{inspect(children, pretty: true)}")
     opts = [strategy: :one_for_one, name: TradeMachine.Supervisor]
     Supervisor.start_link(children, opts)
   end
@@ -48,7 +47,26 @@ defmodule TradeMachine.Application do
     :ok
   end
 
-  defp oban_config do
-    Application.fetch_env!(:trade_machine, Oban)
+  # Returns PromEx dashboard uploader child spec if Grafana is configured
+  defp dashboard_uploader_child do
+    promex_config = Application.get_env(:trade_machine, TradeMachine.PromEx)
+    grafana_host = promex_config[:grafana][:host]
+    grafana_token = promex_config[:grafana][:auth_token]
+    grafana_disabled = promex_config[:disabled]
+
+    if !grafana_disabled && grafana_host && grafana_token do
+      [
+        {PromEx.DashboardUploader,
+         prom_ex_module: TradeMachine.PromEx,
+         default_dashboard_opts: []}
+      ]
+    else
+      Logger.info("Skipping PromEx dashboard upload (Grafana not configured)")
+      []
+    end
   end
+
+#  defp oban_config do
+#    Application.fetch_env!(:trade_machine, Oban)
+#  end
 end

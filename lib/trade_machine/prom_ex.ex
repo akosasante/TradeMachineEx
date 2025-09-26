@@ -22,24 +22,25 @@ defmodule TradeMachine.PromEx do
       Plugins.Beam,
 
       # Phoenix web metrics
-      Plugins.Phoenix,
+      {Plugins.Phoenix, endpoint: TradeMachineWeb.Endpoint, router: TradeMachineWeb.Router},
 
       # Database metrics
-      Plugins.Ecto,
+      {Plugins.Ecto, repos: [TradeMachine.Repo]},
 
-      # Oban job queue metrics
-      Plugins.Oban,
+      # Oban job queue metrics (commented out since Oban is not running)
+      # Plugins.Oban,
 
-      # Custom business metrics
-      {TradeMachine.PromEx.CustomMetrics, []}
+      # Custom business metrics (temporarily disabled to avoid buckets issue)
+      # {TradeMachine.PromEx.CustomMetrics, []}
     ]
   end
 
   @impl true
   def dashboard_assigns do
     [
-      datasource_id: "prometheus",
-      default_selected_interval: "30s"
+      datasource_id: "Prometheus",
+      default_selected_interval: "30s",
+      otp_app: :trade_machine
     ]
   end
 
@@ -57,6 +58,7 @@ defmodule TradeMachine.PromEx do
       {:trade_machine, "business_metrics.json"}
     ]
   end
+
 end
 
 defmodule TradeMachine.PromEx.CustomMetrics do
@@ -220,7 +222,7 @@ defmodule TradeMachine.PromEx.CustomMetrics do
   def execute_application_health_metrics do
     # Get database connection pool information
     try do
-      pool_info = Ecto.Adapters.SQL.query!(TradeMachine.Repo, "SELECT 1", [])
+      _pool_info = Ecto.Adapters.SQL.query!(TradeMachine.Repo, "SELECT 1", [])
 
       :telemetry.execute(
         [:prom_ex, :plugin, :trade_machine, :application_health],

@@ -1,0 +1,5 @@
+services:
+  app:
+    environment:
+      - MIX_ENV=test
+    command: ["sh", "-c", "mix local.hex --force && mix local.rebar --force && mix deps.get && mix test"]

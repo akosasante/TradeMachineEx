@@ -5,9 +5,10 @@ defmodule TradeMachine.MixProject do
     [
       app: :trade_machine,
       version: "0.1.0",
-      elixir: "~> 1.12",
+      elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
-      compilers: [:phoenix, :gettext] ++ Mix.compilers(),
+      compilers: [:gettext] ++ Mix.compilers(),
+      listeners: [Phoenix.CodeReloader],
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       dialyzer: [ignore_warnings: ".dialyzer.ignore-warnings.exs"],
@@ -39,12 +40,14 @@ defmodule TradeMachine.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:phoenix, "~> 1.6"},
-      {:phoenix_html, "~> 3.2"},
-      {:phoenix_ecto, "~> 4.4"},
-      {:phoenix_live_dashboard, "~> 0.6.5"},
-      {:phoenix_live_reload, "~> 1.3", only: :dev},
-      {:phoenix_live_view, "~> 0.17.9"},
+      {:phoenix, "~> 1.8"},
+      {:phoenix_html, "~> 4.0"},
+      {:phoenix_html_helpers, "~> 1.0"},
+      {:phoenix_view, "~> 2.0"},
+      {:phoenix_ecto, "~> 4.6"},
+      {:phoenix_live_dashboard, "~> 0.8"},
+      {:phoenix_live_reload, "~> 1.5", only: :dev},
+      {:phoenix_live_view, "~> 1.0"},
       {:ecto_sql, "~> 3.7"},
       {:esbuild, "~> 0.4", runtime: Mix.env() == :dev},
       {:postgrex, ">= 0.0.0"},
@@ -52,13 +55,12 @@ defmodule TradeMachine.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.19.1"},
       {:jason, "~> 1.3"},
-      {:plug_cowboy, "~> 2.5"},
+      {:bandit, "~> 1.0"},
       {:oban, "~> 2.11"},
       {:goth, "~> 1.3-rc"},
       {:google_api_sheets, "~> 0.29.3"},
-      {:hackney, "~> 1.17"},
       {:logger_file_backend, "~> 0.0.13"},
-      {:prom_ex, "~> 1.7.1"},
+      {:prom_ex, "~> 1.8"},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:typed_ecto_schema, "~> 0.4.0", runtime: false}
@@ -73,10 +75,16 @@ defmodule TradeMachine.MixProject do
   # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
-      setup: ["deps.get", "ecto.setup"],
-      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
-      "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      # Database migration strategy: Prisma (TypeScript) handles all schema changes
+      # Commented out migration aliases to prevent accidental schema changes from Elixir
+      # setup: ["deps.get", "ecto.setup"],
+      # "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
+      # "ecto.reset": ["ecto.drop", "ecto.setup"],
+      # test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+
+      # Safe aliases that don't modify database schema
+      setup: ["deps.get"],  # Only install dependencies
+      "test.local": ["cmd ./test.sh"],       # Run tests without migrations
       "assets.deploy": ["esbuild default --minify", "phx.digest"]
     ]
   end
