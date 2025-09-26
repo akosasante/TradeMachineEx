@@ -131,9 +131,9 @@ defmodule TradeMachineWeb.HealthController do
     end
   end
 
-  defp dependencies_ready? do
-    # Check critical dependencies are running
-    Process.whereis(TradeMachine.Goth) != nil &&
-    Process.whereis(TradeMachine.SheetReader) != nil
-  end
+#  defp dependencies_ready? do
+#    # Check critical dependencies are running
+#    Process.whereis(TradeMachine.Goth) != nil &&
+#    Process.whereis(TradeMachine.SheetReader) != nil
+#  end
 end

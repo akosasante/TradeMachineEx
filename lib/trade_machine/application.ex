@@ -49,10 +49,12 @@ defmodule TradeMachine.Application do
 
   # Returns PromEx dashboard uploader child spec if Grafana is configured
   defp dashboard_uploader_child do
-    grafana_host = System.get_env("GRAFANA_HOST")
-    grafana_token = System.get_env("GRAFANA_TOKEN")
+    promex_config = Application.get_env(:trade_machine, TradeMachine.PromEx)
+    grafana_host = promex_config[:grafana][:host]
+    grafana_token = promex_config[:grafana][:auth_token]
+    grafana_disabled = promex_config[:disabled]
 
-    if grafana_host && grafana_token do
+    if !grafana_disabled && grafana_host && grafana_token do
       [
         {PromEx.DashboardUploader,
          prom_ex_module: TradeMachine.PromEx,
