@@ -1,20 +1,61 @@
-# TradeMachine
+# TradeMachineEx
 
-To start your Phoenix server:
+TradeMachineEx is the Elixir-based job processing service for the TradeMachine fantasy baseball trading platform. This application handles scheduled data imports, background processing, and concurrent job execution with built-in retry mechanisms.
 
-  * Install dependencies with `mix deps.get`
-  * Create and migrate your database with `mix ecto.setup`
-  * Install Node.js dependencies with `npm install` inside the `assets` directory
-  * Start Phoenix endpoint with `mix phx.server`
+## Purpose
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+- **Scheduled Jobs**: Automated data synchronization and updates from external sources
+- **Data Processing**: Import and processing of Excel sheets and external APIs
+- **Concurrent Processing**: Leverages Elixir's actor model for efficient concurrent job handling
+- **Reliability**: Built-in retry logic and fault tolerance for critical background tasks
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+## Getting Started
 
-## Learn more
+### Prerequisites
+- Elixir 1.14+
+- Erlang/OTP 25+
+- PostgreSQL database
+- Redis (for job queues)
 
-  * Official website: https://www.phoenixframework.org/
-  * Guides: https://hexdocs.pm/phoenix/overview.html
-  * Docs: https://hexdocs.pm/phoenix
-  * Forum: https://elixirforum.com/c/phoenix-forum
-  * Source: https://github.com/phoenixframework/phoenix
+### Development Setup
+
+1. Install dependencies:
+   ```bash
+   mix deps.get
+   ```
+
+2. Set up database:
+   ```bash
+   mix ecto.setup
+   ```
+
+3. Start development server (recommended):
+   ```bash
+   ./start-dev.sh --skip-infrastructure
+   ```
+
+   Or start locally:
+   ```bash
+   mix phx.server
+   ```
+
+### Testing
+
+Run tests locally:
+```bash
+./test.sh
+```
+
+Run specific test:
+```bash
+./test.sh test/schema_validation_test.exs
+```
+
+### Code Quality
+
+- **Linting**: `mix credo`
+- **Type Checking**: `mix dialyzer`
+
+## Architecture
+
+TradeMachineEx is designed to complement the main TradeMachine TypeScript backend by handling compute-intensive and scheduled operations that benefit from Elixir's concurrency model and fault-tolerance capabilities.
