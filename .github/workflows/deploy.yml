@@ -162,9 +162,9 @@ jobs:
           sleep 30
 
           # Verify the health endpoint is responding
-          curl -f http://${{ secrets.APP_URL }}/health || exit 1
+          curl -f ${{ secrets.APP_URL }}/health || exit 1
 
           # Verify metrics endpoint is available
-          curl -f http://${{ secrets.APP_URL }}/metrics || exit 1
+          curl -f ${{ secrets.APP_URL }}/metrics || exit 1
 
           echo "All health checks passed!"
