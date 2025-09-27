@@ -70,13 +70,12 @@ ENV HOME=/app
 ENV CONTAINER_MODE=true
 
 # Expose ports
-# 4000: Phoenix application
-# 9090: Prometheus metrics endpoint
-EXPOSE 4000 9090
+# Phoenix application (4000 default, 4001 in prod)
+EXPOSE 4000 4001
 
-# Health check
+# Health check (port is configurable via PORT env var in production)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:4000/health || exit 1
+    CMD curl -f http://localhost:${PORT:-4000}/health || exit 1
 
 # Default command
 CMD ["bin/trade_machine", "start"]
