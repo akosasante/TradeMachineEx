@@ -101,11 +101,11 @@ defmodule TradeMachineWeb.Telemetry do
   defp periodic_measurements do
     [
       # VM measurements
-      {__MODULE__, :dispatch_vm_stats, []},
+      {__MODULE__, :dispatch_vm_stats, []}
       # Custom business metrics
-#      {__MODULE__, :dispatch_oban_stats, []},
+      #      {__MODULE__, :dispatch_oban_stats, []},
       # Google Sheets connection health
-#      {__MODULE__, :dispatch_sheets_health, []}
+      #      {__MODULE__, :dispatch_sheets_health, []}
     ]
   end
 
@@ -151,6 +151,7 @@ defmodule TradeMachineWeb.Telemetry do
       case Process.whereis(TradeMachine.SheetReader) do
         pid when is_pid(pid) ->
           :telemetry.execute([:sheets, :health], %{status: 1}, %{component: "sheet_reader"})
+
         nil ->
           :telemetry.execute([:sheets, :health], %{status: 0}, %{component: "sheet_reader"})
       end
@@ -158,6 +159,7 @@ defmodule TradeMachineWeb.Telemetry do
       case Process.whereis(TradeMachine.Goth) do
         pid when is_pid(pid) ->
           :telemetry.execute([:sheets, :health], %{status: 1}, %{component: "goth"})
+
         nil ->
           :telemetry.execute([:sheets, :health], %{status: 0}, %{component: "goth"})
       end

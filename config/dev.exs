@@ -4,7 +4,8 @@ import Config
 # For containerized development, these are set in docker-compose.yml
 # For direct machine development, set these in your shell environment
 config :trade_machine,
-  spreadsheet_id: System.get_env("GOOGLE_SPREADSHEET_ID", "16SjDZBO2vY6rGj9CM7nW2pG21i4pZ85LGlbMCODVQtk")
+  spreadsheet_id:
+    System.get_env("GOOGLE_SPREADSHEET_ID", "16SjDZBO2vY6rGj9CM7nW2pG21i4pZ85LGlbMCODVQtk")
 
 # Database configuration with environment variable support
 query_args = ["SET search_path TO #{System.get_env("DATABASE_SCHEMA", "public")}", []]
@@ -84,7 +85,7 @@ config :logger, :debug_log,
   path: "./test_log.log",
   level: :debug,
   metadata: :all,
-  format: {Formatter.Log, :format}
+  format: {LogFormatter, :format}
 
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.

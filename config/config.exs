@@ -10,7 +10,8 @@ import Config
 # Database migration strategy: Prisma (TypeScript) handles all schema changes
 # Elixir app uses Ecto for data operations only - no migration management
 config :trade_machine,
-  ecto_repos: []  # Removed TradeMachine.Repo to prevent Mix migration tasks
+  # Removed TradeMachine.Repo to prevent Mix migration tasks
+  ecto_repos: []
 
 # Configures the endpoint
 config :trade_machine,

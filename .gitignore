@@ -56,3 +56,6 @@ npm-debug.log
 
 # Ignore the secret Excel file
 sheet_creds.json
+
+# Ignore symlink
+TradeMachineServer*

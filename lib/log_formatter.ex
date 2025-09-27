@@ -1,3 +1,4 @@
+# credo:disable-for-this-file
 defmodule LogFormatter do
   @moduledoc """
   Unified log formatter that provides human-readable format for development
@@ -95,7 +96,7 @@ defmodule LogFormatter do
       |> Enum.filter(fn {key, _value} ->
         key in [:request_id, :user_id, :mfa, :file, :line, :pid]
       end)
-      |> Enum.map(fn
+      |> Enum.map_join(fn
         {:request_id, value} -> " request_id=#{value}"
         {:user_id, value} -> " user_id=#{value}"
         {:mfa, {module, function, arity}} -> " #{module}.#{function}/#{arity}"
@@ -104,7 +105,6 @@ defmodule LogFormatter do
         {:pid, value} -> " pid=#{inspect(value)}"
         _ -> ""
       end)
-      |> Enum.join()
 
     if important_metadata != "", do: important_metadata, else: ""
   end

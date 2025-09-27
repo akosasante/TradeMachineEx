@@ -13,7 +13,9 @@ config :trade_machine, TradeMachine.Repo,
   port: String.to_integer(System.get_env("DATABASE_PORT") || "5432"),
   pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
   show_sensitive_data_on_connection_error: false,
-  after_connect: {Postgrex, :query!, ["SET search_path TO #{System.get_env("DATABASE_SCHEMA", "staging")}", []]}
+  after_connect:
+    {Postgrex, :query!,
+     ["SET search_path TO #{System.get_env("DATABASE_SCHEMA", "staging")}", []]}
 
 # Phoenix Endpoint configuration
 config :trade_machine, TradeMachineWeb.Endpoint,
@@ -49,29 +51,31 @@ if config_env() == :prod do
     format: {LogFormatter, :format},
     metadata: [:request_id, :user_id, :mfa, :file, :line]
 else
-  # Development logging remains human-readable
+  # Development logging with unified formatter
   config :logger,
     backends: [:console],
     level: :debug
 
   config :logger, :console,
-    format: "$time $metadata[$level] $message\n",
-    metadata: [:request_id]
+    format: {LogFormatter, :format},
+    metadata: [:request_id, :user_id, :mfa, :file, :line]
 end
 
 # Oban configuration with environment-based settings
-oban_plugins = if System.get_env("DATABASE_SCHEMA") == "staging" or System.get_env("ENABLE_CRON") == "true" do
-  [
-    {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
-    {Oban.Plugins.Cron, crontab: [
-      {"0 2 * * *", TradeMachine.Jobs.MinorsSync}
-    ]}
-  ]
-else
-  [
-    {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)}
-  ]
-end
+oban_plugins =
+  if System.get_env("DATABASE_SCHEMA") == "staging" or System.get_env("ENABLE_CRON") == "true" do
+    [
+      {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
+      {Oban.Plugins.Cron,
+       crontab: [
+         {"0 2 * * *", TradeMachine.Jobs.MinorsSync}
+       ]}
+    ]
+  else
+    [
+      {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)}
+    ]
+  end
 
 config :trade_machine, Oban,
   repo: TradeMachine.Repo,

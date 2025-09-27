@@ -46,16 +46,16 @@ defmodule TradeMachine.SchemaValidationTest do
         table_exists = result.rows |> hd() |> hd()
 
         assert table_exists,
-          """
-          Table '#{table_name}' for schema #{inspect(schema)} does not exist in database.
+               """
+               Table '#{table_name}' for schema #{inspect(schema)} does not exist in database.
 
-          This likely means:
-          1. A Prisma migration removed this table
-          2. The table name was changed in Prisma
-          3. The Ecto schema source is incorrect
+               This likely means:
+               1. A Prisma migration removed this table
+               2. The table name was changed in Prisma
+               3. The Ecto schema source is incorrect
 
-          Action required: Update the Ecto schema or remove it if no longer needed.
-          """
+               Action required: Update the Ecto schema or remove it if no longer needed.
+               """
       end
     end
 
@@ -70,21 +70,21 @@ defmodule TradeMachine.SchemaValidationTest do
           db_column_name = get_db_column_name(field_name, schema)
 
           assert Map.has_key?(db_columns, db_column_name),
-            """
-            Schema field '#{field_name}' (maps to column '#{db_column_name}')
-            in #{inspect(schema)} does not exist in database table '#{table_name}'.
+                 """
+                 Schema field '#{field_name}' (maps to column '#{db_column_name}')
+                 in #{inspect(schema)} does not exist in database table '#{table_name}'.
 
-            Available database columns: #{inspect(Map.keys(db_columns))}
+                 Available database columns: #{inspect(Map.keys(db_columns))}
 
-            This likely means:
-            1. The column was renamed/removed in a Prisma migration
-            2. The field source mapping is incorrect
+                 This likely means:
+                 1. The column was renamed/removed in a Prisma migration
+                 2. The field source mapping is incorrect
 
-            Action required:
-            1. Check recent Prisma migrations for changes to this column
-            2. Update the Ecto schema field name or remove the field
-            3. Check field source mapping in TradeMachine.Schema if needed
-            """
+                 Action required:
+                 1. Check recent Prisma migrations for changes to this column
+                 2. Update the Ecto schema field name or remove the field
+                 3. Check field source mapping in TradeMachine.Schema if needed
+                 """
 
           # Validate field type compatibility (basic check)
           db_column = db_columns[db_column_name]
@@ -136,43 +136,58 @@ defmodule TradeMachine.SchemaValidationTest do
       nil ->
         # Apply the field source mapper from TradeMachine.Schema
         TradeMachine.Schema.convert_field_name_to_database_name(field_name) |> Atom.to_string()
+
       source ->
         source |> Atom.to_string()
     end
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp validate_field_type_compatibility(field_name, field_info, db_column, schema) do
     # Basic type compatibility checks
     # This is a simplified check - could be expanded for more thorough validation
 
     case {field_info.type, db_column.type} do
       # UUID fields
-      {Ecto.UUID, "uuid"} -> :ok
+      {Ecto.UUID, "uuid"} ->
+        :ok
 
       # String fields
-      {:string, db_type} when db_type in ["character varying", "varchar", "text"] -> :ok
+      {:string, db_type} when db_type in ["character varying", "varchar", "text"] ->
+        :ok
 
       # Integer fields
-      {:integer, db_type} when db_type in ["integer", "bigint", "smallint"] -> :ok
+      {:integer, db_type} when db_type in ["integer", "bigint", "smallint"] ->
+        :ok
 
       # Boolean fields
-      {:boolean, "boolean"} -> :ok
+      {:boolean, "boolean"} ->
+        :ok
 
       # DateTime fields
-      {:naive_datetime, db_type} when db_type in ["timestamp without time zone", "timestamp"] -> :ok
-      {:utc_datetime, db_type} when db_type in ["timestamp with time zone", "timestamptz"] -> :ok
+      {:naive_datetime, db_type} when db_type in ["timestamp without time zone", "timestamp"] ->
+        :ok
+
+      {:utc_datetime, db_type} when db_type in ["timestamp with time zone", "timestamptz"] ->
+        :ok
 
       # Enum fields (stored as strings/varchar in database)
-      {{:parameterized, {Ecto.Enum, _}}, db_type} when db_type in ["character varying", "varchar", "text"] -> :ok
+      {{:parameterized, {Ecto.Enum, _}}, db_type}
+      when db_type in ["character varying", "varchar", "text"] ->
+        :ok
 
       # Enum fields (stored as PostgreSQL custom enums)
-      {{:parameterized, {Ecto.Enum, _}}, "USER-DEFINED"} -> :ok
+      {{:parameterized, {Ecto.Enum, _}}, "USER-DEFINED"} ->
+        :ok
 
       # Map fields (stored as JSON/JSONB)
-      {:map, db_type} when db_type in ["json", "jsonb"] -> :ok
+      {:map, db_type} when db_type in ["json", "jsonb"] ->
+        :ok
 
       # Array fields
-      {{:array, _}, db_type} when db_type in ["ARRAY", "json", "jsonb"] -> :ok
+      {{:array, _}, db_type} when db_type in ["ARRAY", "json", "jsonb"] ->
+        :ok
+
       {{:array, _}, db_type} ->
         if String.contains?(db_type, "[]") do
           :ok

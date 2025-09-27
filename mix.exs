@@ -83,8 +83,10 @@ defmodule TradeMachine.MixProject do
       # test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
 
       # Safe aliases that don't modify database schema
-      setup: ["deps.get"],  # Only install dependencies
-      "test.local": ["cmd ./test.sh"],       # Run tests without migrations
+      # Only install dependencies
+      setup: ["deps.get"],
+      # Run tests without migrations
+      "test.local": ["cmd ./test.sh"],
       "assets.deploy": ["esbuild default --minify", "phx.digest"]
     ]
   end

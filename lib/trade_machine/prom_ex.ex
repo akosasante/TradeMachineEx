@@ -25,7 +25,7 @@ defmodule TradeMachine.PromEx do
       {Plugins.Phoenix, endpoint: TradeMachineWeb.Endpoint, router: TradeMachineWeb.Router},
 
       # Database metrics
-      {Plugins.Ecto, repos: [TradeMachine.Repo]},
+      {Plugins.Ecto, repos: [TradeMachine.Repo]}
 
       # Oban job queue metrics (commented out since Oban is not running)
       # Plugins.Oban,
@@ -58,7 +58,6 @@ defmodule TradeMachine.PromEx do
       {:trade_machine, "business_metrics.json"}
     ]
   end
-
 end
 
 defmodule TradeMachine.PromEx.CustomMetrics do
@@ -162,7 +161,7 @@ defmodule TradeMachine.PromEx.CustomMetrics do
           measurement: :duration,
           unit: {:native, :millisecond},
           tags: [:operation, :status],
-          buckets: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000]
+          buckets: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10_000]
         )
       ]
     )
@@ -228,7 +227,8 @@ defmodule TradeMachine.PromEx.CustomMetrics do
         [:prom_ex, :plugin, :trade_machine, :application_health],
         %{
           pool_size: Application.get_env(:trade_machine, TradeMachine.Repo)[:pool_size] || 10,
-          active_connections: 1  # This is a simplified metric
+          # This is a simplified metric
+          active_connections: 1
         },
         %{}
       )
