@@ -3,6 +3,7 @@ services:
   # TradeMachineEx Application (Production)
   app:
     image: ${IMAGE_TAG:-ghcr.io/akosasante/trade-machine-ex:latest}
+    network_mode: "host" # Needed to connect to host's PostgreSQL
     ports:
       - "4001:4000"  # Phoenix application
     environment:
