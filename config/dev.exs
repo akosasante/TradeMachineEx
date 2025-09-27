@@ -77,15 +77,12 @@ config :trade_machine, TradeMachineWeb.Endpoint,
 # config :logger, :console, format: "[$level] $message\n"
 
 config :logger,
-  backends: [{LoggerFileBackend, :debug_log}],
-  utc_log: true,
-  handle_otp_reports: true
+  backends: [:console],
+  level: :debug
 
-config :logger, :debug_log,
-  path: "./test_log.log",
-  level: :debug,
-  metadata: :all,
-  format: {LogFormatter, :format}
+config :logger, :console,
+  format: {LogFormatter, :format},
+  metadata: [:request_id, :user_id, :mfa, :file, :line]
 
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.
