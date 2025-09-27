@@ -164,6 +164,6 @@ jobs:
           curl -f http://${{ secrets.DIGITALOCEAN_HOST }}:4001/health || exit 1
 
           # Verify metrics endpoint is available
-          curl -f http://${{ secrets.DIGITALOCEAN_HOST }}:9090/metrics || exit 1
+          curl -f http://${{ secrets.DIGITALOCEAN_HOST }}:4001/metrics || exit 1
 
           echo "All health checks passed!"
