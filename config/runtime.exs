@@ -103,6 +103,11 @@ else
     ]
 end
 
+# Emailing
+config :trade_machine, TradeMachine.Mailer,
+  adapter: Swoosh.Adapters.Brevo,
+  api_key: System.fetch_env!("BREVO_API_KEY")
+
 # Application-specific configuration
 config :trade_machine,
   upload_grafana_dashboards_on_start: config_env() == :dev

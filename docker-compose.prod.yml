@@ -37,6 +37,9 @@ services:
       - GRAFANA_HOST=${GRAFANA_HOST:-}
       - GRAFANA_TOKEN=${GRAFANA_TOKEN:-}
 
+      # Email configuration (Brevo/SendInBlue)
+      - BREVO_API_KEY=${BREVO_API_KEY}
+
     # Resource limits for production
     deploy:
       resources:
