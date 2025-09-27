@@ -7,10 +7,9 @@
 # General application configuration
 import Config
 
-# Database migration strategy: Prisma (TypeScript) handles all schema changes
-# Elixir app uses Ecto for data operations only - no migration management
 config :trade_machine,
-  # Removed TradeMachine.Repo to prevent Mix migration tasks
+  # Elixir app uses Ecto for data operations only -
+  ## no migration management. Prisma (TypeScript) handles all schema changes
   ecto_repos: []
 
 # Configures the endpoint
@@ -62,6 +61,9 @@ config :trade_machine, Oban,
 config :tesla, disable_deprecated_builder_warning: true
 
 # Emailing
+config :swoosh,
+  api_client: Swoosh.ApiClient.Finch
+
 config :trade_machine, TradeMachine.Mailer,
   adapter: Swoosh.Adapters.Local,
   from_email: "trademachine@flexfoxfantasy.com",

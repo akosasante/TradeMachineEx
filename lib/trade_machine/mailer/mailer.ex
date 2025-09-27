@@ -5,15 +5,25 @@ defmodule TradeMachine.Mailer do
     quote do
       import Swoosh.Email
       import TradeMachine.Mailer, only: [from_email: 0, from_tuple: 0]
-      use Phoenix.Swoosh, view: TradeMachine.Mailer.EmailView, layout: {TradeMachine.Mailer.EmailView, :email}
 
-      @frontend_url Application.get_env(:trade_machine, :frontend_url, "http://localhost:3031")
+      use Phoenix.Swoosh,
+        view: TradeMachine.Mailer.EmailView,
+        layout: {TradeMachine.Mailer.LayoutView, :email}
 
-      def do_deliver(%Swoosh.Email{} = email) do
-        email
+      defp frontend_url(),
+        do: Application.get_env(:trade_machine, :frontend_url, "http://localhost:3031")
+
+      defp process_html(email = %Swoosh.Email{}) do
+        email.html_body
         |> Premailex.to_inline_css()
-        |> TradeMachine.Mailer.deliver()
+        |> then(&Swoosh.Email.html_body(email, &1))
       end
+
+      defp do_deliver(email = %Swoosh.Email{}),
+        do: email |> process_html |> TradeMachine.Mailer.deliver()
+
+      defp do_deliver!(email = %Swoosh.Email{}),
+        do: email |> process_html |> TradeMachine.Mailer.deliver!()
     end
   end
 

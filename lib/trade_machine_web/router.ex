@@ -50,7 +50,7 @@ defmodule TradeMachineWeb.Router do
   end
 
   # Preview Swoosh Emails in development
-  if Mix.env == :dev do
+  if Mix.env() == :dev do
     scope "/dev" do
       pipe_through [:browser]
 

@@ -104,11 +104,17 @@ else
 end
 
 # Emailing
-config :trade_machine, TradeMachine.Mailer,
-  adapter: Swoosh.Adapters.Brevo,
-  api_key: System.fetch_env!("BREVO_API_KEY"),
-  from_email: "tradebot@flexfoxfantasy.com",
-  from_name: "FlexFox Fantasy TradeMachine"
+if config_env() == :prod do
+  config :trade_machine, TradeMachine.Mailer,
+    adapter: Swoosh.Adapters.Brevo,
+    api_key: System.fetch_env!("BREVO_API_KEY"),
+    from_email: "tradebot@flexfoxfantasy.com",
+    from_name: "FlexFox Fantasy TradeMachine"
+else
+  config :trade_machine, TradeMachine.Mailer,
+    from_email: "tradebot@flexfoxfantasy.com",
+    from_name: "FlexFox Fantasy TradeMachine"
+end
 
 # CSS inlining for emails
 config :premailex, :html_parser, Premailex.HTMLParser.Floki
@@ -116,3 +122,11 @@ config :premailex, :html_parser, Premailex.HTMLParser.Floki
 # Application-specific configuration
 config :trade_machine,
   upload_grafana_dashboards_on_start: config_env() == :dev
+
+if config_env() != :prod do
+  config :trade_machine, :frontend_url, "http://localhost:3031"
+else
+  config :trade_machine,
+         :frontend_url,
+         System.fetch_env!("FRONTEND_URL")
+end

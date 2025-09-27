@@ -1,22 +1,22 @@
- defmodule TradeMachine.Mailer.PasswordResetEmail do
+defmodule TradeMachine.Mailer.PasswordResetEmail do
   use TradeMachine.Mailer
 
   alias TradeMachine.Data.User
 
   @spec send(User.t()) :: {:ok, any()} | {:error, any()}
-  def send(%User{} = user) do
-    do_send(user)
+  def send(user = %User{}) do
+    generate_email(user)
     |> do_deliver()
   end
 
   @spec send!(User.t()) :: Swoosh.Email.t()
-  def send!(%User{} = user) do
-    do_send(user)
-    |> TradeMachine.Mailer.deliver!()
+  def send!(user = %User{}) do
+    generate_email(user)
+    |> do_deliver!()
   end
 
-  @spec do_send(User.t()) :: Swoosh.Email.t()
-  defp do_send(user) do
+  @spec generate_email(User.t()) :: Swoosh.Email.t()
+  def generate_email(user) do
     new()
     |> from(from_tuple())
     |> to(user)
@@ -25,6 +25,6 @@
   end
 
   defp build_reset_url(%User{password_reset_token: reset_token}) do
-    "#{@frontend_url}/reset_password#token=#{reset_token}"
+    "#{frontend_url()}/reset_password#token=#{reset_token}"
   end
 end
