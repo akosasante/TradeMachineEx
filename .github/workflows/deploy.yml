@@ -132,7 +132,7 @@ jobs:
 
             # Start with new image using the local tag
             echo "Starting docker-compose with IMAGE_TAG=$LOCAL_TAG"
-            IMAGE_TAG="$LOCAL_TAG" docker compose -f docker-compose.prod.yml up -d --pull never
+            IMAGE_TAG="$LOCAL_TAG" docker compose -f docker-compose.prod.yml up -d --pull never --build
 
             # Clean up old images (keep last 3)
             docker image prune -f
