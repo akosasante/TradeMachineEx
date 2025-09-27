@@ -7,6 +7,8 @@ defmodule TradeMachine.Data.User do
   require Logger
   require Ecto.Query
 
+  @derive {Swoosh.Email.Recipient, name: :display_name, address: :email}
+
   typed_schema "user" do
     field(:display_name, :string, null: false)
     field(:email, :string, null: false)
