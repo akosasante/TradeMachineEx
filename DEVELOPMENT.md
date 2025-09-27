@@ -535,6 +535,21 @@ rate(trade_machine_trades_created_total[5m])
 
 ### **🔧 Development Tips**
 
+#### **Connecting to Running IEx Console**
+
+When the app is running in Docker, connect to the live Elixir node for debugging:
+
+```bash
+# Connect to the running Elixir node in the container
+docker exec -it trademachineex-app-1 sh -c 'iex --sname console --remsh trade_machine@$(hostname)'
+
+# Test email functionality in the console:
+# iex> user = %TradeMachine.Data.User{email: "test@example.com", display_name: "Test User", password_reset_token: "test123"}
+# iex> TradeMachine.Mailer.PasswordResetEmail.send(user)
+```
+
+#### **Monitoring & Metrics**
+
 ```bash
 # View metrics endpoint directly
 curl http://localhost:4000/metrics
