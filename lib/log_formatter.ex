@@ -1,10 +1,30 @@
 defmodule LogFormatter do
   @moduledoc """
-  Custom log formatter for structured JSON logging in production.
+  Unified log formatter that provides human-readable format for development
+  and structured JSON logging for production environments.
   This enables better log parsing by Loki and other log aggregation systems.
   """
 
   def format(level, message, timestamp, metadata) do
+    if development_env?() do
+      format_dev(level, message, timestamp, metadata)
+    else
+      format_prod(level, message, timestamp, metadata)
+    end
+  rescue
+    # Fallback to simple format if formatting fails
+    _ ->
+      "#{format_timestamp(timestamp)} [#{level}] #{message}\n"
+  end
+
+  defp format_dev(level, message, timestamp, metadata) do
+    formatted_timestamp = format_timestamp(timestamp)
+    metadata_str = format_dev_metadata(metadata)
+
+    "#{formatted_timestamp} [#{level}]#{metadata_str} #{message}\n"
+  end
+
+  defp format_prod(level, message, timestamp, metadata) do
     %{
       "@timestamp": format_timestamp(timestamp),
       level: level,
@@ -15,10 +35,6 @@ defmodule LogFormatter do
     |> add_metadata(metadata)
     |> Jason.encode!()
     |> Kernel.<>("\n")
-  rescue
-    # Fallback to simple format if JSON encoding fails
-    _ ->
-      "#{format_timestamp(timestamp)} [#{level}] #{message}\n"
   end
 
   defp format_timestamp({{year, month, day}, {hour, minute, second, millisecond}}) do
@@ -55,6 +71,7 @@ defmodule LogFormatter do
                 oban_queue: queue,
                 oban_job_id: id
               })
+
             _ ->
               acc
           end
@@ -67,6 +84,32 @@ defmodule LogFormatter do
   end
 
   defp add_metadata(log_entry, _), do: log_entry
+
+  defp development_env?() do
+    System.get_env("MIX_ENV", "production") == "dev"
+  end
+
+  defp format_dev_metadata(metadata) when is_list(metadata) do
+    important_metadata =
+      metadata
+      |> Enum.filter(fn {key, _value} ->
+        key in [:request_id, :user_id, :mfa, :file, :line, :pid]
+      end)
+      |> Enum.map(fn
+        {:request_id, value} -> " request_id=#{value}"
+        {:user_id, value} -> " user_id=#{value}"
+        {:mfa, {module, function, arity}} -> " #{module}.#{function}/#{arity}"
+        {:file, value} -> " #{Path.basename(value)}"
+        {:line, value} -> ":#{value}"
+        {:pid, value} -> " pid=#{inspect(value)}"
+        _ -> ""
+      end)
+      |> Enum.join()
+
+    if important_metadata != "", do: important_metadata, else: ""
+  end
+
+  defp format_dev_metadata(_), do: ""
 
   defp pad(int, count \\ 2) do
     int
