@@ -85,6 +85,22 @@ defmodule TradeMachineWeb.Telemetry do
         tags: [:operation, :status]
       ),
 
+      # Email/Swoosh Metrics
+      counter("swoosh.deliver.count",
+        event_name: [:swoosh, :deliver, :stop],
+        tags: [:mailer, :adapter]
+      ),
+      summary("swoosh.deliver.duration",
+        event_name: [:swoosh, :deliver, :stop],
+        measurement: :duration,
+        unit: {:native, :millisecond},
+        tags: [:mailer, :adapter]
+      ),
+      counter("swoosh.deliver.exceptions",
+        event_name: [:swoosh, :deliver, :exception],
+        tags: [:mailer, :adapter, :kind]
+      ),
+
       # VM and System Metrics
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
       summary("vm.memory.processes", unit: {:byte, :kilobyte}),
