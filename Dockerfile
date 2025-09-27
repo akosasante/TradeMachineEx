@@ -1,6 +1,6 @@
 # Production Dockerfile for TradeMachineEx
 # Build stage: compile the application
-FROM elixir:1.18-alpine AS builder
+FROM hexpm/elixir:1.18.0-erlang-27.1.2-alpine-3.20.3 AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
@@ -36,13 +36,12 @@ RUN mix assets.deploy && \
 # Build the release
 RUN mix release
 
-# Runtime stage: minimal image with only the release
-FROM alpine:3.20 AS runtime
+# Runtime stage: use same exact alpine version as builder to ensure OpenSSL compatibility
+FROM alpine:3.20.3 AS runtime
 
-# Install runtime dependencies
+# Install runtime dependencies (no version pinning needed with matching base)
 RUN apk add --no-cache \
     openssl \
-    openssl-dev \
     ncurses-libs \
     libstdc++ \
     bash \
