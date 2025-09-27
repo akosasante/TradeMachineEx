@@ -62,7 +62,9 @@ config :trade_machine, Oban,
 config :tesla, disable_deprecated_builder_warning: true
 
 # Emailing
-config :trade_machine, TradeMachine.Mailer, adapter: Swoosh.Adapters.Local
+config :trade_machine, TradeMachine.Mailer,
+  adapter: Swoosh.Adapters.Local,
+  from_email: "tradebot@flexfoxfantasy.com"
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
