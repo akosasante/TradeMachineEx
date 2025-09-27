@@ -49,7 +49,7 @@ defmodule TradeMachine.MixProject do
       {:goth, "~> 1.3-rc"},
       {:google_api_sheets, "~> 0.29.3"},
       {:jason, "~> 1.3"},
-      {:oban, "~> 2.11"},
+      {:oban, "~> 2.19"},
       {:phoenix, "~> 1.8"},
       {:phoenix_ecto, "~> 4.6"},
       {:phoenix_html, "~> 4.0"},
