@@ -39,9 +39,6 @@ services:
       - GRAFANA_HOST=${GRAFANA_HOST:-}
       - GRAFANA_TOKEN=${GRAFANA_TOKEN:-}
 
-    networks:
-      - trade_machine_network
-
     # Resource limits for production
     deploy:
       resources:
@@ -68,9 +65,3 @@ services:
       - "service=trade_machine_ex"
       - "environment=production"
       - "com.centurylinklabs.watchtower.enable=true"
-
-networks:
-  trade_machine_network:
-    driver: bridge
-    labels:
-      - "service=trade_machine_ex"
