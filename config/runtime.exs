@@ -106,7 +106,12 @@ end
 # Emailing
 config :trade_machine, TradeMachine.Mailer,
   adapter: Swoosh.Adapters.Brevo,
-  api_key: System.fetch_env!("BREVO_API_KEY")
+  api_key: System.fetch_env!("BREVO_API_KEY"),
+  from_email: "tradebot@flexfoxfantasy.com",
+  from_name: "FlexFox Fantasy TradeMachine"
+
+# CSS inlining for emails
+config :premailex, :html_parser, Premailex.HTMLParser.Floki
 
 # Application-specific configuration
 config :trade_machine,
