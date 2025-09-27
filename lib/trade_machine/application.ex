@@ -59,13 +59,12 @@ defmodule TradeMachine.Application do
     promex_config = Application.get_env(:trade_machine, TradeMachine.PromEx)
     grafana_host = promex_config[:grafana][:host]
     grafana_token = promex_config[:grafana][:auth_token]
-    grafana_disabled = promex_config[:disabled]
+    upload_grafana = Application.get_env(:trade_machine, :upload_grafana_dashboards_on_start)
 
-    if !grafana_disabled && grafana_host && grafana_token do
+    if upload_grafana && grafana_host && grafana_token do
       [
         {PromEx.DashboardUploader,
-         prom_ex_module: TradeMachine.PromEx,
-         default_dashboard_opts: []}
+         prom_ex_module: TradeMachine.PromEx, default_dashboard_opts: []}
       ]
     else
       Logger.info("Skipping PromEx dashboard upload (Grafana not configured)")

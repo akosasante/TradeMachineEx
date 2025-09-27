@@ -82,8 +82,10 @@ config :trade_machine, Oban,
   ],
   prefix: System.get_env("DATABASE_SCHEMA", "staging")
 
-if config_env() == :dev do
 # PromEx (Prometheus metrics) configuration
+if config_env() == :test do
+  config :trade_machine, TradeMachine.PromEx, disabled: true
+else
   config :trade_machine, TradeMachine.PromEx,
     disabled: false,
     manual_metrics_start_delay: :no_delay,
@@ -95,7 +97,8 @@ if config_env() == :dev do
       upload_dashboards_on_start: false,
       folder_name: "TradeMachine"
     ]
-else
-  config :trade_machine, TradeMachine.PromEx,
-    disabled: true
 end
+
+# Application-specific configuration
+config :trade_machine,
+  upload_grafana_dashboards_on_start: config_env() == :dev
