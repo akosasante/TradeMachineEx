@@ -60,6 +60,8 @@ defmodule TradeMachine.MixProject do
       {:phoenix_view, "~> 2.0"},
       {:postgrex, ">= 0.0.0"},
       {:prom_ex, "~> 1.8"},
+      {:req, "~> 0.5"},
+      {:swoosh, "~> 1.19"},
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
       {:typed_ecto_schema, "~> 0.4.0", runtime: false}
