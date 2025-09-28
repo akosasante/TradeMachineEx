@@ -21,6 +21,9 @@ services:
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
       - PHX_HOST=${PHX_HOST}
 
+      # Release configuration
+      - RELEASE_COOKIE=${RELEASE_COOKIE}
+
       # Logging configuration
       - LOG_LEVEL=${LOG_LEVEL:-info}
 

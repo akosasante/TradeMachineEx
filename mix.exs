@@ -15,7 +15,7 @@ defmodule TradeMachine.MixProject do
       deps: deps(),
       releases: [
         trade_machine: [
-          cookie: "TEST_COOKIE"
+          cookie: System.get_env("RELEASE_COOKIE", "dev_cookie_please_change_in_production")
         ]
       ]
     ]
