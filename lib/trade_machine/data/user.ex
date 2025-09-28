@@ -33,6 +33,10 @@ defmodule TradeMachine.Data.User do
     |> cast(params, [])
   end
 
+  def get_by_id(id) when is_binary(id) do
+    Repo.get(__MODULE__, id)
+  end
+
   @spec get_user_by_csv_name(String.t()) :: __MODULE__.t() | nil
   def get_user_by_csv_name(csv_name) do
     Repo.get_by(__MODULE__, csv_name: csv_name)

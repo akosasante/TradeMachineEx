@@ -49,7 +49,7 @@ defmodule TradeMachine.Application do
           # Start the PubSub system (not currently in use for anything)
           {Phoenix.PubSub, name: TradeMachine.PubSub},
           # Start Oban. This is the queue/job runner that we use to periodically process changes from the Google Sheet
-          #      {Oban, oban_config()},
+          {Oban, Application.fetch_env!(:trade_machine, Oban)},
           # Start a GenServer whose job is just to keep the spreadsheet id and
           # Google OAuth (Goth) connection in-memory/state
           #      {TradeMachine.SheetReader, Application.get_env(:trade_machine, :spreadsheet_id)},
@@ -87,8 +87,4 @@ defmodule TradeMachine.Application do
       []
     end
   end
-
-  #  defp oban_config do
-  #    Application.fetch_env!(:trade_machine, Oban)
-  #  end
 end

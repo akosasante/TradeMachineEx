@@ -56,7 +56,7 @@ config :trade_machine, Oban,
     {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
     {Oban.Plugins.Cron, crontab: [{"*/5 * * * *", TradeMachine.Jobs.MinorsSync}]}
   ],
-  queues: [minors_sync: 1, draft_sync: 1]
+  queues: [minors_sync: 1, draft_sync: 1, emails: 2]
 
 config :tesla, disable_deprecated_builder_warning: true
 
