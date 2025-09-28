@@ -97,7 +97,7 @@ defmodule TradeMachine.Application do
 
     # Configure OpenTelemetry instrumentations
     OpentelemetryOban.setup()
-    OpentelemetryEcto.setup([:trade_machine, :repo], [time_unit: :millisecond])
+    OpentelemetryEcto.setup([:trade_machine, :repo], time_unit: :millisecond)
     OpentelemetryFinch.setup()
 
     Logger.info("OpenTelemetry tracing initialized successfully")

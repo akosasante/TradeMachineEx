@@ -25,10 +25,16 @@ defmodule TradeMachine.Mailer.PasswordResetEmailTest do
       email = PasswordResetEmail.generate_email(user)
 
       # Check HTML body contains reset URL
-      assert String.contains?(email.html_body, "http://localhost:3031/reset_password#token=test-token-123")
+      assert String.contains?(
+               email.html_body,
+               "http://localhost:3031/reset_password#token=test-token-123"
+             )
 
       # Check text body contains reset URL
-      assert String.contains?(email.text_body, "http://localhost:3031/reset_password#token=test-token-123")
+      assert String.contains?(
+               email.text_body,
+               "http://localhost:3031/reset_password#token=test-token-123"
+             )
     end
 
     test "includes user display name in email content" do
@@ -104,7 +110,6 @@ defmodule TradeMachine.Mailer.PasswordResetEmailTest do
         from: {"FlexFox Fantasy TradeMachine", "tradebot@flexfoxfantasy.com"}
       )
     end
-
   end
 
   describe "send!/1" do
@@ -150,7 +155,6 @@ defmodule TradeMachine.Mailer.PasswordResetEmailTest do
       assert String.contains?(email.text_body, "http://localhost:3031/reset_password")
     end
   end
-
 
   # Helper function to build test users
   defp build_user(attrs \\ %{}) do

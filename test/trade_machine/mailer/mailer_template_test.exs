@@ -23,7 +23,8 @@ defmodule TradeMachine.Mailer.MailerTemplateTest do
       # Should include layout elements
       assert String.contains?(email.html_body, "<!DOCTYPE html>")
       assert String.contains?(email.html_body, "email-header")
-      assert String.contains?(email.html_body, "⚾") # Baseball emoji
+      # Baseball emoji
+      assert String.contains?(email.html_body, "⚾")
     end
 
     test "text version is properly formatted" do
@@ -33,8 +34,10 @@ defmodule TradeMachine.Mailer.MailerTemplateTest do
 
       # Text version should be clean and readable
       assert String.contains?(email.text_body, "FlexFox Fantasy TradeMachine")
-      refute String.contains?(email.text_body, "<") # No HTML tags
-      refute String.contains?(email.text_body, ">") # No HTML tags
+      # No HTML tags
+      refute String.contains?(email.text_body, "<")
+      # No HTML tags
+      refute String.contains?(email.text_body, ">")
     end
 
     test "layout includes proper branding" do
@@ -47,7 +50,11 @@ defmodule TradeMachine.Mailer.MailerTemplateTest do
       assert String.contains?(email.text_body, "FlexFox Fantasy TradeMachine")
 
       # Check footer content
-      assert String.contains?(email.text_body, "This email was sent from FlexFox Fantasy TradeMachine")
+      assert String.contains?(
+               email.text_body,
+               "This email was sent from FlexFox Fantasy TradeMachine"
+             )
+
       assert String.contains?(email.text_body, "reach out to league admins")
     end
   end

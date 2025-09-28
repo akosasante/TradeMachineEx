@@ -4,6 +4,7 @@ defmodule TradeMachine.Mailer do
 
   def send_password_reset_email(user_id) do
     Logger.info("Sending password reset email", user_id: user_id)
+
     case TradeMachine.Data.User.get_by_id(user_id) do
       nil ->
         Logger.error("User not found for ID", user_id: user_id)

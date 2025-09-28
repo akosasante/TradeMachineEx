@@ -90,7 +90,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       EmailWorker.new(job_args) |> Oban.insert!()
 
       # Assert job was enqueued with correct args
-      assert_enqueued worker: EmailWorker, args: %{email_type: "reset_password", data: user.id}
+      assert_enqueued(worker: EmailWorker, args: %{email_type: "reset_password", data: user.id})
     end
 
     test "uses correct queue and max_attempts" do
@@ -108,7 +108,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
 
       # Also verify by enqueuing and checking with assert_enqueued
       EmailWorker.new(job_args) |> Oban.insert!()
-      assert_enqueued queue: "emails", worker: EmailWorker
+      assert_enqueued(queue: "emails", worker: EmailWorker)
     end
 
     test "job processes successfully when enqueued and performed" do
@@ -122,7 +122,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       # Test the full flow: enqueue and perform
       EmailWorker.new(job_args) |> Oban.insert!()
 
-      assert_enqueued worker: EmailWorker, args: job_args
+      assert_enqueued(worker: EmailWorker, args: job_args)
       assert :ok = perform_job(EmailWorker, job_args)
 
       # Assert email was sent

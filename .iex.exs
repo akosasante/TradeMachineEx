@@ -1,22 +1,22 @@
- alias Elixir.TradeMachine.Data.DraftPick
- alias Elixir.TradeMachine.Data.Email
- alias Elixir.TradeMachine.Data.HydratedMajor
- alias Elixir.TradeMachine.Data.HydratedMinor
- alias Elixir.TradeMachine.Data.HydratedPick
- alias Elixir.TradeMachine.Data.HydratedTrade
- alias Elixir.TradeMachine.Data.Player
- alias Elixir.TradeMachine.Data.Settings
- alias Elixir.TradeMachine.Data.Team
- alias Elixir.TradeMachine.Data.Trade
- alias Elixir.TradeMachine.Data.TradeItem
- alias Elixir.TradeMachine.Data.TradeParticipant
- alias Elixir.TradeMachine.Data.User
+alias Elixir.TradeMachine.Data.DraftPick
+alias Elixir.TradeMachine.Data.Email
+alias Elixir.TradeMachine.Data.HydratedMajor
+alias Elixir.TradeMachine.Data.HydratedMinor
+alias Elixir.TradeMachine.Data.HydratedPick
+alias Elixir.TradeMachine.Data.HydratedTrade
+alias Elixir.TradeMachine.Data.Player
+alias Elixir.TradeMachine.Data.Settings
+alias Elixir.TradeMachine.Data.Team
+alias Elixir.TradeMachine.Data.Trade
+alias Elixir.TradeMachine.Data.TradeItem
+alias Elixir.TradeMachine.Data.TradeParticipant
+alias Elixir.TradeMachine.Data.User
 
 alias TradeMachine.Repo
 
 require Ecto.Query
 
-#defmodule StartupModule do
+# defmodule StartupModule do
 #  require Kernel.SpecialForms
 #
 #  def get_all_schema_modules() do
@@ -46,6 +46,6 @@ require Ecto.Query
 #
 #  defp is_schema_module(["TradeMachine", "Data", _]), do: true
 #  defp is_schema_module(_), do: false
-#end
+# end
 #
-#StartupModule.get_all_schema_modules()
+# StartupModule.get_all_schema_modules()
