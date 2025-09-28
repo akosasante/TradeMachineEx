@@ -8,17 +8,18 @@ config :trade_machine,
     System.get_env("GOOGLE_SPREADSHEET_ID", "16SjDZBO2vY6rGj9CM7nW2pG21i4pZ85LGlbMCODVQtk")
 
 # Database configuration with environment variable support
-query_args = ["SET search_path TO #{System.get_env("DATABASE_SCHEMA", "public")}", []]
+query_args = ["SET search_path TO #{System.get_env("DATABASE_SCHEMA", "dev")}", []]
 
 config :trade_machine, TradeMachine.Repo,
   username: System.get_env("DATABASE_USER", "trader_dev"),
-  password: System.get_env("DATABASE_PASSWORD", "blawrie13"),
+  password: System.get_env("DATABASE_PASSWORD", "caputo"),
   database: System.get_env("DATABASE_NAME", "trade_machine"),
-  hostname: System.get_env("DATABASE_HOST", "159.89.122.97"),
-  port: String.to_integer(System.get_env("DATABASE_PORT", "5432")),
+  hostname: System.get_env("DATABASE_HOST", "localhost"),
+  port: String.to_integer(System.get_env("DATABASE_PORT", "5438")),
   show_sensitive_data_on_connection_error: true,
   pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE", "10")),
-  after_connect: {Postgrex, :query!, query_args}
+  after_connect: {Postgrex, :query!, query_args},
+  migration_source: "schema_migrations"
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
@@ -77,15 +78,12 @@ config :trade_machine, TradeMachineWeb.Endpoint,
 # config :logger, :console, format: "[$level] $message\n"
 
 config :logger,
-  backends: [{LoggerFileBackend, :debug_log}],
-  utc_log: true,
-  handle_otp_reports: true
+  backends: [:console],
+  level: :debug
 
-config :logger, :debug_log,
-  path: "./test_log.log",
-  level: :debug,
-  metadata: :all,
-  format: {LogFormatter, :format}
+config :logger, :console,
+  format: {LogFormatter, :format},
+  metadata: [:request_id, :user_id, :mfa, :file, :line]
 
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.

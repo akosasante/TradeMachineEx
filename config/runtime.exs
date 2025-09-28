@@ -27,7 +27,7 @@ config :trade_machine, TradeMachineWeb.Endpoint,
     host: System.get_env("PHX_HOST") || "localhost",
     port: String.to_integer(System.get_env("PORT") || "4000")
   ],
-  secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
+  secret_key_base: (if config_env() == :prod, do: System.fetch_env!("SECRET_KEY_BASE"), else: "eSr80uBsxpy9nSvPKgFaLtPz+SMFDXa54wB4+IKMEcGUtFmVeaHpFYkpHXhX5GlN"),
   server: true
 
 # Google Sheets credentials configuration
@@ -103,6 +103,30 @@ else
     ]
 end
 
+# Emailing
+if config_env() == :prod do
+  config :trade_machine, TradeMachine.Mailer,
+    adapter: Swoosh.Adapters.Brevo,
+    api_key: System.fetch_env!("BREVO_API_KEY"),
+    from_email: "tradebot@flexfoxfantasy.com",
+    from_name: "FlexFox Fantasy TradeMachine"
+else
+  config :trade_machine, TradeMachine.Mailer,
+    from_email: "tradebot@flexfoxfantasy.com",
+    from_name: "FlexFox Fantasy TradeMachine"
+end
+
+# CSS inlining for emails
+config :premailex, :html_parser, Premailex.HTMLParser.Floki
+
 # Application-specific configuration
 config :trade_machine,
   upload_grafana_dashboards_on_start: config_env() == :dev
+
+if config_env() != :prod do
+  config :trade_machine, :frontend_url, "http://localhost:3031"
+else
+  config :trade_machine,
+         :frontend_url,
+         System.fetch_env!("FRONTEND_URL")
+end

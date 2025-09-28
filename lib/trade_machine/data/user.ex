@@ -7,6 +7,8 @@ defmodule TradeMachine.Data.User do
   require Logger
   require Ecto.Query
 
+  @derive {Swoosh.Email.Recipient, name: :display_name, address: :email}
+
   typed_schema "user" do
     field(:display_name, :string, null: false)
     field(:email, :string, null: false)
@@ -29,6 +31,10 @@ defmodule TradeMachine.Data.User do
   def changeset(struct \\ %__MODULE__{}, params \\ %{}) do
     struct
     |> cast(params, [])
+  end
+
+  def get_by_id(id) when is_binary(id) do
+    Repo.get(__MODULE__, id)
   end
 
   @spec get_user_by_csv_name(String.t()) :: __MODULE__.t() | nil

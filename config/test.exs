@@ -35,3 +35,6 @@ config :logger, level: :warn
 config :trade_machine, Oban,
   plugins: false,
   queues: false
+
+# Emailing
+config :trade_machine, TradeMachine.Mailer, adapter: Swoosh.Adapters.Test

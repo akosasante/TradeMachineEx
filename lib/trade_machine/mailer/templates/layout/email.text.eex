@@ -1,0 +1,7 @@
+FlexFox Fantasy TradeMachine
+
+<%= @inner_content %>
+
+---
+This email was sent from FlexFox Fantasy TradeMachine
+If you have any questions, please reach out to league admins.

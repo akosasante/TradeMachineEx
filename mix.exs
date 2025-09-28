@@ -15,7 +15,7 @@ defmodule TradeMachine.MixProject do
       deps: deps(),
       releases: [
         trade_machine: [
-          cookie: "TEST_COOKIE"
+          cookie: System.get_env("RELEASE_COOKIE", "dev_cookie_please_change_in_production")
         ]
       ]
     ]
@@ -27,7 +27,7 @@ defmodule TradeMachine.MixProject do
   def application do
     [
       mod: {TradeMachine.Application, []},
-      extra_applications: [:logger, :runtime_tools, :logger_file_backend]
+      extra_applications: [:logger, :runtime_tools]
     ]
   end
 
@@ -40,29 +40,32 @@ defmodule TradeMachine.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:bandit, "~> 1.0"},
+      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
+      {:ecto_sql, "~> 3.7"},
+      {:esbuild, "~> 0.4", runtime: Mix.env() == :dev},
+      {:gettext, "~> 0.19.1"},
+      {:goth, "~> 1.3-rc"},
+      {:google_api_sheets, "~> 0.29.3"},
+      {:jason, "~> 1.3"},
+      {:oban, "~> 2.19"},
       {:phoenix, "~> 1.8"},
+      {:phoenix_ecto, "~> 4.6"},
       {:phoenix_html, "~> 4.0"},
       {:phoenix_html_helpers, "~> 1.0"},
-      {:phoenix_view, "~> 2.0"},
-      {:phoenix_ecto, "~> 4.6"},
       {:phoenix_live_dashboard, "~> 0.8"},
       {:phoenix_live_reload, "~> 1.5", only: :dev},
       {:phoenix_live_view, "~> 1.0"},
-      {:ecto_sql, "~> 3.7"},
-      {:esbuild, "~> 0.4", runtime: Mix.env() == :dev},
+      {:phoenix_swoosh, "~> 1.2"},
+      {:phoenix_view, "~> 2.0"},
       {:postgrex, ">= 0.0.0"},
+      {:premailex, "~> 0.3.0"},
+      {:prom_ex, "~> 1.8"},
+      {:req, "~> 0.5"},
+      {:swoosh, "~> 1.19"},
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
-      {:gettext, "~> 0.19.1"},
-      {:jason, "~> 1.3"},
-      {:bandit, "~> 1.0"},
-      {:oban, "~> 2.11"},
-      {:goth, "~> 1.3-rc"},
-      {:google_api_sheets, "~> 0.29.3"},
-      {:logger_file_backend, "~> 0.0.13"},
-      {:prom_ex, "~> 1.8"},
-      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:typed_ecto_schema, "~> 0.4.0", runtime: false}
     ]
   end

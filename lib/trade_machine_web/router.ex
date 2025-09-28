@@ -48,4 +48,13 @@ defmodule TradeMachineWeb.Router do
       live_dashboard "/dashboard", metrics: TradeMachineWeb.Telemetry
     end
   end
+
+  # Preview Swoosh Emails in development
+  if Mix.env() == :dev do
+    scope "/dev" do
+      pipe_through [:browser]
+
+      forward "/mailbox", Plug.Swoosh.MailboxPreview
+    end
+  end
 end
