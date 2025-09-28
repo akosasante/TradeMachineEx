@@ -69,6 +69,23 @@ config :trade_machine, TradeMachine.Mailer,
   from_email: "trademachine@flexfoxfantasy.com",
   from_name: "Flex Fox Fantasy TradeMachine"
 
+# OpenTelemetry configuration
+# Get version from mix project
+app_version = Mix.Project.config()[:version]
+
+config :opentelemetry,
+  service_name: "trademachine-elixir",
+  service_version: app_version
+
+config :opentelemetry, :resource,
+  service: %{
+    name: "trademachine-elixir",
+    version: app_version
+  },
+  deployment: %{
+    environment: Mix.env()
+  }
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{Mix.env()}.exs"

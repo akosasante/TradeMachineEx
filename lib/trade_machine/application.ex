@@ -7,6 +7,9 @@ defmodule TradeMachine.Application do
   require Logger
 
   def start(_type, _args) do
+    # Initialize OpenTelemetry tracing
+    initialize_telemetry()
+
     # Google Sheets integration is optional
     goth_child =
       case Application.get_env(:trade_machine, :sheets_creds_filepath) do
@@ -86,5 +89,20 @@ defmodule TradeMachine.Application do
       Logger.info("Skipping PromEx dashboard upload (Grafana not configured)")
       []
     end
+  end
+
+  # Initialize OpenTelemetry with instrumentation libraries
+  defp initialize_telemetry do
+    Logger.info("Initializing OpenTelemetry tracing")
+
+    # Configure OpenTelemetry instrumentations
+    OpentelemetryOban.setup()
+    OpentelemetryEcto.setup([:trade_machine, :repo], [time_unit: :millisecond])
+    OpentelemetryFinch.setup()
+
+    Logger.info("OpenTelemetry tracing initialized successfully")
+  rescue
+    error ->
+      Logger.error("Failed to initialize OpenTelemetry: #{inspect(error)}")
   end
 end

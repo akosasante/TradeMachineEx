@@ -130,3 +130,61 @@ else
          :frontend_url,
          System.fetch_env!("FRONTEND_URL")
 end
+
+# OpenTelemetry runtime configuration
+# Configure OTLP exporter to send traces to the same endpoint as TypeScript server
+config :opentelemetry_exporter,
+  otlp_endpoint: System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT") || "http://localhost:4318/v1/traces"
+
+# Optional: Configure trace sampling
+if System.get_env("OTEL_TRACES_SAMPLER") == "traceidratio" do
+  sampling_ratio =
+    case System.get_env("OTEL_TRACES_SAMPLER_ARG") do
+      nil -> 0.1  # Default 10% sampling
+      arg -> String.to_float(arg)
+    end
+
+  config :opentelemetry, :processors,
+    otel_batch_processor: %{
+      exporter: {:opentelemetry_exporter, :otlp_traces},
+      config: %{
+        scheduled_delay_ms: 5_000,
+        max_queue_size: 2048,
+        export_timeout_ms: 30_000,
+        max_export_batch_size: 512
+      }
+    }
+
+  config :opentelemetry, :sampler, {:trace_id_ratio_based, sampling_ratio}
+else
+  # Default processor configuration
+  config :opentelemetry, :processors,
+    otel_batch_processor: %{
+      exporter: {:opentelemetry_exporter, :otlp_traces}
+    }
+end
+
+# Add OpenTelemetry resource attributes from environment
+# Get application version at runtime
+app_version = Application.spec(:trade_machine, :vsn) |> to_string()
+
+resource_attributes = %{
+  service: %{
+    name: System.get_env("OTEL_SERVICE_NAME") || "trademachine-elixir",
+    version: System.get_env("OTEL_SERVICE_VERSION") || app_version
+  },
+  deployment: %{
+    environment: Atom.to_string(config_env())
+  }
+}
+
+# Add additional resource attributes if provided
+if container_id = System.get_env("CONTAINER_ID") do
+  resource_attributes = put_in(resource_attributes, [:container, :id], container_id)
+end
+
+if instance_id = System.get_env("INSTANCE_ID") do
+  resource_attributes = put_in(resource_attributes, [:service, :instance, :id], instance_id)
+end
+
+config :opentelemetry, :resource, resource_attributes
