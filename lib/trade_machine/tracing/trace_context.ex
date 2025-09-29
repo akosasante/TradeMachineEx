@@ -2,10 +2,13 @@ defmodule TradeMachine.Tracing.TraceContext do
   @moduledoc """
   Utilities for extracting and managing OpenTelemetry trace context
   from Oban job arguments to maintain distributed tracing.
+
+  Uses proper W3C Trace Context propagation via Erlang OpenTelemetry APIs
+  to create true parent-child relationships in distributed traces.
   """
 
   require Logger
-  require OpenTelemetry.Tracer
+  require OpenTelemetry.Tracer, as: Tracer
 
   @doc """
   Extracts trace context from Oban job args and executes a function within that context.
@@ -41,32 +44,73 @@ defmodule TradeMachine.Tracing.TraceContext do
       end)
   """
   def with_extracted_context(job_args, span_name, span_attributes \\ %{}, fun) do
+    Logger.debug("TraceContext.with_extracted_context called",
+      span_name: span_name, job_args_keys: Map.keys(job_args))
+
     case extract_trace_context(job_args) do
       {:ok, trace_context} ->
-        Logger.debug("Extracted trace context from job args: #{inspect(trace_context)}")
+        traceparent = Map.get(trace_context, "traceparent", "")
+        tracestate = Map.get(trace_context, "tracestate", "")
+        Logger.info("Extracted trace context, traceparent: #{traceparent}")
 
-        # Convert trace context to OpenTelemetry span context
-        span_context = parse_trace_context(trace_context)
+        # Use proper OpenTelemetry context propagation
+        # Normalize headers for extraction as per documentation
+        normalized_headers = [{"traceparent", traceparent}]
+        normalized_headers = if tracestate != "",
+          do: [{"tracestate", tracestate} | normalized_headers],
+          else: normalized_headers
 
-        # Create and execute within a span using the extracted context
-        OpenTelemetry.Tracer.with_span(
-          span_name,
-          %{
-            parent: span_context,
-            attributes: span_attributes
-          },
-          fun
-        )
+        try do
+          # Extract context using the official OpenTelemetry propagation API
+          :otel_propagator_text_map.extract(normalized_headers)
+          Logger.debug("Context extracted using otel_propagator_text_map")
+
+          # Add debugging attributes for trace correlation
+          enhanced_attributes = Map.merge(span_attributes, %{
+            "trace.distributed" => true,
+            "trace.parent.traceparent" => traceparent,
+            "trace.extracted_with" => "otel_propagator_text_map"
+          })
+
+          # Create span within the extracted context
+          result = Tracer.with_span span_name, enhanced_attributes do
+            fun.()
+          end
+
+          Logger.debug("Distributed span execution completed with context propagation")
+          result
+
+        rescue
+          error ->
+            Logger.error("Error in context extraction: #{inspect(error)}")
+
+            # Fallback to correlation attributes approach
+            parsed_traceparent = parse_traceparent(trace_context)
+            correlation_attributes = Map.merge(span_attributes, %{
+              "trace.distributed" => true,
+              "trace.parent.traceparent" => traceparent,
+              "trace.parent.trace_id" => parsed_traceparent.trace_id,
+              "trace.parent.span_id" => parsed_traceparent.span_id,
+              "trace.extraction_error" => inspect(error)
+            })
+
+            result = Tracer.with_span span_name, correlation_attributes do
+              fun.()
+            end
+
+            Logger.info("Fallback span execution completed with correlation attributes")
+            result
+        end
 
       {:error, reason} ->
-        Logger.debug("No trace context found in job args, creating new trace: #{reason}")
+        Logger.debug("No trace context found in job args: #{reason}")
 
         # Create a new root span if no trace context is available
-        OpenTelemetry.Tracer.with_span(
-          span_name,
-          %{attributes: span_attributes},
-          fun
-        )
+        result = Tracer.with_span span_name, span_attributes do
+          fun.()
+        end
+
+        result
     end
   end
 
@@ -95,57 +139,42 @@ defmodule TradeMachine.Tracing.TraceContext do
     {:error, "no trace_context found in job args"}
   end
 
-  # Parse W3C trace context headers into OpenTelemetry span context
-  defp parse_trace_context(%{"traceparent" => traceparent} = trace_context) do
-    case parse_traceparent(traceparent) do
-      {:ok, {trace_id, span_id, trace_flags}} ->
-        tracestate = Map.get(trace_context, "tracestate", "")
-
-        OpenTelemetry.trace_context_from_hex(
-          trace_id,
-          span_id,
-          trace_flags,
-          tracestate
-        )
-
-      {:error, _reason} ->
-        nil
-    end
-  end
-
-  defp parse_trace_context(_) do
-    nil
-  end
-
-  # Parse W3C traceparent header format:
-  # 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
-  defp parse_traceparent(traceparent) when is_binary(traceparent) do
-    case String.split(traceparent, "-") do
-      [version, trace_id, span_id, trace_flags] when version == "00" ->
-        try do
-          trace_id_int = String.to_integer(trace_id, 16)
-          span_id_int = String.to_integer(span_id, 16)
-          trace_flags_int = String.to_integer(trace_flags, 16)
-
-          {:ok, {trace_id_int, span_id_int, trace_flags_int}}
-        rescue
-          ArgumentError ->
-            {:error, "invalid hex values in traceparent"}
-        end
-
-      _ ->
-        {:error, "invalid traceparent format"}
-    end
-  end
-
-  defp parse_traceparent(_), do: {:error, "traceparent is not a string"}
-
   # Check if trace context has the minimum required headers
   defp has_valid_trace_headers?(%{"traceparent" => traceparent}) when is_binary(traceparent) do
     String.match?(traceparent, ~r/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/)
   end
 
   defp has_valid_trace_headers?(_), do: false
+
+  # Parse W3C traceparent header: "00-{trace_id}-{parent_span_id}-{flags}"
+  defp parse_traceparent(%{"traceparent" => traceparent}) when is_binary(traceparent) do
+    case String.split(traceparent, "-") do
+      ["00", trace_id, span_id, flags] when byte_size(trace_id) == 32 and byte_size(span_id) == 16 and byte_size(flags) == 2 ->
+        %{
+          version: "00",
+          trace_id: trace_id,
+          span_id: span_id,
+          flags: flags
+        }
+
+      _ ->
+        %{
+          version: "unknown",
+          trace_id: "unknown",
+          span_id: "unknown",
+          flags: "unknown"
+        }
+    end
+  end
+
+  defp parse_traceparent(_) do
+    %{
+      version: "missing",
+      trace_id: "missing",
+      span_id: "missing",
+      flags: "missing"
+    }
+  end
 
   @doc """
   Adds custom attributes to the current active span.
@@ -161,7 +190,7 @@ defmodule TradeMachine.Tracing.TraceContext do
       })
   """
   def add_span_attributes(attributes) when is_map(attributes) do
-    OpenTelemetry.Tracer.set_attributes(attributes)
+    Tracer.set_attributes(attributes)
   end
 
   @doc """
@@ -175,7 +204,7 @@ defmodule TradeMachine.Tracing.TraceContext do
       TraceContext.add_span_event("email_sent", %{provider: "brevo", status: "success"})
   """
   def add_span_event(name, attributes \\ %{}) do
-    OpenTelemetry.Tracer.add_event(name, attributes)
+    Tracer.add_event(name, attributes)
   end
 
   @doc """
@@ -189,6 +218,51 @@ defmodule TradeMachine.Tracing.TraceContext do
       TraceContext.record_exception(error, %{retry_attempt: 2})
   """
   def record_exception(exception, attributes \\ %{}) do
-    OpenTelemetry.Tracer.record_exception(exception, attributes)
+    Tracer.record_exception(exception, attributes)
+  end
+
+  @doc """
+  Injects current trace context for outbound calls.
+
+  Returns trace headers that should be included when making HTTP requests
+  or creating jobs that need to continue the current trace.
+
+  ## Returns
+  A map with trace context headers like `%{"traceparent" => "...", "tracestate" => "..."}`
+
+  ## Example
+      trace_headers = TraceContext.inject_trace_context()
+      # Include in HTTP request headers or Oban job args
+      %{
+        "user_id" => user_id,
+        "trace_context" => trace_headers
+      }
+  """
+  def inject_trace_context() do
+    :otel_propagator_text_map.inject([])
+  end
+
+  @doc """
+  Creates a simple test span to verify OpenTelemetry export is working.
+  This helps debug if the issue is with span creation or distributed tracing.
+  """
+  def create_test_span(name \\ "test.span") do
+    Logger.info("Creating test span: #{name}")
+
+    result = Tracer.with_span name, %{
+      "test" => true,
+      "timestamp" => :os.system_time(:millisecond),
+      "service.name" => "trademachine-elixir"
+    } do
+      # Add some events to make it more visible
+      Tracer.add_event("test.start", %{action: "test_span_creation"})
+      Process.sleep(10) # Small delay to show duration
+      Tracer.add_event("test.end", %{result: "success"})
+
+      :test_span_completed
+    end
+
+    Logger.debug("Test span completed: #{name}")
+    result
   end
 end

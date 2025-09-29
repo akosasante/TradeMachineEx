@@ -6,21 +6,29 @@ defmodule TradeMachine.Jobs.EmailWorker do
   alias TradeMachine.Tracing.TraceContext
 
   @impl Oban.Worker
-  def perform(%Oban.Job{id: job_id, args: args} = job) do
+  def perform(%Oban.Job{id: job_id, args: args}) do
+    Logger.info("🚀 EmailWorker.perform called", job_id: job_id, args: args)
+
     # Extract trace context and continue distributed trace
-    TraceContext.with_extracted_context(
+    result = TraceContext.with_extracted_context(
       args,
-      "email_job.process",
+      "trademachine.elixir.email_worker.execute",
       %{
-        job_id: job_id,
-        queue: "emails",
-        worker: "EmailWorker",
-        email_type: Map.get(args, "email_type")
+        "oban.job_id" => job_id,
+        "oban.queue" => "emails",
+        "oban.worker" => "TradeMachine.Jobs.EmailWorker",
+        "email.type" => Map.get(args, "email_type"),
+        "service.name" => "trademachine-elixir",
+        "component" => "email_worker"
       },
       fn ->
+        Logger.info("📧 Inside TraceContext.with_extracted_context, executing email job")
         execute_email_job(args)
       end
     )
+
+    Logger.info("✅ EmailWorker.perform completed", job_id: job_id, result: inspect(result))
+    result
   end
 
   # Execute the actual email job logic within the trace context

@@ -53,7 +53,7 @@ if config_env() == :prod do
 
   config :logger, :console,
     format: {LogFormatter, :format},
-    metadata: [:request_id, :user_id, :mfa, :file, :line]
+    metadata: [:request_id, :user_id, :mfa, :file, :line, :email_type, :data, :error, :job_id, :queue, :worker]
 else
   # Development logging with unified formatter
   config :logger,
@@ -62,7 +62,7 @@ else
 
   config :logger, :console,
     format: {LogFormatter, :format},
-    metadata: [:request_id, :user_id, :mfa, :file, :line]
+    metadata: [:request_id, :user_id, :mfa, :file, :line, :email_type, :data, :error, :job_id, :queue, :worker]
 end
 
 # Oban configuration with environment-based settings
@@ -135,11 +135,29 @@ else
          System.fetch_env!("FRONTEND_URL")
 end
 
-# OpenTelemetry runtime configuration
-# Configure OTLP exporter to send traces to the same endpoint as TypeScript server
+# OpenTelemetry runtime configuration - using official documented format
+otlp_endpoint = System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT") || "http://localhost:4318"
+
+# OpenTelemetry configuration - using working approach with custom processor config
+config :opentelemetry,
+  span_processor: :batch,
+  traces_exporter: :otlp
+
+# Custom batch processor configuration to ensure faster exports for debugging
+config :opentelemetry, :processors,
+  otel_batch_processor: %{
+    exporter: {:opentelemetry_exporter, :otlp_traces},
+    config: %{
+      scheduled_delay_ms: 1_000,  # Export every 1 second for debugging
+      max_queue_size: 2048,
+      export_timeout_ms: 30_000,
+      max_export_batch_size: 512
+    }
+  }
+
 config :opentelemetry_exporter,
-  otlp_endpoint:
-    System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT") || "http://localhost:4318/v1/traces"
+  otlp_protocol: :http_protobuf,
+  otlp_endpoint: otlp_endpoint
 
 # Optional: Configure trace sampling
 if System.get_env("OTEL_TRACES_SAMPLER") == "traceidratio" do
@@ -150,30 +168,14 @@ if System.get_env("OTEL_TRACES_SAMPLER") == "traceidratio" do
       arg -> String.to_float(arg)
     end
 
-  config :opentelemetry, :processors,
-    otel_batch_processor: %{
-      exporter: {:opentelemetry_exporter, :otlp_traces},
-      config: %{
-        scheduled_delay_ms: 5_000,
-        max_queue_size: 2048,
-        export_timeout_ms: 30_000,
-        max_export_batch_size: 512
-      }
-    }
-
   config :opentelemetry, :sampler, {:trace_id_ratio_based, sampling_ratio}
-else
-  # Default processor configuration
-  config :opentelemetry, :processors,
-    otel_batch_processor: %{
-      exporter: {:opentelemetry_exporter, :otlp_traces}
-    }
 end
 
 # Add OpenTelemetry resource attributes from environment
 # Get application version at runtime
 app_version = Application.spec(:trade_machine, :vsn) |> to_string()
 
+# Standard OpenTelemetry resource attributes
 resource_attributes = %{
   service: %{
     name: System.get_env("OTEL_SERVICE_NAME") || "trademachine-elixir",
@@ -183,14 +185,5 @@ resource_attributes = %{
     environment: Atom.to_string(config_env())
   }
 }
-
-# Add additional resource attributes if provided
-if container_id = System.get_env("CONTAINER_ID") do
-  resource_attributes = put_in(resource_attributes, [:container, :id], container_id)
-end
-
-if instance_id = System.get_env("INSTANCE_ID") do
-  resource_attributes = put_in(resource_attributes, [:service, :instance, :id], instance_id)
-end
 
 config :opentelemetry, :resource, resource_attributes
