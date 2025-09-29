@@ -22,6 +22,8 @@
 # If the VM crashes, it generates a dump, let's ignore it too.
 erl_crash.dump
 
+.erlang.cookie
+
 # Also ignore archive artifacts (built via "mix archive.build").
 *.ez
 
