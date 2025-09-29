@@ -33,6 +33,16 @@ defmodule TradeMachineWeb.Router do
   #   pipe_through :api
   # end
 
+  # Debug endpoints for OpenTelemetry tracing (dev/test only)
+  if Mix.env() in [:dev, :test] do
+    scope "/debug", TradeMachineWeb do
+      pipe_through :api
+
+      get "/trace", DebugController, :trace
+      get "/distributed-trace", DebugController, :distributed_trace
+    end
+  end
+
   # Enables LiveDashboard only for development
   #
   # If you want to use the LiveDashboard in production, you should put

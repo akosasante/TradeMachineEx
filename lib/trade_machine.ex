@@ -8,6 +8,6 @@ defmodule TradeMachine do
   """
 
   def ping do
-    IO.puts("pong")
+    "pong"
   end
 end

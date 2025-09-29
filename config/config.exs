@@ -33,7 +33,20 @@ config :trade_machine,
 config :logger,
        :console,
        format: "$time $metadata[$level] $message\n",
-       metadata: [:request_id]
+       metadata: [
+         :request_id,
+         :email_type,
+         :data,
+         :user_id,
+         :error,
+         :job_id,
+         :queue,
+         :worker,
+         :span_name,
+         :job_args_keys,
+         :result,
+         :args
+       ]
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
@@ -68,6 +81,23 @@ config :trade_machine, TradeMachine.Mailer,
   adapter: Swoosh.Adapters.Local,
   from_email: "trademachine@flexfoxfantasy.com",
   from_name: "Flex Fox Fantasy TradeMachine"
+
+# OpenTelemetry configuration
+# Get version from mix project
+app_version = Mix.Project.config()[:version]
+
+config :opentelemetry,
+  service_name: "trademachine-elixir",
+  service_version: app_version
+
+config :opentelemetry, :resource,
+  service: %{
+    name: "trademachine-elixir",
+    version: app_version
+  },
+  deployment: %{
+    environment: Mix.env()
+  }
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

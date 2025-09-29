@@ -27,7 +27,11 @@ config :trade_machine, TradeMachineWeb.Endpoint,
     host: System.get_env("PHX_HOST") || "localhost",
     port: String.to_integer(System.get_env("PORT") || "4000")
   ],
-  secret_key_base: (if config_env() == :prod, do: System.fetch_env!("SECRET_KEY_BASE"), else: "eSr80uBsxpy9nSvPKgFaLtPz+SMFDXa54wB4+IKMEcGUtFmVeaHpFYkpHXhX5GlN"),
+  secret_key_base:
+    if(config_env() == :prod,
+      do: System.fetch_env!("SECRET_KEY_BASE"),
+      else: "eSr80uBsxpy9nSvPKgFaLtPz+SMFDXa54wB4+IKMEcGUtFmVeaHpFYkpHXhX5GlN"
+    ),
   server: true
 
 # Google Sheets credentials configuration
@@ -49,7 +53,19 @@ if config_env() == :prod do
 
   config :logger, :console,
     format: {LogFormatter, :format},
-    metadata: [:request_id, :user_id, :mfa, :file, :line]
+    metadata: [
+      :request_id,
+      :user_id,
+      :mfa,
+      :file,
+      :line,
+      :email_type,
+      :data,
+      :error,
+      :job_id,
+      :queue,
+      :worker
+    ]
 else
   # Development logging with unified formatter
   config :logger,
@@ -58,7 +74,19 @@ else
 
   config :logger, :console,
     format: {LogFormatter, :format},
-    metadata: [:request_id, :user_id, :mfa, :file, :line]
+    metadata: [
+      :request_id,
+      :user_id,
+      :mfa,
+      :file,
+      :line,
+      :email_type,
+      :data,
+      :error,
+      :job_id,
+      :queue,
+      :worker
+    ]
 end
 
 # Oban configuration with environment-based settings
@@ -130,3 +158,57 @@ else
          :frontend_url,
          System.fetch_env!("FRONTEND_URL")
 end
+
+# OpenTelemetry runtime configuration - using official documented format
+otlp_endpoint = System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT") || "http://localhost:4318"
+
+# OpenTelemetry configuration - using working approach with custom processor config
+config :opentelemetry,
+  span_processor: :batch,
+  traces_exporter: :otlp
+
+# Custom batch processor configuration to ensure faster exports for debugging
+config :opentelemetry, :processors,
+  otel_batch_processor: %{
+    exporter: {:opentelemetry_exporter, :otlp_traces},
+    config: %{
+      # Export every 1 second for debugging
+      scheduled_delay_ms: 1_000,
+      max_queue_size: 2048,
+      export_timeout_ms: 30_000,
+      max_export_batch_size: 512
+    }
+  }
+
+config :opentelemetry_exporter,
+  otlp_protocol: :http_protobuf,
+  otlp_endpoint: otlp_endpoint
+
+# Optional: Configure trace sampling
+if System.get_env("OTEL_TRACES_SAMPLER") == "traceidratio" do
+  sampling_ratio =
+    case System.get_env("OTEL_TRACES_SAMPLER_ARG") do
+      # Default 10% sampling
+      nil -> 0.1
+      arg -> String.to_float(arg)
+    end
+
+  config :opentelemetry, :sampler, {:trace_id_ratio_based, sampling_ratio}
+end
+
+# Add OpenTelemetry resource attributes from environment
+# Get application version at runtime
+app_version = Application.spec(:trade_machine, :vsn) |> to_string()
+
+# Standard OpenTelemetry resource attributes
+resource_attributes = %{
+  service: %{
+    name: System.get_env("OTEL_SERVICE_NAME") || "trademachine-elixir",
+    version: System.get_env("OTEL_SERVICE_VERSION") || app_version
+  },
+  deployment: %{
+    environment: Atom.to_string(config_env())
+  }
+}
+
+config :opentelemetry, :resource, resource_attributes

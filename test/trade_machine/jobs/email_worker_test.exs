@@ -6,6 +6,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
 
   alias TradeMachine.Data.User
   alias TradeMachine.Jobs.EmailWorker
+  alias TradeMachine.Tracing.TraceContext
 
   setup do
     # Enable Ecto.Adapters.SQL.Sandbox for database isolation
@@ -90,7 +91,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       EmailWorker.new(job_args) |> Oban.insert!()
 
       # Assert job was enqueued with correct args
-      assert_enqueued worker: EmailWorker, args: %{email_type: "reset_password", data: user.id}
+      assert_enqueued(worker: EmailWorker, args: %{email_type: "reset_password", data: user.id})
     end
 
     test "uses correct queue and max_attempts" do
@@ -108,7 +109,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
 
       # Also verify by enqueuing and checking with assert_enqueued
       EmailWorker.new(job_args) |> Oban.insert!()
-      assert_enqueued queue: "emails", worker: EmailWorker
+      assert_enqueued(queue: "emails", worker: EmailWorker)
     end
 
     test "job processes successfully when enqueued and performed" do
@@ -122,7 +123,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       # Test the full flow: enqueue and perform
       EmailWorker.new(job_args) |> Oban.insert!()
 
-      assert_enqueued worker: EmailWorker, args: job_args
+      assert_enqueued(worker: EmailWorker, args: job_args)
       assert :ok = perform_job(EmailWorker, job_args)
 
       # Assert email was sent
@@ -151,6 +152,127 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       # Assert both emails were sent
       assert_email_sent(to: [{"Test User", "test@example.com"}])
       assert_email_sent(to: [{"User Two", "user2@example.com"}])
+    end
+  end
+
+  describe "distributed tracing integration" do
+    test "processes email with trace context successfully" do
+      user = insert_user()
+
+      job_args = %{
+        "email_type" => "reset_password",
+        "data" => user.id,
+        "trace_context" => %{
+          "traceparent" => "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+          "tracestate" => "grafana=sessionId:abc123"
+        }
+      }
+
+      # Test that the job completes successfully with trace context
+      assert :ok = perform_job(EmailWorker, job_args)
+
+      # Assert email was sent (tracing should not interfere with core functionality)
+      assert_email_sent(
+        subject: "Password Reset Instructions",
+        to: [{"Test User", "test@example.com"}]
+      )
+    end
+
+    test "processes email without trace context successfully" do
+      user = insert_user()
+
+      job_args = %{
+        "email_type" => "reset_password",
+        "data" => user.id
+      }
+
+      # Test that the job completes successfully without trace context
+      assert :ok = perform_job(EmailWorker, job_args)
+
+      # Assert email was sent (should work normally without tracing)
+      assert_email_sent(
+        subject: "Password Reset Instructions",
+        to: [{"Test User", "test@example.com"}]
+      )
+    end
+
+    test "handles invalid trace context gracefully" do
+      user = insert_user()
+
+      job_args = %{
+        "email_type" => "reset_password",
+        "data" => user.id,
+        "trace_context" => %{
+          "traceparent" => "invalid-format"
+        }
+      }
+
+      # Test that the job completes successfully even with invalid trace context
+      assert :ok = perform_job(EmailWorker, job_args)
+
+      # Assert email was sent (invalid tracing should not break email functionality)
+      assert_email_sent(
+        subject: "Password Reset Instructions",
+        to: [{"Test User", "test@example.com"}]
+      )
+    end
+
+    test "trace context extraction does not interfere with error handling" do
+      non_existent_user_id = Ecto.UUID.generate()
+
+      job_args = %{
+        "email_type" => "reset_password",
+        "data" => non_existent_user_id,
+        "trace_context" => %{
+          "traceparent" => "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        }
+      }
+
+      # Test that error handling still works correctly with trace context
+      assert {:error, :user_not_found} = perform_job(EmailWorker, job_args)
+
+      # Assert no email was sent
+      refute_email_sent()
+    end
+
+    test "logs trace context information when present" do
+      user = insert_user()
+
+      job_args = %{
+        "email_type" => "reset_password",
+        "data" => user.id,
+        "trace_context" => %{
+          "traceparent" => "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        }
+      }
+
+      # Capture logs to verify trace context logging
+      log_output =
+        ExUnit.CaptureLog.capture_log(fn ->
+          perform_job(EmailWorker, job_args)
+        end)
+
+      # Should log that trace context was extracted
+      assert log_output =~ "Extracted trace context"
+      assert log_output =~ "4bf92f3577b34da6a3ce929d0e0e4736"
+    end
+
+    test "logs when no trace context is found" do
+      user = insert_user()
+
+      job_args = %{
+        "email_type" => "reset_password",
+        "data" => user.id
+      }
+
+      # Capture logs to verify no trace context logging
+      log_output =
+        ExUnit.CaptureLog.capture_log([level: :debug], fn ->
+          perform_job(EmailWorker, job_args)
+        end)
+
+      # Should log that no trace context was found
+      assert log_output =~ "No trace context found in job args"
     end
   end
 
