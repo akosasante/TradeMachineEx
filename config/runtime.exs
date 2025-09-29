@@ -53,7 +53,19 @@ if config_env() == :prod do
 
   config :logger, :console,
     format: {LogFormatter, :format},
-    metadata: [:request_id, :user_id, :mfa, :file, :line, :email_type, :data, :error, :job_id, :queue, :worker]
+    metadata: [
+      :request_id,
+      :user_id,
+      :mfa,
+      :file,
+      :line,
+      :email_type,
+      :data,
+      :error,
+      :job_id,
+      :queue,
+      :worker
+    ]
 else
   # Development logging with unified formatter
   config :logger,
@@ -62,7 +74,19 @@ else
 
   config :logger, :console,
     format: {LogFormatter, :format},
-    metadata: [:request_id, :user_id, :mfa, :file, :line, :email_type, :data, :error, :job_id, :queue, :worker]
+    metadata: [
+      :request_id,
+      :user_id,
+      :mfa,
+      :file,
+      :line,
+      :email_type,
+      :data,
+      :error,
+      :job_id,
+      :queue,
+      :worker
+    ]
 end
 
 # Oban configuration with environment-based settings
@@ -148,7 +172,8 @@ config :opentelemetry, :processors,
   otel_batch_processor: %{
     exporter: {:opentelemetry_exporter, :otlp_traces},
     config: %{
-      scheduled_delay_ms: 1_000,  # Export every 1 second for debugging
+      # Export every 1 second for debugging
+      scheduled_delay_ms: 1_000,
       max_queue_size: 2048,
       export_timeout_ms: 30_000,
       max_export_batch_size: 512

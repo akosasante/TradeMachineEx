@@ -10,22 +10,23 @@ defmodule TradeMachine.Jobs.EmailWorker do
     Logger.info("🚀 EmailWorker.perform called", job_id: job_id, args: args)
 
     # Extract trace context and continue distributed trace
-    result = TraceContext.with_extracted_context(
-      args,
-      "trademachine.elixir.email_worker.execute",
-      %{
-        "oban.job_id" => job_id,
-        "oban.queue" => "emails",
-        "oban.worker" => "TradeMachine.Jobs.EmailWorker",
-        "email.type" => Map.get(args, "email_type"),
-        "service.name" => "trademachine-elixir",
-        "component" => "email_worker"
-      },
-      fn ->
-        Logger.info("📧 Inside TraceContext.with_extracted_context, executing email job")
-        execute_email_job(args)
-      end
-    )
+    result =
+      TraceContext.with_extracted_context(
+        args,
+        "trademachine.elixir.email_worker.execute",
+        %{
+          "oban.job_id" => job_id,
+          "oban.queue" => "emails",
+          "oban.worker" => "TradeMachine.Jobs.EmailWorker",
+          "email.type" => Map.get(args, "email_type"),
+          "service.name" => "trademachine-elixir",
+          "component" => "email_worker"
+        },
+        fn ->
+          Logger.info("📧 Inside TraceContext.with_extracted_context, executing email job")
+          execute_email_job(args)
+        end
+      )
 
     Logger.info("✅ EmailWorker.perform completed", job_id: job_id, result: inspect(result))
     result
@@ -55,10 +56,14 @@ defmodule TradeMachine.Jobs.EmailWorker do
             :ok
 
           {:error, reason} = error ->
-            TraceContext.record_exception(
-              %RuntimeError{message: "Email send failed: #{inspect(reason)}"},
-              %{email_type: email_type, user_id: data}
-            )
+            TraceContext.add_span_attributes(%{
+              "email.error.type" => email_type,
+              "email.error.user_id" => data
+            })
+
+            TraceContext.record_exception(%RuntimeError{
+              message: "Email send failed: #{inspect(reason)}"
+            })
 
             TraceContext.add_span_event("email.send.error", %{
               email_type: "reset_password",
@@ -76,10 +81,11 @@ defmodule TradeMachine.Jobs.EmailWorker do
       _ ->
         error_msg = "Unknown email type: #{email_type}"
 
-        TraceContext.record_exception(
-          %RuntimeError{message: error_msg},
-          %{email_type: email_type}
-        )
+        TraceContext.add_span_attributes(%{
+          "email.error.unknown_type" => email_type
+        })
+
+        TraceContext.record_exception(%RuntimeError{message: error_msg})
 
         TraceContext.add_span_event("email.send.error", %{
           error: "unknown_email_type",
@@ -95,10 +101,11 @@ defmodule TradeMachine.Jobs.EmailWorker do
   defp execute_email_job(args) do
     error_msg = "Invalid email job args: #{inspect(args)}"
 
-    TraceContext.record_exception(
-      %RuntimeError{message: error_msg},
-      %{job_args: inspect(args)}
-    )
+    TraceContext.add_span_attributes(%{
+      "email.error.invalid_args" => inspect(args)
+    })
+
+    TraceContext.record_exception(%RuntimeError{message: error_msg})
 
     Logger.error(error_msg)
     {:error, :invalid_args}

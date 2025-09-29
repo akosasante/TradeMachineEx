@@ -45,7 +45,9 @@ defmodule TradeMachine.Tracing.TraceContext do
   """
   def with_extracted_context(job_args, span_name, span_attributes \\ %{}, fun) do
     Logger.debug("TraceContext.with_extracted_context called",
-      span_name: span_name, job_args_keys: Map.keys(job_args))
+      span_name: span_name,
+      job_args_keys: Map.keys(job_args)
+    )
 
     case extract_trace_context(job_args) do
       {:ok, trace_context} ->
@@ -56,9 +58,11 @@ defmodule TradeMachine.Tracing.TraceContext do
         # Use proper OpenTelemetry context propagation
         # Normalize headers for extraction as per documentation
         normalized_headers = [{"traceparent", traceparent}]
-        normalized_headers = if tracestate != "",
-          do: [{"tracestate", tracestate} | normalized_headers],
-          else: normalized_headers
+
+        normalized_headers =
+          if tracestate != "",
+            do: [{"tracestate", tracestate} | normalized_headers],
+            else: normalized_headers
 
         try do
           # Extract context using the official OpenTelemetry propagation API
@@ -66,37 +70,41 @@ defmodule TradeMachine.Tracing.TraceContext do
           Logger.debug("Context extracted using otel_propagator_text_map")
 
           # Add debugging attributes for trace correlation
-          enhanced_attributes = Map.merge(span_attributes, %{
-            "trace.distributed" => true,
-            "trace.parent.traceparent" => traceparent,
-            "trace.extracted_with" => "otel_propagator_text_map"
-          })
+          enhanced_attributes =
+            Map.merge(span_attributes, %{
+              "trace.distributed" => true,
+              "trace.parent.traceparent" => traceparent,
+              "trace.extracted_with" => "otel_propagator_text_map"
+            })
 
           # Create span within the extracted context
-          result = Tracer.with_span span_name, enhanced_attributes do
-            fun.()
-          end
+          result =
+            Tracer.with_span span_name, enhanced_attributes do
+              fun.()
+            end
 
           Logger.debug("Distributed span execution completed with context propagation")
           result
-
         rescue
           error ->
             Logger.error("Error in context extraction: #{inspect(error)}")
 
             # Fallback to correlation attributes approach
             parsed_traceparent = parse_traceparent(trace_context)
-            correlation_attributes = Map.merge(span_attributes, %{
-              "trace.distributed" => true,
-              "trace.parent.traceparent" => traceparent,
-              "trace.parent.trace_id" => parsed_traceparent.trace_id,
-              "trace.parent.span_id" => parsed_traceparent.span_id,
-              "trace.extraction_error" => inspect(error)
-            })
 
-            result = Tracer.with_span span_name, correlation_attributes do
-              fun.()
-            end
+            correlation_attributes =
+              Map.merge(span_attributes, %{
+                "trace.distributed" => true,
+                "trace.parent.traceparent" => traceparent,
+                "trace.parent.trace_id" => parsed_traceparent.trace_id,
+                "trace.parent.span_id" => parsed_traceparent.span_id,
+                "trace.extraction_error" => inspect(error)
+              })
+
+            result =
+              Tracer.with_span span_name, correlation_attributes do
+                fun.()
+              end
 
             Logger.info("Fallback span execution completed with correlation attributes")
             result
@@ -106,9 +114,10 @@ defmodule TradeMachine.Tracing.TraceContext do
         Logger.debug("No trace context found in job args: #{reason}")
 
         # Create a new root span if no trace context is available
-        result = Tracer.with_span span_name, span_attributes do
-          fun.()
-        end
+        result =
+          Tracer.with_span span_name, span_attributes do
+            fun.()
+          end
 
         result
     end
@@ -149,7 +158,8 @@ defmodule TradeMachine.Tracing.TraceContext do
   # Parse W3C traceparent header: "00-{trace_id}-{parent_span_id}-{flags}"
   defp parse_traceparent(%{"traceparent" => traceparent}) when is_binary(traceparent) do
     case String.split(traceparent, "-") do
-      ["00", trace_id, span_id, flags] when byte_size(trace_id) == 32 and byte_size(span_id) == 16 and byte_size(flags) == 2 ->
+      ["00", trace_id, span_id, flags]
+      when byte_size(trace_id) == 32 and byte_size(span_id) == 16 and byte_size(flags) == 2 ->
         %{
           version: "00",
           trace_id: trace_id,
@@ -249,18 +259,20 @@ defmodule TradeMachine.Tracing.TraceContext do
   def create_test_span(name \\ "test.span") do
     Logger.info("Creating test span: #{name}")
 
-    result = Tracer.with_span name, %{
-      "test" => true,
-      "timestamp" => :os.system_time(:millisecond),
-      "service.name" => "trademachine-elixir"
-    } do
-      # Add some events to make it more visible
-      Tracer.add_event("test.start", %{action: "test_span_creation"})
-      Process.sleep(10) # Small delay to show duration
-      Tracer.add_event("test.end", %{result: "success"})
+    result =
+      Tracer.with_span name, %{
+        "test" => true,
+        "timestamp" => :os.system_time(:millisecond),
+        "service.name" => "trademachine-elixir"
+      } do
+        # Add some events to make it more visible
+        Tracer.add_event("test.start", %{action: "test_span_creation"})
+        # Small delay to show duration
+        Process.sleep(10)
+        Tracer.add_event("test.end", %{result: "success"})
 
-      :test_span_completed
-    end
+        :test_span_completed
+      end
 
     Logger.debug("Test span completed: #{name}")
     result
