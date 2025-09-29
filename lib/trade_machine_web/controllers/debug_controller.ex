@@ -39,20 +39,22 @@ defmodule TradeMachineWeb.DebugController do
       }
 
       # Test distributed tracing with the provided traceparent
-      result = TraceContext.with_extracted_context(
-        fake_job_args,
-        "debug.distributed.test",
-        %{
-          "test.type" => "distributed_trace_debug",
-          "service.name" => "trademachine-elixir"
-        },
-        fn ->
-          TraceContext.add_span_event("debug.distributed.test.start", %{})
-          Process.sleep(50)  # Add some duration
-          TraceContext.add_span_event("debug.distributed.test.end", %{result: "success"})
-          :distributed_test_completed
-        end
-      )
+      result =
+        TraceContext.with_extracted_context(
+          fake_job_args,
+          "debug.distributed.test",
+          %{
+            "test.type" => "distributed_trace_debug",
+            "service.name" => "trademachine-elixir"
+          },
+          fn ->
+            TraceContext.add_span_event("debug.distributed.test.start", %{})
+            # Add some duration
+            Process.sleep(50)
+            TraceContext.add_span_event("debug.distributed.test.end", %{result: "success"})
+            :distributed_test_completed
+          end
+        )
 
       conn
       |> put_status(200)
@@ -68,7 +70,8 @@ defmodule TradeMachineWeb.DebugController do
       |> put_status(400)
       |> json(%{
         error: "traceparent header required",
-        usage: "curl -H \"traceparent: 00-12345678901234567890123456789012-1234567890123456-01\" http://localhost:4000/debug/trace",
+        usage:
+          "curl -H \"traceparent: 00-12345678901234567890123456789012-1234567890123456-01\" http://localhost:4000/debug/trace",
         timestamp: DateTime.utc_now()
       })
     end

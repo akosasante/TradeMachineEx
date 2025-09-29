@@ -52,7 +52,6 @@ defmodule TradeMachineWeb.HealthController do
     |> json(%{status: "alive", timestamp: DateTime.utc_now()})
   end
 
-
   defp perform_health_checks do
     checks = %{
       database: database_check()
