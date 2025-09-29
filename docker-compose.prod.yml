@@ -3,6 +3,7 @@ services:
   # TradeMachineEx Application (Production)
   app:
     image: ${IMAGE_TAG:-ghcr.io/akosasante/trade-machine-ex:latest}
+    container_name: trade_machine_ex_app
     network_mode: "host" # Needed to connect to host's PostgreSQL
     environment:
       - MIX_ENV=prod
