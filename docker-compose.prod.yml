@@ -40,8 +40,9 @@ services:
       - GRAFANA_HOST=${GRAFANA_HOST:-}
       - GRAFANA_TOKEN=${GRAFANA_TOKEN:-}
 
-      # Email configuration (Brevo/SendInBlue)
+      # Email configuration (Brevo/SendInBlue) and data needed to populate emails
       - BREVO_API_KEY=${BREVO_API_KEY}
+      - FRONTEND_URL=${FRONTEND_URL:-trades.flexfoxfantasy.com}
 
     # Resource limits for production
     deploy:
