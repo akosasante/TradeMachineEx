@@ -136,6 +136,7 @@ if config_env() == :prod do
   config :trade_machine, TradeMachine.Mailer,
     adapter: Swoosh.Adapters.Brevo,
     api_key: System.fetch_env!("BREVO_API_KEY"),
+    finch_name: Swoosh.Finch,
     from_email: "tradebot@flexfoxfantasy.com",
     from_name: "FlexFox Fantasy TradeMachine"
 else

@@ -51,6 +51,8 @@ defmodule TradeMachine.Application do
           TradeMachineWeb.Telemetry,
           # Start the PubSub system (not currently in use for anything)
           {Phoenix.PubSub, name: TradeMachine.PubSub},
+          # Start Finch HTTP client (required for Swoosh email adapter)
+          {Finch, name: Swoosh.Finch},
           # Start Oban. This is the queue/job runner that we use to periodically process changes from the Google Sheet
           {Oban, Application.fetch_env!(:trade_machine, Oban)},
           # Start a GenServer whose job is just to keep the spreadsheet id and

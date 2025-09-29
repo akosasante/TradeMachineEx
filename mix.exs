@@ -45,6 +45,7 @@ defmodule TradeMachine.MixProject do
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:ecto_sql, "~> 3.7"},
       {:esbuild, "~> 0.4", runtime: Mix.env() == :dev},
+      {:finch, "~> 0.20"},
       {:gettext, "~> 0.19.1"},
       {:goth, "~> 1.3-rc"},
       {:google_api_sheets, "~> 0.29.3"},
