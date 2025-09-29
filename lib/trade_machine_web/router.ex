@@ -26,6 +26,8 @@ defmodule TradeMachineWeb.Router do
     get "/health", HealthController, :health
     get "/ready", HealthController, :ready
     get "/live", HealthController, :live
+    get "/debug/trace", HealthController, :debug_trace
+    get "/debug/distributed-trace", HealthController, :debug_distributed_trace
   end
 
   # Other scopes may use custom stacks.

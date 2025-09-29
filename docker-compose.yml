@@ -28,6 +28,13 @@ services:
       - GRAFANA_HOST=${GRAFANA_HOST}
       - GRAFANA_TOKEN=${GRAFANA_TOKEN}
       - GIT_SHA=${GIT_SHA}
+      # OpenTelemetry configuration
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME}
+      - OTEL_SERVICE_VERSION=${OTEL_SERVICE_VERSION}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
+      - OTEL_TRACES_SAMPLER=${OTEL_TRACES_SAMPLER}
+      - OTEL_TRACES_SAMPLER_ARG=${OTEL_TRACES_SAMPLER_ARG}
+      - OTEL_LOG_LEVEL=${OTEL_LOG_LEVEL}
     volumes:
       # Mount source code for development
       - .:/app
