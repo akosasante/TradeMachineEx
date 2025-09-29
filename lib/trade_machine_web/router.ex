@@ -26,14 +26,22 @@ defmodule TradeMachineWeb.Router do
     get "/health", HealthController, :health
     get "/ready", HealthController, :ready
     get "/live", HealthController, :live
-    get "/debug/trace", HealthController, :debug_trace
-    get "/debug/distributed-trace", HealthController, :debug_distributed_trace
   end
 
   # Other scopes may use custom stacks.
   # scope "/api", TradeMachineWeb do
   #   pipe_through :api
   # end
+
+  # Debug endpoints for OpenTelemetry tracing (dev/test only)
+  if Mix.env() in [:dev, :test] do
+    scope "/debug", TradeMachineWeb do
+      pipe_through :api
+
+      get "/trace", DebugController, :trace
+      get "/distributed-trace", DebugController, :distributed_trace
+    end
+  end
 
   # Enables LiveDashboard only for development
   #
