@@ -12,10 +12,9 @@ TradeMachineEx is the Elixir-based job processing service for the TradeMachine f
 ## Getting Started
 
 ### Prerequisites
-- Elixir 1.14+
-- Erlang/OTP 25+
+- Elixir 1.18+
+- Erlang/OTP 27+
 - PostgreSQL database
-- Redis (for job queues)
 
 ### Development Setup
 
