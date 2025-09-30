@@ -43,40 +43,17 @@ defmodule TradeMachine.Jobs.EmailWorker do
 
     case email_type do
       "reset_password" ->
-        TraceContext.add_span_event("email.send.start", %{type: "reset_password"})
+        handle_email_send(
+          "reset_password",
+          fn -> Mailer.send_password_reset_email(data) end,
+          data
+        )
 
-        case Mailer.send_password_reset_email(data) do
-          {:ok, _email} ->
-            TraceContext.add_span_event("email.send.success", %{
-              email_type: "reset_password",
-              provider: "brevo"
-            })
+      "registration" ->
+        handle_email_send("registration", fn -> Mailer.send_registration_email(data) end, data)
 
-            Logger.info("Password reset email sent successfully", user_id: data)
-            :ok
-
-          {:error, reason} = error ->
-            TraceContext.add_span_attributes(%{
-              "email.error.type" => email_type,
-              "email.error.user_id" => data
-            })
-
-            TraceContext.record_exception(%RuntimeError{
-              message: "Email send failed: #{inspect(reason)}"
-            })
-
-            TraceContext.add_span_event("email.send.error", %{
-              email_type: "reset_password",
-              error: inspect(reason)
-            })
-
-            Logger.error("Failed to send password reset email",
-              user_id: data,
-              error: inspect(reason)
-            )
-
-            error
-        end
+      "test" ->
+        handle_email_send("test", fn -> Mailer.send_test_email(data) end, data)
 
       _ ->
         error_msg = "Unknown email type: #{email_type}"
@@ -109,5 +86,43 @@ defmodule TradeMachine.Jobs.EmailWorker do
 
     Logger.error(error_msg)
     {:error, :invalid_args}
+  end
+
+  # Helper function to handle email sending with tracing and error handling
+  defp handle_email_send(email_type, send_fn, user_id) do
+    TraceContext.add_span_event("email.send.start", %{type: email_type})
+
+    case send_fn.() do
+      {:ok, _email} ->
+        TraceContext.add_span_event("email.send.success", %{
+          email_type: email_type,
+          provider: "brevo"
+        })
+
+        Logger.info("#{String.capitalize(email_type)} email sent successfully", user_id: user_id)
+        :ok
+
+      {:error, reason} = error ->
+        TraceContext.add_span_attributes(%{
+          "email.error.type" => email_type,
+          "email.error.user_id" => user_id
+        })
+
+        TraceContext.record_exception(%RuntimeError{
+          message: "Email send failed: #{inspect(reason)}"
+        })
+
+        TraceContext.add_span_event("email.send.error", %{
+          email_type: email_type,
+          error: inspect(reason)
+        })
+
+        Logger.error("Failed to send #{email_type} email",
+          user_id: user_id,
+          error: inspect(reason)
+        )
+
+        error
+    end
   end
 end

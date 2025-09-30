@@ -32,6 +32,42 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       )
     end
 
+    test "successfully processes registration email type" do
+      user = insert_user()
+
+      job_args = %{
+        email_type: "registration",
+        data: user.id
+      }
+
+      assert :ok = perform_job(EmailWorker, job_args)
+
+      # Assert email was sent using Swoosh TestAssertions
+      assert_email_sent(
+        subject: "You have been invited to register on FFF Trade Machine",
+        to: [{"Test User", "test@example.com"}],
+        from: {"FlexFox Fantasy TradeMachine", "tradebot@flexfoxfantasy.com"}
+      )
+    end
+
+    test "successfully processes test email type" do
+      user = insert_user()
+
+      job_args = %{
+        email_type: "test",
+        data: user.id
+      }
+
+      assert :ok = perform_job(EmailWorker, job_args)
+
+      # Assert email was sent using Swoosh TestAssertions
+      assert_email_sent(
+        subject: "Test email from Flex Fox Fantasy League TradeMachine",
+        to: [{"Test User", "test@example.com"}],
+        from: {"FlexFox Fantasy TradeMachine", "tradebot@flexfoxfantasy.com"}
+      )
+    end
+
     test "returns error for unknown email type" do
       user = insert_user()
 
@@ -153,6 +189,26 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       assert_email_sent(to: [{"Test User", "test@example.com"}])
       assert_email_sent(to: [{"User Two", "user2@example.com"}])
     end
+
+    test "can handle registration and test email jobs" do
+      user = insert_user()
+
+      # Enqueue registration and test email jobs
+      EmailWorker.new(%{email_type: "registration", data: user.id}) |> Oban.insert!()
+      EmailWorker.new(%{email_type: "test", data: user.id}) |> Oban.insert!()
+
+      # Assert both jobs are enqueued
+      enqueued_jobs = all_enqueued(worker: EmailWorker)
+      assert length(enqueued_jobs) == 2
+
+      # Perform both jobs
+      assert :ok = perform_job(EmailWorker, %{email_type: "registration", data: user.id})
+      assert :ok = perform_job(EmailWorker, %{email_type: "test", data: user.id})
+
+      # Assert both emails were sent
+      assert_email_sent(subject: "You have been invited to register on FFF Trade Machine")
+      assert_email_sent(subject: "Test email from Flex Fox Fantasy League TradeMachine")
+    end
   end
 
   describe "distributed tracing integration" do
@@ -273,6 +329,38 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
 
       # Should log that no trace context was found
       assert log_output =~ "No trace context found in job args"
+    end
+
+    test "handles registration email with trace context" do
+      user = insert_user()
+
+      job_args = %{
+        "email_type" => "registration",
+        "data" => user.id,
+        "trace_context" => %{
+          "traceparent" => "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        }
+      }
+
+      assert :ok = perform_job(EmailWorker, job_args)
+
+      assert_email_sent(subject: "You have been invited to register on FFF Trade Machine")
+    end
+
+    test "handles test email with trace context" do
+      user = insert_user()
+
+      job_args = %{
+        "email_type" => "test",
+        "data" => user.id,
+        "trace_context" => %{
+          "traceparent" => "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        }
+      }
+
+      assert :ok = perform_job(EmailWorker, job_args)
+
+      assert_email_sent(subject: "Test email from Flex Fox Fantasy League TradeMachine")
     end
   end
 

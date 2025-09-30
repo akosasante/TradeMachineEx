@@ -66,9 +66,7 @@
 
           ## Refactoring Opportunities
           {Credo.Check.Refactor.DoubleBooleanNegation, []},
-          {Credo.Check.Refactor.ImplicitTry, []},
           {Credo.Check.Refactor.IoPuts, []},
-          {Credo.Check.Refactor.MapInto, []},
           {Credo.Check.Refactor.MatchInCondition, []},
           {Credo.Check.Refactor.NegatedConditionsInUnless, []},
           {Credo.Check.Refactor.NegatedConditionsWithElse, []},
@@ -82,6 +80,7 @@
           {Credo.Check.Warning.ExpensiveEmptyEnumCheck, []},
           {Credo.Check.Warning.IExPry, []},
           {Credo.Check.Warning.IoInspect, []},
+          {Credo.Check.Warning.MissedMetadataKeyInLoggerConfig, [priority: :low]},
           {Credo.Check.Warning.OperationOnSameValues, []},
           {Credo.Check.Warning.OperationWithConstantResult, []},
           {Credo.Check.Warning.RaiseInsideRescue, []},
@@ -97,11 +96,7 @@
           {Credo.Check.Warning.UnusedTupleOperation, []}
         ],
         disabled: [
-          # Disable Logger metadata warnings for observability/structured logging
-          {Credo.Check.Warning.LoggerMetadata, []},
-
           # Disable some overly pedantic checks
-          {Credo.Check.Design.AliasUsage, []},
           {Credo.Check.Readability.Specs, []}
         ]
       }

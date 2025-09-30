@@ -5,7 +5,7 @@ defmodule TradeMachine.Mailer do
   def send_password_reset_email(user_id) do
     Logger.info("Sending password reset email", user_id: user_id)
 
-    case TradeMachine.Data.User.get_by_id(user_id) do
+    case TradeMachine.Data.User.get_by_id_with_password_reset_token(user_id) do
       nil ->
         Logger.error("User not found for ID", user_id: user_id)
         {:error, :user_not_found}
@@ -15,10 +15,35 @@ defmodule TradeMachine.Mailer do
     end
   end
 
+  def send_registration_email(user_id) do
+    Logger.info("Sending registration email", user_id: user_id)
+
+    case TradeMachine.Data.User.get_by_id(user_id) do
+      nil ->
+        Logger.error("User not found for ID", user_id: user_id)
+        {:error, :user_not_found}
+
+      user ->
+        TradeMachine.Mailer.RegistrationEmail.send(user)
+    end
+  end
+
+  def send_test_email(user_id) do
+    Logger.info("Sending test email", user_id: user_id)
+
+    case TradeMachine.Data.User.get_by_id(user_id) do
+      nil ->
+        Logger.error("User not found for ID", user_id: user_id)
+        {:error, :user_not_found}
+
+      user ->
+        TradeMachine.Mailer.TestEmail.send(user)
+    end
+  end
+
   defmacro __using__(_opts) do
     quote do
       import Swoosh.Email
-      import TradeMachine.Mailer, only: [from_email: 0, from_tuple: 0]
 
       use Phoenix.Swoosh,
         view: TradeMachine.Mailer.EmailView,
