@@ -90,3 +90,5 @@ jobs:
           DATABASE_PASSWORD: test_password
           DATABASE_NAME: trade_machine_test
           DATABASE_PORT: 5432
+          DATABASE_SCHEMA: test
+          SCHEMA: test
