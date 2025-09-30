@@ -1,0 +1,10 @@
+Testing... Testing...
+
+Hi <%= @user.display_name || @user.email %>,
+
+This is a test email from the FlexFox Fantasy TradeMachine.
+
+If you received this email, the email system is working correctly!
+
+Thanks,
+The TradeMachine Team

@@ -1,0 +1,25 @@
+<style>
+  .registration-link {
+    word-break: break-all;
+    color: #4f46e5;
+    text-decoration: none;
+  }
+</style>
+
+<h2 style="color: #374151; margin-bottom: 20px;">Invitation to Register</h2>
+
+<p>Hi <%= @user.display_name || @user.email %>,</p>
+
+<p>You have been invited to register on FlexFox Fantasy TradeMachine. This will allow you to submit trades with other members of the Flex Fox Fantasy Baseball League.</p>
+
+<p style="text-align: center;">
+  <a href={@registration_url} class="button">Register</a>
+</p>
+
+<p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+<p><a href={@registration_url} class="registration-link"><%= @registration_url %></a></p>
+
+<p style="color: #6b7280; font-size: 14px;">Welcome to the Flex Fox Fantasy League! We look forward to having you as part of our trading community.</p>
+
+<p>Thanks,<br>
+<strong>The TradeMachine Team</strong></p>

@@ -1,0 +1,14 @@
+Invitation to Register
+
+Hi <%= @user.display_name || @user.email %>,
+
+You have been invited to register on FlexFox Fantasy TradeMachine. This will allow you to submit trades with other members of the Flex Fox Fantasy Baseball League.
+
+Please click or copy the following link to complete the registration process:
+
+<%= @registration_url %>
+
+Welcome to the Flex Fox Fantasy League! We look forward to having you as part of our trading community.
+
+Thanks,
+The TradeMachine Team
