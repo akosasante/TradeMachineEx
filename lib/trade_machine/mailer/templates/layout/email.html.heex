@@ -22,25 +22,14 @@
       overflow: hidden;
     }
     .email-header {
-      position: relative;
+      background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), #2d5a3d;
+      background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url("data:image/jpeg;base64,<%= TradeMachine.Mailer.Assets.titlebg_base64() %>");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
       text-align: center;
-      background: #333;
-    }
-    .email-header img {
-      width: 100%;
-      max-width: 600px;
-      height: auto;
-      display: block;
-    }
-    .email-header-text {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.4);
-      color: white;
       padding: 60px 20px;
+      min-height: 120px;
     }
     .email-header h1 {
       color: white;
@@ -50,8 +39,9 @@
       line-height: 1.2;
     }
     .baseball-icon {
-      font-size: 24px;
-      margin-right: 10px;
+      font-size: 20px;
+      margin-right: 8px;
+      vertical-align: middle;
     }
     .content {
       padding: 30px 20px;
@@ -80,10 +70,7 @@
 <body>
   <div class="container">
     <div class="email-header">
-      <img src={"data:image/jpeg;base64,#{TradeMachine.Mailer.Assets.titlebg_base64()}"} alt="Stadium Background" />
-      <div class="email-header-text">
-        <h1><span class="baseball-icon">⚾</span>FlexFox Fantasy TradeMachine</h1>
-      </div>
+      <h1><span class="baseball-icon">⚾</span>FlexFox Fantasy TradeMachine</h1>
     </div>
 
     <div class="content">
