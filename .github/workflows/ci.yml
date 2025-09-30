@@ -21,7 +21,7 @@ jobs:
         image: postgres:15
         env:
           POSTGRES_USER: trader_test
-          POSTGRES_PASSWORD: caputo
+          POSTGRES_PASSWORD: test_password
           POSTGRES_DB: trade_machine_test
         options: >-
           --health-cmd pg_isready
@@ -31,15 +31,6 @@ jobs:
         ports:
           - 5432:5432
 
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
 
     steps:
       - name: Checkout code
@@ -76,5 +67,8 @@ jobs:
       - name: Run tests
         run: mix test
         env:
-          DATABASE_URL: postgres://trader_test:caputo@localhost:5432/trade_machine_test
-          REDIS_URL: redis://localhost:6379
+          DATABASE_HOST: localhost
+          DATABASE_USER: trader_test
+          DATABASE_PASSWORD: test_password
+          DATABASE_NAME: trade_machine_test
+          DATABASE_PORT: 5432
