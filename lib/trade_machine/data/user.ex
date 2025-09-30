@@ -6,6 +6,7 @@ defmodule TradeMachine.Data.User do
   alias TradeMachine.Repo
   require Logger
   require Ecto.Query
+  import Ecto.Query
 
   @derive {Swoosh.Email.Recipient, name: :display_name, address: :email}
 
@@ -35,6 +36,24 @@ defmodule TradeMachine.Data.User do
 
   def get_by_id(id) when is_binary(id) do
     Repo.get(__MODULE__, id)
+  end
+
+  @spec get_by_id_with_password_reset_token(String.t()) :: __MODULE__.t() | nil
+  def get_by_id_with_password_reset_token(id) when is_binary(id) do
+    from(u in __MODULE__,
+      where: u.id == ^id,
+      select: %__MODULE__{
+        id: u.id,
+        display_name: u.display_name,
+        email: u.email,
+        status: u.status,
+        role: u.role,
+        password_reset_token: u.password_reset_token,
+        inserted_at: u.inserted_at,
+        updated_at: u.updated_at
+      }
+    )
+    |> Repo.one()
   end
 
   @spec get_user_by_csv_name(String.t()) :: __MODULE__.t() | nil
