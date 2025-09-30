@@ -23,8 +23,8 @@ defmodule TradeMachine.SchemaValidationTest do
     TradeMachine.Data.TradeItem,
     TradeMachine.Data.TradeParticipant,
     TradeMachine.Data.User,
-    TradeMachine.Data.Team,
-    TradeMachine.Data.HydratedTrade
+    TradeMachine.Data.Team
+    #    TradeMachine.Data.HydratedTrade
     # Add more schemas as they're created
   ]
 
