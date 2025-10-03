@@ -27,13 +27,13 @@ defmodule TradeMachine.Mailer.PasswordResetEmailTest do
       # Check HTML body contains reset URL
       assert String.contains?(
                email.html_body,
-               "http://localhost:3031/reset_password#token=test-token-123"
+               "http://localhost:3031/reset-password#token=test-token-123"
              )
 
       # Check text body contains reset URL
       assert String.contains?(
                email.text_body,
-               "http://localhost:3031/reset_password#token=test-token-123"
+               "http://localhost:3031/reset-password#token=test-token-123"
              )
     end
 
@@ -140,7 +140,7 @@ defmodule TradeMachine.Mailer.PasswordResetEmailTest do
       # Access private function via generate_email since build_reset_url is private
       email = PasswordResetEmail.generate_email(user)
 
-      expected_url = "http://localhost:3031/reset_password#token=abc123"
+      expected_url = "http://localhost:3031/reset-password#token=abc123"
       assert String.contains?(email.html_body, expected_url)
       assert String.contains?(email.text_body, expected_url)
     end
@@ -151,8 +151,8 @@ defmodule TradeMachine.Mailer.PasswordResetEmailTest do
       # The URL should use the configured frontend URL
       email = PasswordResetEmail.generate_email(user)
 
-      assert String.contains?(email.html_body, "http://localhost:3031/reset_password")
-      assert String.contains?(email.text_body, "http://localhost:3031/reset_password")
+      assert String.contains?(email.html_body, "http://localhost:3031/reset-password")
+      assert String.contains?(email.text_body, "http://localhost:3031/reset-password")
     end
   end
 

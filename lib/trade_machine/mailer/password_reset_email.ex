@@ -25,6 +25,6 @@ defmodule TradeMachine.Mailer.PasswordResetEmail do
   end
 
   defp build_reset_url(%User{password_reset_token: reset_token}) do
-    "#{frontend_url()}/reset_password#token=#{reset_token}"
+    "#{frontend_url()}/reset-password#token=#{reset_token}"
   end
 end
