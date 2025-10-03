@@ -153,11 +153,15 @@ config :trade_machine,
   upload_grafana_dashboards_on_start: config_env() == :dev
 
 if config_env() != :prod do
-  config :trade_machine, :frontend_url, "http://localhost:3031"
+  config :trade_machine,
+    frontend_url_production: "http://localhost:3031",
+    frontend_url_staging: "http://localhost:3031",
+    staging_email: "test_staging@example.com"
 else
   config :trade_machine,
-         :frontend_url,
-         System.fetch_env!("FRONTEND_URL")
+    frontend_url_production: System.fetch_env!("FRONTEND_URL"),
+    frontend_url_staging: System.fetch_env!("STAGING_FRONTEND_URL"),
+    staging_email: System.fetch_env!("STAGING_EMAIL")
 end
 
 # OpenTelemetry runtime configuration - using official documented format

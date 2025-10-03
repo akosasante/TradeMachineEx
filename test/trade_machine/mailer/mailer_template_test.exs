@@ -8,7 +8,7 @@ defmodule TradeMachine.Mailer.MailerTemplateTest do
     test "renders both HTML and text versions" do
       user = build_user()
 
-      email = PasswordResetEmail.generate_email(user)
+      email = PasswordResetEmail.generate_email(user, "staging")
 
       # Both HTML and text bodies should be present and non-empty
       assert is_binary(email.html_body) and byte_size(email.html_body) > 0
@@ -18,7 +18,7 @@ defmodule TradeMachine.Mailer.MailerTemplateTest do
     test "HTML version includes layout with stadium background" do
       user = build_user()
 
-      email = PasswordResetEmail.generate_email(user)
+      email = PasswordResetEmail.generate_email(user, "staging")
 
       # Should include layout elements
       assert String.contains?(email.html_body, "<!DOCTYPE html>")
@@ -30,7 +30,7 @@ defmodule TradeMachine.Mailer.MailerTemplateTest do
     test "text version is properly formatted" do
       user = build_user()
 
-      email = PasswordResetEmail.generate_email(user)
+      email = PasswordResetEmail.generate_email(user, "staging")
 
       # Text version should be clean and readable
       assert String.contains?(email.text_body, "FlexFox Fantasy TradeMachine")
@@ -43,7 +43,7 @@ defmodule TradeMachine.Mailer.MailerTemplateTest do
     test "layout includes proper branding" do
       user = build_user()
 
-      email = PasswordResetEmail.generate_email(user)
+      email = PasswordResetEmail.generate_email(user, "staging")
 
       # Check that layout elements are present
       assert String.contains?(email.html_body, "FlexFox Fantasy TradeMachine")

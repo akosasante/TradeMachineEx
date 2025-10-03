@@ -33,27 +33,44 @@ defmodule TradeMachine.Jobs.EmailWorker do
   end
 
   # Execute the actual email job logic within the trace context
-  defp execute_email_job(%{"email_type" => email_type, "data" => data}) do
-    Logger.info("Processing email job", email_type: email_type, data: data)
+  defp execute_email_job(%{
+         "email_type" => email_type,
+         "data" => data,
+         "env" => frontend_environment
+       }) do
+    Logger.info("Processing email job",
+      email_type: email_type,
+      data: data,
+      frontend_env: frontend_environment
+    )
 
     TraceContext.add_span_attributes(%{
       "email.type" => email_type,
-      "email.recipient_id" => data
+      "email.recipient_id" => data,
+      "email.frontend_environment" => frontend_environment
     })
 
     case email_type do
       "reset_password" ->
         handle_email_send(
           "reset_password",
-          fn -> Mailer.send_password_reset_email(data) end,
+          fn -> Mailer.send_password_reset_email(data, frontend_environment) end,
           data
         )
 
       "registration" ->
-        handle_email_send("registration", fn -> Mailer.send_registration_email(data) end, data)
+        handle_email_send(
+          "registration",
+          fn -> Mailer.send_registration_email(data, frontend_environment) end,
+          data
+        )
 
       "test" ->
-        handle_email_send("test", fn -> Mailer.send_test_email(data) end, data)
+        handle_email_send(
+          "test",
+          fn -> Mailer.send_test_email(data, frontend_environment) end,
+          data
+        )
 
       _ ->
         error_msg = "Unknown email type: #{email_type}"

@@ -2,8 +2,11 @@ defmodule TradeMachine.Mailer do
   use Swoosh.Mailer, otp_app: :trade_machine
   require Logger
 
-  def send_password_reset_email(user_id) do
-    Logger.info("Sending password reset email", user_id: user_id)
+  def send_password_reset_email(user_id, frontend_environment) do
+    Logger.info("Sending password reset email",
+      user_id: user_id,
+      frontend_env: frontend_environment
+    )
 
     case TradeMachine.Data.User.get_by_id_with_password_reset_token(user_id) do
       nil ->
@@ -11,12 +14,15 @@ defmodule TradeMachine.Mailer do
         {:error, :user_not_found}
 
       user ->
-        TradeMachine.Mailer.PasswordResetEmail.send(user)
+        TradeMachine.Mailer.PasswordResetEmail.send(user, frontend_environment)
     end
   end
 
-  def send_registration_email(user_id) do
-    Logger.info("Sending registration email", user_id: user_id)
+  def send_registration_email(user_id, frontend_environment) do
+    Logger.info("Sending registration email",
+      user_id: user_id,
+      frontend_env: frontend_environment
+    )
 
     case TradeMachine.Data.User.get_by_id(user_id) do
       nil ->
@@ -24,12 +30,12 @@ defmodule TradeMachine.Mailer do
         {:error, :user_not_found}
 
       user ->
-        TradeMachine.Mailer.RegistrationEmail.send(user)
+        TradeMachine.Mailer.RegistrationEmail.send(user, frontend_environment)
     end
   end
 
-  def send_test_email(user_id) do
-    Logger.info("Sending test email", user_id: user_id)
+  def send_test_email(user_id, frontend_environment) do
+    Logger.info("Sending test email", user_id: user_id, frontend_env: frontend_environment)
 
     case TradeMachine.Data.User.get_by_id(user_id) do
       nil ->
@@ -37,7 +43,7 @@ defmodule TradeMachine.Mailer do
         {:error, :user_not_found}
 
       user ->
-        TradeMachine.Mailer.TestEmail.send(user)
+        TradeMachine.Mailer.TestEmail.send(user, frontend_environment)
     end
   end
 
@@ -49,8 +55,10 @@ defmodule TradeMachine.Mailer do
         view: TradeMachine.Mailer.EmailView,
         layout: {TradeMachine.Mailer.LayoutView, :email}
 
-      defp frontend_url(),
-        do: Application.get_env(:trade_machine, :frontend_url, "http://localhost:3031")
+      defp frontend_url(frontend_env = "production"),
+        do: Application.get_env(:trade_machine, :frontend_url_production)
+
+      defp frontend_url(_), do: Application.get_env(:trade_machine, :frontend_url_staging)
 
       defp process_html(email = %Swoosh.Email{}) do
         email.html_body
