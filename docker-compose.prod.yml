@@ -44,6 +44,7 @@ services:
       # Email configuration (Brevo/SendInBlue) and data needed to populate emails
       - BREVO_API_KEY=${BREVO_API_KEY}
       - FRONTEND_URL=${FRONTEND_URL:-trades.flexfoxfantasy.com}
+      - STAGING_FRONTEND_URL=${STAGING_FRONTEND_URL}
 
     # Resource limits for production
     deploy:
