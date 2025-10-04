@@ -45,6 +45,7 @@ services:
       - BREVO_API_KEY=${BREVO_API_KEY}
       - FRONTEND_URL=${FRONTEND_URL:-trades.flexfoxfantasy.com}
       - STAGING_FRONTEND_URL=${STAGING_FRONTEND_URL}
+      - STAGING_EMAIL=${STAGING_EMAIL}
 
     # Resource limits for production
     deploy:
