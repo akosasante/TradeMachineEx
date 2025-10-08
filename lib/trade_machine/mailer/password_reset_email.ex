@@ -18,7 +18,7 @@ defmodule TradeMachine.Mailer.PasswordResetEmail do
   @spec generate_email(User.t(), String.t()) :: Swoosh.Email.t()
   def generate_email(user, frontend_environment) do
     user =
-      if frontend_environment == "production" do
+      if frontend_environment == "production" or frontend_environment == "development" do
         user
       else
         %User{user | email: Application.get_env(:trade_machine, :staging_email)}

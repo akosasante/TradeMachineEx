@@ -58,6 +58,9 @@ defmodule TradeMachine.Mailer do
       defp frontend_url(frontend_env = "production"),
         do: Application.get_env(:trade_machine, :frontend_url_production)
 
+      defp frontend_url(frontend_env = "development"),
+        do: "http://localhost:3031"
+
       defp frontend_url(_), do: Application.get_env(:trade_machine, :frontend_url_staging)
 
       defp process_html(email = %Swoosh.Email{}) do
