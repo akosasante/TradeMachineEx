@@ -65,7 +65,7 @@ defmodule TradeMachine.Jobs.EspnTeamSync do
     # Create ESPN client for the configured season
     client = Client.new(season_year)
 
-    # Fetch teams from ESPN API
+    # Fetch teams from ESPN API (single API call)
     case Client.get_league_teams(client) do
       {:ok, teams} ->
         handle_teams_fetch_success(teams)
@@ -86,44 +86,59 @@ defmodule TradeMachine.Jobs.EspnTeamSync do
       "espn.teams.count" => team_count
     })
 
-    # Sync teams to database
-    case Teams.sync_espn_team_data(teams) do
-      {:ok, %{updated: updated, skipped: skipped}} ->
+    # Sync teams to both databases (Production and Staging)
+    prod_result = Teams.sync_espn_team_data(teams, TradeMachine.Repo.Production)
+    staging_result = Teams.sync_espn_team_data(teams, TradeMachine.Repo.Staging)
+
+    case {prod_result, staging_result} do
+      {{:ok, prod_stats}, {:ok, staging_stats}} ->
         TraceContext.add_span_event("espn.sync.success", %{
-          teams_updated: updated,
-          teams_skipped: skipped,
+          production_updated: prod_stats.updated,
+          production_skipped: prod_stats.skipped,
+          staging_updated: staging_stats.updated,
+          staging_skipped: staging_stats.skipped,
           total_teams: team_count
         })
 
         TraceContext.add_span_attributes(%{
-          "espn.sync.teams_updated" => updated,
-          "espn.sync.teams_skipped" => skipped
+          "espn.sync.production.teams_updated" => prod_stats.updated,
+          "espn.sync.production.teams_skipped" => prod_stats.skipped,
+          "espn.sync.staging.teams_updated" => staging_stats.updated,
+          "espn.sync.staging.teams_skipped" => staging_stats.skipped
         })
 
         Logger.info("ESPN team sync completed successfully",
-          updated: updated,
-          skipped: skipped,
+          production: prod_stats,
+          staging: staging_stats,
           total: team_count
         )
 
         :ok
 
-      {:error, reason} = error ->
-        TraceContext.add_span_attributes(%{
-          "espn.sync.error.type" => "database_sync_failed"
-        })
+      {prod_result, staging_result} ->
+        # Log errors for either database
+        if match?({:error, _}, prod_result) do
+          {:error, prod_reason} = prod_result
 
-        TraceContext.record_exception(%RuntimeError{
-          message: "Failed to sync teams to database: #{inspect(reason)}"
-        })
+          TraceContext.add_span_attributes(%{
+            "espn.sync.production.error" => inspect(prod_reason)
+          })
 
-        TraceContext.add_span_event("espn.sync.error", %{
-          error: "database_sync_failed",
-          reason: inspect(reason)
-        })
+          Logger.error("Failed to sync teams to production database", error: inspect(prod_reason))
+        end
 
-        Logger.error("Failed to sync teams to database", error: inspect(reason))
-        error
+        if match?({:error, _}, staging_result) do
+          {:error, staging_reason} = staging_result
+
+          TraceContext.add_span_attributes(%{
+            "espn.sync.staging.error" => inspect(staging_reason)
+          })
+
+          Logger.error("Failed to sync teams to staging database", error: inspect(staging_reason))
+        end
+
+        # Return error if either failed
+        {:error, :sync_failed}
     end
   end
 

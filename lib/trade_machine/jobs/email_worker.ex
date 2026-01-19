@@ -38,37 +38,42 @@ defmodule TradeMachine.Jobs.EmailWorker do
          "data" => data,
          "env" => frontend_environment
        }) do
+    # Select repo based on environment
+    repo = select_repo(frontend_environment)
+
     Logger.info("Processing email job",
       email_type: email_type,
       data: data,
-      frontend_env: frontend_environment
+      frontend_env: frontend_environment,
+      repo: inspect(repo)
     )
 
     TraceContext.add_span_attributes(%{
       "email.type" => email_type,
       "email.recipient_id" => data,
-      "email.frontend_environment" => frontend_environment
+      "email.frontend_environment" => frontend_environment,
+      "email.repo" => inspect(repo)
     })
 
     case email_type do
       "reset_password" ->
         handle_email_send(
           "reset_password",
-          fn -> Mailer.send_password_reset_email(data, frontend_environment) end,
+          fn -> Mailer.send_password_reset_email(data, frontend_environment, repo) end,
           data
         )
 
       "registration" ->
         handle_email_send(
           "registration",
-          fn -> Mailer.send_registration_email(data, frontend_environment) end,
+          fn -> Mailer.send_registration_email(data, frontend_environment, repo) end,
           data
         )
 
       "test" ->
         handle_email_send(
           "test",
-          fn -> Mailer.send_test_email(data, frontend_environment) end,
+          fn -> Mailer.send_test_email(data, frontend_environment, repo) end,
           data
         )
 
@@ -90,6 +95,10 @@ defmodule TradeMachine.Jobs.EmailWorker do
         {:error, :unknown_email_type}
     end
   end
+
+  # Select the appropriate repo based on frontend environment
+  defp select_repo("production"), do: TradeMachine.Repo.Production
+  defp select_repo(_), do: TradeMachine.Repo.Staging
 
   # Fallback for jobs without required fields
   defp execute_email_job(args) do
