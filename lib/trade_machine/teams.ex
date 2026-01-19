@@ -1,0 +1,108 @@
+defmodule TradeMachine.Teams do
+  @moduledoc """
+  Context module for team-related operations.
+
+  Provides functions for syncing ESPN team data and managing team records.
+  """
+
+  require Logger
+
+  alias TradeMachine.Data.Team
+  alias TradeMachine.Repo
+
+  @doc """
+  Syncs ESPN team data to the database.
+
+  Takes a list of `TradeMachine.ESPN.Types.FantasyTeam` structs and updates
+  the corresponding team records in the database by matching on `espn_id`.
+
+  The function converts each struct to a map and stores it in the `espn_team`
+  JSON column. Updates are performed within a transaction for atomicity.
+
+  ## Parameters
+
+    - `espn_teams` - List of `FantasyTeam` structs from ESPN API
+
+  ## Returns
+
+    - `{:ok, %{updated: count, skipped: count}}` - Success with statistics
+    - `{:error, reason}` - If transaction fails
+
+  ## Examples
+
+      iex> {:ok, teams} = ESPN.Client.get_league_teams(client)
+      iex> Teams.sync_espn_team_data(teams)
+      {:ok, %{updated: 12, skipped: 0}}
+  """
+  @spec sync_espn_team_data(list(TradeMachine.ESPN.Types.FantasyTeam.t())) ::
+          {:ok, %{updated: non_neg_integer(), skipped: non_neg_integer()}}
+          | {:error, term()}
+  def sync_espn_team_data(espn_teams) when is_list(espn_teams) do
+    Logger.info("Starting ESPN team data sync", team_count: length(espn_teams))
+
+    result =
+      Repo.transaction(fn ->
+        Enum.reduce(espn_teams, %{updated: 0, skipped: 0}, fn espn_team, acc ->
+          sync_single_team(espn_team, acc)
+        end)
+      end)
+
+    case result do
+      {:ok, stats} ->
+        Logger.info("ESPN team sync completed successfully",
+          updated: stats.updated,
+          skipped: stats.skipped
+        )
+
+        {:ok, stats}
+
+      {:error, reason} = error ->
+        Logger.error("ESPN team sync failed", error: inspect(reason))
+        error
+    end
+  end
+
+  # Private function to sync a single team
+  defp sync_single_team(espn_team, acc) do
+    # Convert FantasyTeam struct to map for JSON storage
+    # We need to handle nested structs (record, transaction_counter)
+    espn_team_map = struct_to_map(espn_team)
+
+    case Repo.get_by(Team, espn_id: espn_team.id) do
+      nil ->
+        Logger.warning("No team found for ESPN ID: #{espn_team.id}",
+          espn_id: espn_team.id,
+          espn_team_name: espn_team.name
+        )
+
+        %{acc | skipped: acc.skipped + 1}
+
+      team ->
+        team
+        |> Ecto.Changeset.change(espn_team: espn_team_map)
+        |> Repo.update!()
+
+        Logger.debug("Updated team data",
+          team_id: team.id,
+          espn_id: espn_team.id,
+          team_name: espn_team.name
+        )
+
+        %{acc | updated: acc.updated + 1}
+    end
+  end
+
+  # Recursively convert structs to maps, handling nested structs
+  defp struct_to_map(%_{} = struct) do
+    struct
+    |> Map.from_struct()
+    |> Enum.map(fn {key, value} -> {key, struct_to_map(value)} end)
+    |> Enum.into(%{})
+  end
+
+  defp struct_to_map(list) when is_list(list) do
+    Enum.map(list, &struct_to_map/1)
+  end
+
+  defp struct_to_map(value), do: value
+end
