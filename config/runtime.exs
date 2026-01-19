@@ -238,7 +238,8 @@ config :trade_machine,
   espn_cookie: System.get_env("ESPN_COOKIE"),
   espn_swid: System.get_env("ESPN_SWID"),
   espn_league_id: System.get_env("ESPN_LEAGUE_ID") || "545",
-  espn_season_year: case(System.get_env("ESPN_SEASON_YEAR")) do
-  nil -> Date.utc_today().year
-  year_str -> String.to_integer(year_str)
-end
+  espn_season_year:
+    (case System.get_env("ESPN_SEASON_YEAR") do
+       nil -> Date.utc_today().year
+       year_str -> String.to_integer(year_str)
+     end)

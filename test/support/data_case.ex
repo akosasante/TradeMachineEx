@@ -18,6 +18,7 @@ defmodule TradeMachine.DataCase do
 
   using do
     quote do
+      alias TradeMachine.Repo.Production, as: Repo
       alias TradeMachine.Repo
 
       import Ecto
@@ -28,10 +29,13 @@ defmodule TradeMachine.DataCase do
   end
 
   setup tags do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo)
+    # Checkout both repos for tests
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Production)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Staging)
 
     unless tags[:async] do
-      Ecto.Adapters.SQL.Sandbox.mode(TradeMachine.Repo, {:shared, self()})
+      Ecto.Adapters.SQL.Sandbox.mode(TradeMachine.Repo.Production, {:shared, self()})
+      Ecto.Adapters.SQL.Sandbox.mode(TradeMachine.Repo.Staging, {:shared, self()})
     end
 
     :ok
