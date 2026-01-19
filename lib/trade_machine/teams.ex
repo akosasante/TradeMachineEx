@@ -8,7 +8,6 @@ defmodule TradeMachine.Teams do
   require Logger
 
   alias TradeMachine.Data.Team
-  alias TradeMachine.Repo
 
   @doc """
   Syncs ESPN team data to the database.

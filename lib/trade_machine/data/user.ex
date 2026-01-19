@@ -3,7 +3,6 @@ defmodule TradeMachine.Data.User do
 
   alias TradeMachine.Data.Team
   alias TradeMachine.Data.Trade
-  alias TradeMachine.Repo
   require Logger
   require Ecto.Query
   import Ecto.Query
