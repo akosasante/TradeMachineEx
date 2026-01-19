@@ -22,6 +22,7 @@ defmodule TradeMachine.Teams do
   ## Parameters
 
     - `espn_teams` - List of `FantasyTeam` structs from ESPN API
+    - `repo` - Ecto repo to use (defaults to Production)
 
   ## Returns
 
@@ -31,19 +32,26 @@ defmodule TradeMachine.Teams do
   ## Examples
 
       iex> {:ok, teams} = ESPN.Client.get_league_teams(client)
-      iex> Teams.sync_espn_team_data(teams)
+      iex> Teams.sync_espn_team_data(teams, TradeMachine.Repo.Production)
       {:ok, %{updated: 12, skipped: 0}}
   """
-  @spec sync_espn_team_data(list(TradeMachine.ESPN.Types.FantasyTeam.t())) ::
+  @spec sync_espn_team_data(
+          list(TradeMachine.ESPN.Types.FantasyTeam.t()),
+          Ecto.Repo.t()
+        ) ::
           {:ok, %{updated: non_neg_integer(), skipped: non_neg_integer()}}
           | {:error, term()}
-  def sync_espn_team_data(espn_teams) when is_list(espn_teams) do
-    Logger.info("Starting ESPN team data sync", team_count: length(espn_teams))
+  def sync_espn_team_data(espn_teams, repo \\ TradeMachine.Repo.Production)
+      when is_list(espn_teams) do
+    Logger.info("Starting ESPN team data sync",
+      team_count: length(espn_teams),
+      repo: inspect(repo)
+    )
 
     result =
-      Repo.transaction(fn ->
+      repo.transaction(fn ->
         Enum.reduce(espn_teams, %{updated: 0, skipped: 0}, fn espn_team, acc ->
-          sync_single_team(espn_team, acc)
+          sync_single_team(espn_team, acc, repo)
         end)
       end)
 
@@ -51,24 +59,29 @@ defmodule TradeMachine.Teams do
       {:ok, stats} ->
         Logger.info("ESPN team sync completed successfully",
           updated: stats.updated,
-          skipped: stats.skipped
+          skipped: stats.skipped,
+          repo: inspect(repo)
         )
 
         {:ok, stats}
 
       {:error, reason} = error ->
-        Logger.error("ESPN team sync failed", error: inspect(reason))
+        Logger.error("ESPN team sync failed",
+          error: inspect(reason),
+          repo: inspect(repo)
+        )
+
         error
     end
   end
 
   # Private function to sync a single team
-  defp sync_single_team(espn_team, acc) do
+  defp sync_single_team(espn_team, acc, repo) do
     # Convert FantasyTeam struct to map for JSON storage
     # We need to handle nested structs (record, transaction_counter)
     espn_team_map = struct_to_map(espn_team)
 
-    case Repo.get_by(Team, espn_id: espn_team.id) do
+    case repo.get_by(Team, espn_id: espn_team.id) do
       nil ->
         Logger.warning("No team found for ESPN ID: #{espn_team.id}",
           espn_id: espn_team.id,
@@ -80,7 +93,7 @@ defmodule TradeMachine.Teams do
       team ->
         team
         |> Ecto.Changeset.change(espn_team: espn_team_map)
-        |> Repo.update!()
+        |> repo.update!()
 
         Logger.debug("Updated team data",
           team_id: team.id,

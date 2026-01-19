@@ -2,13 +2,14 @@ defmodule TradeMachine.Mailer do
   use Swoosh.Mailer, otp_app: :trade_machine
   require Logger
 
-  def send_password_reset_email(user_id, frontend_environment) do
+  def send_password_reset_email(user_id, frontend_environment, repo \\ TradeMachine.Repo.Production) do
     Logger.info("Sending password reset email",
       user_id: user_id,
-      frontend_env: frontend_environment
+      frontend_env: frontend_environment,
+      repo: inspect(repo)
     )
 
-    case TradeMachine.Data.User.get_by_id_with_password_reset_token(user_id) do
+    case TradeMachine.Data.User.get_by_id_with_password_reset_token(user_id, repo) do
       nil ->
         Logger.error("User not found for ID", user_id: user_id)
         {:error, :user_not_found}
@@ -18,13 +19,14 @@ defmodule TradeMachine.Mailer do
     end
   end
 
-  def send_registration_email(user_id, frontend_environment) do
+  def send_registration_email(user_id, frontend_environment, repo \\ TradeMachine.Repo.Production) do
     Logger.info("Sending registration email",
       user_id: user_id,
-      frontend_env: frontend_environment
+      frontend_env: frontend_environment,
+      repo: inspect(repo)
     )
 
-    case TradeMachine.Data.User.get_by_id(user_id) do
+    case TradeMachine.Data.User.get_by_id(user_id, repo) do
       nil ->
         Logger.error("User not found for ID", user_id: user_id)
         {:error, :user_not_found}
@@ -34,10 +36,14 @@ defmodule TradeMachine.Mailer do
     end
   end
 
-  def send_test_email(user_id, frontend_environment) do
-    Logger.info("Sending test email", user_id: user_id, frontend_env: frontend_environment)
+  def send_test_email(user_id, frontend_environment, repo \\ TradeMachine.Repo.Production) do
+    Logger.info("Sending test email",
+      user_id: user_id,
+      frontend_env: frontend_environment,
+      repo: inspect(repo)
+    )
 
-    case TradeMachine.Data.User.get_by_id(user_id) do
+    case TradeMachine.Data.User.get_by_id(user_id, repo) do
       nil ->
         Logger.error("User not found for ID", user_id: user_id)
         {:error, :user_not_found}

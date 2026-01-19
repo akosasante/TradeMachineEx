@@ -34,12 +34,14 @@ defmodule TradeMachine.Data.User do
     |> cast(params, [])
   end
 
-  def get_by_id(id) when is_binary(id) do
-    Repo.get(__MODULE__, id)
+  def get_by_id(id, repo \\ TradeMachine.Repo.Production) when is_binary(id) do
+    repo.get(__MODULE__, id)
   end
 
-  @spec get_by_id_with_password_reset_token(String.t()) :: __MODULE__.t() | nil
-  def get_by_id_with_password_reset_token(id) when is_binary(id) do
+  @spec get_by_id_with_password_reset_token(String.t(), Ecto.Repo.t()) ::
+          __MODULE__.t() | nil
+  def get_by_id_with_password_reset_token(id, repo \\ TradeMachine.Repo.Production)
+      when is_binary(id) do
     from(u in __MODULE__,
       where: u.id == ^id,
       select: %__MODULE__{
@@ -53,18 +55,18 @@ defmodule TradeMachine.Data.User do
         updated_at: u.updated_at
       }
     )
-    |> Repo.one()
+    |> repo.one()
   end
 
-  @spec get_user_by_csv_name(String.t()) :: __MODULE__.t() | nil
-  def get_user_by_csv_name(csv_name) do
-    Repo.get_by(__MODULE__, csv_name: csv_name)
+  @spec get_user_by_csv_name(String.t(), Ecto.Repo.t()) :: __MODULE__.t() | nil
+  def get_user_by_csv_name(csv_name, repo \\ TradeMachine.Repo.Production) do
+    repo.get_by(__MODULE__, csv_name: csv_name)
   end
 
-  @spec get_user_team_id(keyword()) :: String.t() | nil
-  def get_user_team_id(by_tuple) do
+  @spec get_user_team_id(keyword(), Ecto.Repo.t()) :: String.t() | nil
+  def get_user_team_id(by_tuple, repo \\ TradeMachine.Repo.Production) do
     __MODULE__
-    |> Repo.get_by(by_tuple)
+    |> repo.get_by(by_tuple)
     |> case do
       %__MODULE__{teamId: team_id} ->
         team_id
