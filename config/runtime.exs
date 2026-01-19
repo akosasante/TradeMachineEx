@@ -5,17 +5,20 @@ import Config
 # environment-based configuration in Docker containers
 
 # Database configuration
-config :trade_machine, TradeMachine.Repo,
-  username: System.get_env("DATABASE_USER") || "trader_dev",
-  password: System.fetch_env!("DATABASE_PASSWORD"),
-  database: System.get_env("DATABASE_NAME") || "trade_machine",
-  hostname: System.get_env("DATABASE_HOST") || "localhost",
-  port: String.to_integer(System.get_env("DATABASE_PORT") || "5432"),
-  pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
-  show_sensitive_data_on_connection_error: false,
-  after_connect:
-    {Postgrex, :query!,
-     ["SET search_path TO #{System.get_env("DATABASE_SCHEMA", "staging")}", []]}
+# Only configure if DATABASE_PASSWORD is set (allows running without DB for testing)
+if System.get_env("DATABASE_PASSWORD") do
+  config :trade_machine, TradeMachine.Repo,
+    username: System.get_env("DATABASE_USER") || "trader_dev",
+    password: System.fetch_env!("DATABASE_PASSWORD"),
+    database: System.get_env("DATABASE_NAME") || "trade_machine",
+    hostname: System.get_env("DATABASE_HOST") || "localhost",
+    port: String.to_integer(System.get_env("DATABASE_PORT") || "5432"),
+    pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
+    show_sensitive_data_on_connection_error: false,
+    after_connect:
+      {Postgrex, :query!,
+       ["SET search_path TO #{System.get_env("DATABASE_SCHEMA", "staging")}", []]}
+end
 
 # Phoenix Endpoint configuration
 config :trade_machine, TradeMachineWeb.Endpoint,
@@ -217,3 +220,9 @@ resource_attributes = %{
 }
 
 config :opentelemetry, :resource, resource_attributes
+
+# ESPN Fantasy API configuration
+config :trade_machine,
+  espn_cookie: System.get_env("ESPN_COOKIE"),
+  espn_swid: System.get_env("ESPN_SWID"),
+  espn_league_id: System.get_env("ESPN_LEAGUE_ID") || "545"
