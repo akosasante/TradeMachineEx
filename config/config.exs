@@ -10,7 +10,7 @@ import Config
 config :trade_machine,
   # Elixir app uses Ecto for data operations only -
   ## no migration management. Prisma (TypeScript) handles all schema changes
-  ecto_repos: []
+  ecto_repos: [TradeMachine.Repo.Production, TradeMachine.Repo.Staging]
 
 # Configures the endpoint
 config :trade_machine,
@@ -63,8 +63,9 @@ config :esbuild,
   ]
 
 # Configure Oban for job processing
+# Note: Oban uses Production repo for job persistence
 config :trade_machine, Oban,
-  repo: TradeMachine.Repo,
+  repo: TradeMachine.Repo.Production,
   plugins: [
     {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
     {Oban.Plugins.Cron,

@@ -7,18 +7,29 @@ config :trade_machine,
   spreadsheet_id:
     System.get_env("GOOGLE_SPREADSHEET_ID", "16SjDZBO2vY6rGj9CM7nW2pG21i4pZ85LGlbMCODVQtk")
 
-# Database configuration with environment variable support
-query_args = ["SET search_path TO #{System.get_env("DATABASE_SCHEMA", "dev")}", []]
-
-config :trade_machine, TradeMachine.Repo,
+# Database configuration with environment variable support - Dual Repo Pattern
+# Production database configuration
+config :trade_machine, TradeMachine.Repo.Production,
   username: System.get_env("DATABASE_USER", "trader_dev"),
   password: System.get_env("DATABASE_PASSWORD", "caputo"),
   database: System.get_env("DATABASE_NAME", "trade_machine"),
   hostname: System.get_env("DATABASE_HOST", "localhost"),
-  port: String.to_integer(System.get_env("DATABASE_PORT", "5438")),
+  port: String.to_integer(System.get_env("PROD_DATABASE_PORT", "5432")),
   show_sensitive_data_on_connection_error: true,
   pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE", "10")),
-  after_connect: {Postgrex, :query!, query_args},
+  after_connect: {Postgrex, :query!, ["SET search_path TO public", []]},
+  migration_source: "schema_migrations"
+
+# Staging database configuration
+config :trade_machine, TradeMachine.Repo.Staging,
+  username: System.get_env("DATABASE_USER", "trader_dev"),
+  password: System.get_env("DATABASE_PASSWORD", "caputo"),
+  database: System.get_env("DATABASE_NAME", "trade_machine"),
+  hostname: System.get_env("DATABASE_HOST", "localhost"),
+  port: String.to_integer(System.get_env("STAGING_DATABASE_PORT", "5435")),
+  show_sensitive_data_on_connection_error: true,
+  pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE", "10")),
+  after_connect: {Postgrex, :query!, ["SET search_path TO staging", []]},
   migration_source: "schema_migrations"
 
 # For development, we disable any cache and enable
@@ -92,9 +103,10 @@ config :phoenix, :stacktrace_depth, 20
 # Initialize plugs at runtime for faster development compilation
 config :phoenix, :plug_init_mode, :runtime
 
-# Configure Oban for job processing
+# Configure Oban for job processing - uses Production repo
 config :trade_machine, Oban,
-  prefix: System.get_env("SCHEMA", "dev"),
+  repo: TradeMachine.Repo.Production,
+  prefix: "public",
   plugins: [
     {Oban.Plugins.Pruner, max_age: 300},
     {Oban.Plugins.Cron,

@@ -4,20 +4,30 @@ import Config
 # This configuration is evaluated at runtime and allows for
 # environment-based configuration in Docker containers
 
-# Database configuration
+# Database configuration - Dual Repo Pattern
 # Only configure if DATABASE_PASSWORD is set (allows running without DB for testing)
 if System.get_env("DATABASE_PASSWORD") do
-  config :trade_machine, TradeMachine.Repo,
+  # Production database configuration
+  config :trade_machine, TradeMachine.Repo.Production,
     username: System.get_env("DATABASE_USER") || "trader_dev",
     password: System.fetch_env!("DATABASE_PASSWORD"),
     database: System.get_env("DATABASE_NAME") || "trade_machine",
     hostname: System.get_env("DATABASE_HOST") || "localhost",
-    port: String.to_integer(System.get_env("DATABASE_PORT") || "5432"),
+    port: String.to_integer(System.get_env("PROD_DATABASE_PORT") || "5432"),
     pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
     show_sensitive_data_on_connection_error: false,
-    after_connect:
-      {Postgrex, :query!,
-       ["SET search_path TO #{System.get_env("DATABASE_SCHEMA", "staging")}", []]}
+    after_connect: {Postgrex, :query!, ["SET search_path TO public", []]}
+
+  # Staging database configuration
+  config :trade_machine, TradeMachine.Repo.Staging,
+    username: System.get_env("DATABASE_USER") || "trader_dev",
+    password: System.fetch_env!("DATABASE_PASSWORD"),
+    database: System.get_env("DATABASE_NAME") || "trade_machine",
+    hostname: System.get_env("DATABASE_HOST") || "localhost",
+    port: String.to_integer(System.get_env("STAGING_DATABASE_PORT") || "5435"),
+    pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
+    show_sensitive_data_on_connection_error: false,
+    after_connect: {Postgrex, :query!, ["SET search_path TO staging", []]}
 end
 
 # Phoenix Endpoint configuration
@@ -109,13 +119,15 @@ oban_plugins =
   end
 
 config :trade_machine, Oban,
-  repo: TradeMachine.Repo,
+  repo: TradeMachine.Repo.Production,
   plugins: oban_plugins,
   queues: [
     minors_sync: String.to_integer(System.get_env("OBAN_MINORS_SYNC_CONCURRENCY") || "1"),
-    draft_sync: String.to_integer(System.get_env("OBAN_DRAFT_SYNC_CONCURRENCY") || "1")
+    draft_sync: String.to_integer(System.get_env("OBAN_DRAFT_SYNC_CONCURRENCY") || "1"),
+    emails: 2,
+    espn_sync: 1
   ],
-  prefix: System.get_env("DATABASE_SCHEMA", "staging")
+  prefix: "public"
 
 # PromEx (Prometheus metrics) configuration
 if config_env() == :test do
