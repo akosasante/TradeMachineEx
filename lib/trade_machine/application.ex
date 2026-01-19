@@ -45,8 +45,9 @@ defmodule TradeMachine.Application do
     children =
       goth_child ++
         [
-          # Start the Ecto repository (we connect to the same postgres db as TradeMachineServer)
-          TradeMachine.Repo,
+          # Start both Ecto repositories (Production and Staging)
+          TradeMachine.Repo.Production,
+          TradeMachine.Repo.Staging,
           # Start the Telemetry supervisor
           TradeMachineWeb.Telemetry,
           # Start the PubSub system (not currently in use for anything)
@@ -99,7 +100,8 @@ defmodule TradeMachine.Application do
 
     # Configure OpenTelemetry instrumentations
     OpentelemetryOban.setup()
-    OpentelemetryEcto.setup([:trade_machine, :repo], time_unit: :millisecond)
+    OpentelemetryEcto.setup([:trade_machine, :repo, :production], time_unit: :millisecond)
+    OpentelemetryEcto.setup([:trade_machine, :repo, :staging], time_unit: :millisecond)
     OpentelemetryFinch.setup()
 
     Logger.info("OpenTelemetry tracing initialized successfully")
