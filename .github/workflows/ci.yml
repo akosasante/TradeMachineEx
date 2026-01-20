@@ -89,6 +89,8 @@ jobs:
           DATABASE_USER: trader_test
           DATABASE_PASSWORD: test_password
           DATABASE_NAME: trade_machine_test
-          DATABASE_PORT: 5432
+          # Both repos should connect to the same test database in CI
+          PROD_DATABASE_PORT: 5432
+          STAGING_DATABASE_PORT: 5432
           DATABASE_SCHEMA: test
           SCHEMA: test
