@@ -9,14 +9,14 @@ services:
       - MIX_ENV=prod
       - PORT=4001
 
-      # Database configuration (external PostgreSQL)
+      # Database configuration (external PostgreSQL - Dual Repo Pattern)
       - DATABASE_HOST=${DATABASE_HOST}
       - DATABASE_USER=${DATABASE_USER}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}
       - DATABASE_NAME=${DATABASE_NAME:-trade_machine}
-      - DATABASE_PORT=${DATABASE_PORT:-5432}
+      - PROD_DATABASE_PORT=${PROD_DATABASE_PORT:-5432}
+      - STAGING_DATABASE_PORT=${STAGING_DATABASE_PORT:-5435}
       - DATABASE_POOL_SIZE=${DATABASE_POOL_SIZE:-10}
-      - DATABASE_SCHEMA=${DATABASE_SCHEMA:-staging}
 
       # Phoenix configuration
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
