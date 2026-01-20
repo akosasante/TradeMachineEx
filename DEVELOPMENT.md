@@ -263,6 +263,40 @@ A test suite validates that Ecto schemas match the actual database:
 
 This approach ensures database consistency while allowing both applications to safely operate on the same data! 🎯
 
+### **⚡ Exception: Oban Migrations**
+
+**The ONLY exception to the "Prisma-only migrations" rule is Oban infrastructure tables.**
+
+Oban (the Elixir background job library) manages its own internal tables (`oban_jobs`, `oban_peers`, etc.) that are **not** part of your application's domain model. These tables are:
+
+- ✅ **Safe to migrate from Elixir** - They're managed by Oban, not Prisma
+- ✅ **Already ignored by Prisma** - Marked with `@@ignore` in `schema.prisma`
+- ✅ **Required for job processing** - Cron jobs won't work without them
+
+**When to run Oban migrations:**
+
+1. **Initial setup** - When deploying TradeMachineEx for the first time
+2. **Oban upgrades** - When upgrading to a new Oban version that requires schema changes
+3. **Missing tables error** - If you see errors about `oban_peers` table not existing
+
+**How to run Oban migrations in production:**
+
+```bash
+# SSH into your production host
+ssh user@your-host
+
+# Migrate both databases (recommended)
+docker exec -it trade_machine_ex_app /app/bin/trade_machine eval "TradeMachine.Release.migrate_all()"
+
+# OR migrate individual databases
+docker exec -it trade_machine_ex_app /app/bin/trade_machine eval "TradeMachine.Release.migrate(TradeMachine.Repo.Production)"
+docker exec -it trade_machine_ex_app /app/bin/trade_machine eval "TradeMachine.Release.migrate(TradeMachine.Repo.Staging)"
+```
+
+**Current Oban migration version:** v12 (includes `oban_peers` table for distributed coordination)
+
+**⚠️ Important:** Only run Oban migrations. Do NOT create or run migrations for your application tables - those are still managed by Prisma!
+
 ## 📊 Monitoring & Telemetry
 
 ### **How TradeMachineEx Monitoring Works**

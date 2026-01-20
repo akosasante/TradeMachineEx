@@ -113,9 +113,33 @@ end
 ## Important Notes
 
 ### Database Management
-- **NEVER run `mix ecto.migrate`** - all schema changes handled by Prisma in TypeScript server
+- **NEVER run `mix ecto.migrate`** for application tables - all schema changes handled by Prisma in TypeScript server
 - Database connection shares the same PostgreSQL instance as TradeMachineServer
 - Use only `mix deps.get` for setup, not database-modifying commands
+
+#### Exception: Oban Infrastructure Tables
+The **ONLY** exception to the no-migrations rule is for Oban's internal tables:
+- `oban_jobs`, `oban_peers`, and other Oban-managed tables
+- These are **not** part of your application domain model
+- Already marked with `@@ignore` in Prisma schema
+- Required for background job processing and cron jobs
+
+**When to run Oban migrations:**
+- Initial deployment setup
+- After upgrading Oban to a new version
+- If you see errors about missing `oban_peers` table
+
+**How to run Oban migrations in production:**
+```bash
+# Migrate both Production and Staging databases
+docker exec -it trade_machine_ex_app /app/bin/trade_machine eval "TradeMachine.Release.migrate_all()"
+
+# Or migrate individual repos
+docker exec -it trade_machine_ex_app /app/bin/trade_machine eval "TradeMachine.Release.migrate(TradeMachine.Repo.Production)"
+docker exec -it trade_machine_ex_app /app/bin/trade_machine eval "TradeMachine.Release.migrate(TradeMachine.Repo.Staging)"
+```
+
+**⚠️ Critical:** Only run migrations for Oban tables. Application tables (users, teams, trades, etc.) are still managed exclusively by Prisma migrations in the TypeScript server.
 
 ### Docker Development
 - Uses `docker-compose.yml` for the application container
