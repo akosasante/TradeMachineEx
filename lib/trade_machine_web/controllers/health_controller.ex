@@ -72,13 +72,19 @@ defmodule TradeMachineWeb.HealthController do
 
   defp database_check do
     try do
-      # Simple database connectivity test
-      case Ecto.Adapters.SQL.query(TradeMachine.Repo, "SELECT 1", [], timeout: 5000) do
-        {:ok, _} ->
-          %{healthy: true, message: "Database connection successful"}
+      # Check both Production and Staging database connectivity
+      prod_result = Ecto.Adapters.SQL.query(TradeMachine.Repo.Production, "SELECT 1", [], timeout: 5000)
+      staging_result = Ecto.Adapters.SQL.query(TradeMachine.Repo.Staging, "SELECT 1", [], timeout: 5000)
 
-        {:error, error} ->
-          %{healthy: false, message: "Database error: #{inspect(error)}"}
+      case {prod_result, staging_result} do
+        {{:ok, _}, {:ok, _}} ->
+          %{healthy: true, message: "Both Production and Staging database connections successful"}
+
+        {{:error, error}, _} ->
+          %{healthy: false, message: "Production database error: #{inspect(error)}"}
+
+        {_, {:error, error}} ->
+          %{healthy: false, message: "Staging database error: #{inspect(error)}"}
       end
     rescue
       error ->
@@ -125,7 +131,8 @@ defmodule TradeMachineWeb.HealthController do
 
   defp database_ready? do
     try do
-      case Ecto.Adapters.SQL.query(TradeMachine.Repo, "SELECT 1", [], timeout: 1000) do
+      # Check if at least the Production database is ready
+      case Ecto.Adapters.SQL.query(TradeMachine.Repo.Production, "SELECT 1", [], timeout: 1000) do
         {:ok, _} -> true
         {:error, _} -> false
       end

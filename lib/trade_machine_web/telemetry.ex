@@ -76,6 +76,23 @@ defmodule TradeMachineWeb.Telemetry do
         tags: [:worker, :queue]
       ),
 
+      # Oban Queue Stats (periodic polling)
+      last_value("oban.queue.limit",
+        event_name: [:oban, :queue, :stats],
+        measurement: :limit,
+        tags: [:queue]
+      ),
+      last_value("oban.queue.available",
+        event_name: [:oban, :queue, :stats],
+        measurement: :available,
+        tags: [:queue]
+      ),
+      last_value("oban.queue.running",
+        event_name: [:oban, :queue, :stats],
+        measurement: :running,
+        tags: [:queue]
+      ),
+
       # Google Sheets API Metrics
       counter("trade_machine.sheets_api.requests",
         tags: [:operation, :status]
@@ -117,9 +134,9 @@ defmodule TradeMachineWeb.Telemetry do
   defp periodic_measurements do
     [
       # VM measurements
-      {__MODULE__, :dispatch_vm_stats, []}
-      # Custom business metrics
-      #      {__MODULE__, :dispatch_oban_stats, []},
+      {__MODULE__, :dispatch_vm_stats, []},
+      # Oban queue stats (all queues including espn_sync)
+      {__MODULE__, :dispatch_oban_stats, []}
       # Google Sheets connection health
       #      {__MODULE__, :dispatch_sheets_health, []}
     ]
@@ -148,17 +165,19 @@ defmodule TradeMachineWeb.Telemetry do
   end
 
   def dispatch_oban_stats do
-    try do
-      # Get Oban queue stats if available
-      stats = Oban.check_queue(TradeMachine.Repo, queue: "minors_sync")
-      :telemetry.execute([:oban, :queue, :stats], stats, %{queue: "minors_sync"})
+    # Oban is configured to use Production repo exclusively
+    # All background jobs (including those that work with staging data) run through Production repo
+    queues = ["minors_sync", "draft_sync", "emails", "espn_sync"]
 
-      stats = Oban.check_queue(TradeMachine.Repo, queue: "draft_sync")
-      :telemetry.execute([:oban, :queue, :stats], stats, %{queue: "draft_sync"})
-    rescue
-      error ->
-        Logger.debug("Failed to get Oban stats: #{inspect(error)}")
-    end
+    Enum.each(queues, fn queue_name ->
+      try do
+        stats = Oban.check_queue(queue: queue_name)
+        :telemetry.execute([:oban, :queue, :stats], stats, %{queue: queue_name})
+      rescue
+        error ->
+          Logger.debug("Failed to get Oban stats for queue #{queue_name}: #{inspect(error)}")
+      end
+    end)
   end
 
   def dispatch_sheets_health do

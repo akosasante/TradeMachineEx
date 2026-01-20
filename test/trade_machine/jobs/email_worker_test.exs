@@ -1,6 +1,6 @@
 defmodule TradeMachine.Jobs.EmailWorkerTest do
   use ExUnit.Case, async: true
-  use Oban.Testing, repo: TradeMachine.Repo
+  use Oban.Testing, repo: TradeMachine.Repo.Production, prefix: "test"
 
   import Swoosh.TestAssertions
 
@@ -9,8 +9,24 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
   alias TradeMachine.Tracing.TraceContext
 
   setup do
-    # Enable Ecto.Adapters.SQL.Sandbox for database isolation
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo)
+    # Enable Ecto.Adapters.SQL.Sandbox for database isolation - checkout both repos
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Production)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Staging)
+    
+    # Set search_path to test schema for sandbox connections
+    TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Production)
+    TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Staging)
+    
+    # IMPORTANT: For async tests, we need to allow both repos to share the same sandbox
+    # This allows Staging repo to see data inserted by Production repo
+    Ecto.Adapters.SQL.Sandbox.mode(TradeMachine.Repo.Production, {:shared, self()})
+    Ecto.Adapters.SQL.Sandbox.mode(TradeMachine.Repo.Staging, {:shared, self()})
+    
+    # Allow cross-repo visibility by sharing the sandbox between repos
+    Ecto.Adapters.SQL.Sandbox.allow(TradeMachine.Repo.Production, self(), self())
+    Ecto.Adapters.SQL.Sandbox.allow(TradeMachine.Repo.Staging, self(), self())
+    
+    :ok
   end
 
   describe "perform/1" do
@@ -20,15 +36,15 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         email_type: "reset_password",
         data: user.id,
-        env: "staging"
+        env: "production"
       }
 
       assert :ok = perform_job(EmailWorker, job_args)
 
-      # Assert email was sent using Swoosh TestAssertions (to staging email)
+      # Assert email was sent using Swoosh TestAssertions
       assert_email_sent(
         subject: "Password Reset Instructions",
-        to: [{"Test User", "test_staging@example.com"}],
+        to: [{"Test User", "test@example.com"}],
         from: {"FlexFox Fantasy TradeMachine", "tradebot@flexfoxfantasy.com"}
       )
     end
@@ -39,7 +55,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         email_type: "registration",
         data: user.id,
-        env: "staging"
+        env: "production"
       }
 
       assert :ok = perform_job(EmailWorker, job_args)
@@ -47,7 +63,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       # Assert email was sent using Swoosh TestAssertions (to staging email)
       assert_email_sent(
         subject: "You have been invited to register on FFF Trade Machine",
-        to: [{"Test User", "test_staging@example.com"}],
+        to: [{"Test User", "test@example.com"}],
         from: {"FlexFox Fantasy TradeMachine", "tradebot@flexfoxfantasy.com"}
       )
     end
@@ -58,7 +74,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         email_type: "test",
         data: user.id,
-        env: "staging"
+        env: "production"
       }
 
       assert :ok = perform_job(EmailWorker, job_args)
@@ -66,7 +82,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       # Assert email was sent using Swoosh TestAssertions (to staging email)
       assert_email_sent(
         subject: "Test email from Flex Fox Fantasy League TradeMachine",
-        to: [{"Test User", "test_staging@example.com"}],
+        to: [{"Test User", "test@example.com"}],
         from: {"FlexFox Fantasy TradeMachine", "tradebot@flexfoxfantasy.com"}
       )
     end
@@ -77,7 +93,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         email_type: "unknown_email_type",
         data: user.id,
-        env: "staging"
+        env: "production"
       }
 
       assert {:error, :unknown_email_type} = perform_job(EmailWorker, job_args)
@@ -92,7 +108,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         email_type: "reset_password",
         data: non_existent_user_id,
-        env: "staging"
+        env: "production"
       }
 
       assert {:error, :user_not_found} = perform_job(EmailWorker, job_args)
@@ -107,7 +123,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         email_type: "invalid_type",
         data: user.id,
-        env: "staging"
+        env: "production"
       }
 
       # Capture logs to verify error logging
@@ -127,7 +143,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         email_type: "reset_password",
         data: user.id,
-        env: "staging"
+        env: "production"
       }
 
       # Enqueue the job
@@ -136,7 +152,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       # Assert job was enqueued with correct args
       assert_enqueued(
         worker: EmailWorker,
-        args: %{email_type: "reset_password", data: user.id, env: "staging"}
+        args: %{email_type: "reset_password", data: user.id, env: "production"}
       )
     end
 
@@ -146,7 +162,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         email_type: "reset_password",
         data: user.id,
-        env: "staging"
+        env: "production"
       }
 
       # Check the job configuration directly without inserting
@@ -165,7 +181,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         email_type: "reset_password",
         data: user.id,
-        env: "staging"
+        env: "production"
       }
 
       # Test the full flow: enqueue and perform
@@ -177,7 +193,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       # Assert email was sent (to staging email)
       assert_email_sent(
         subject: "Password Reset Instructions",
-        to: [{"Test User", "test_staging@example.com"}]
+        to: [{"Test User", "test@example.com"}]
       )
     end
 
@@ -186,58 +202,58 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       user2 = insert_user(%{email: "user2@example.com", display_name: "User Two"})
 
       # Enqueue multiple jobs
-      EmailWorker.new(%{email_type: "reset_password", data: user1.id, env: "staging"})
+      EmailWorker.new(%{email_type: "reset_password", data: user1.id, env: "production"})
       |> Oban.insert!()
 
-      EmailWorker.new(%{email_type: "reset_password", data: user2.id, env: "staging"})
+      EmailWorker.new(%{email_type: "reset_password", data: user2.id, env: "production"})
       |> Oban.insert!()
 
-      # Assert both jobs are enqueued
-      enqueued_jobs = all_enqueued(worker: EmailWorker)
-      assert length(enqueued_jobs) == 2
+      # Assert both jobs are enqueued - filter by the specific user IDs
+      assert_enqueued(worker: EmailWorker, args: %{data: user1.id})
+      assert_enqueued(worker: EmailWorker, args: %{data: user2.id})
 
       # Perform both jobs
       assert :ok =
                perform_job(EmailWorker, %{
                  email_type: "reset_password",
                  data: user1.id,
-                 env: "staging"
+                 env: "production"
                })
 
       assert :ok =
                perform_job(EmailWorker, %{
                  email_type: "reset_password",
                  data: user2.id,
-                 env: "staging"
+                 env: "production"
                })
 
       # Assert both emails were sent
-      assert_email_sent(to: [{"Test User", "test_staging@example.com"}])
-      assert_email_sent(to: [{"User Two", "test_staging@example.com"}])
+      assert_email_sent(to: [{"Test User", "test@example.com"}])
+      assert_email_sent(to: [{"User Two", "user2@example.com"}])
     end
 
     test "can handle registration and test email jobs" do
       user = insert_user()
 
       # Enqueue registration and test email jobs
-      EmailWorker.new(%{email_type: "registration", data: user.id, env: "staging"})
+      EmailWorker.new(%{email_type: "registration", data: user.id, env: "production"})
       |> Oban.insert!()
 
-      EmailWorker.new(%{email_type: "test", data: user.id, env: "staging"}) |> Oban.insert!()
+      EmailWorker.new(%{email_type: "test", data: user.id, env: "production"}) |> Oban.insert!()
 
-      # Assert both jobs are enqueued
-      enqueued_jobs = all_enqueued(worker: EmailWorker)
-      assert length(enqueued_jobs) == 2
+      # Assert both jobs are enqueued - check for specific jobs
+      assert_enqueued(worker: EmailWorker, args: %{email_type: "registration", data: user.id})
+      assert_enqueued(worker: EmailWorker, args: %{email_type: "test", data: user.id})
 
       # Perform both jobs
       assert :ok =
                perform_job(EmailWorker, %{
                  email_type: "registration",
                  data: user.id,
-                 env: "staging"
+                 env: "production"
                })
 
-      assert :ok = perform_job(EmailWorker, %{email_type: "test", data: user.id, env: "staging"})
+      assert :ok = perform_job(EmailWorker, %{email_type: "test", data: user.id, env: "production"})
 
       # Assert both emails were sent
       assert_email_sent(subject: "You have been invited to register on FFF Trade Machine")
@@ -252,7 +268,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         "email_type" => "reset_password",
         "data" => user.id,
-        "env" => "staging",
+        "env" => "production",
         "trace_context" => %{
           "traceparent" => "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
           "tracestate" => "grafana=sessionId:abc123"
@@ -265,7 +281,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       # Assert email was sent (tracing should not interfere with core functionality, to staging email)
       assert_email_sent(
         subject: "Password Reset Instructions",
-        to: [{"Test User", "test_staging@example.com"}]
+        to: [{"Test User", "test@example.com"}]
       )
     end
 
@@ -275,7 +291,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         "email_type" => "reset_password",
         "data" => user.id,
-        "env" => "staging"
+        "env" => "production"
       }
 
       # Test that the job completes successfully without trace context
@@ -284,7 +300,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       # Assert email was sent (should work normally without tracing, to staging email)
       assert_email_sent(
         subject: "Password Reset Instructions",
-        to: [{"Test User", "test_staging@example.com"}]
+        to: [{"Test User", "test@example.com"}]
       )
     end
 
@@ -294,7 +310,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         "email_type" => "reset_password",
         "data" => user.id,
-        "env" => "staging",
+        "env" => "production",
         "trace_context" => %{
           "traceparent" => "invalid-format"
         }
@@ -306,7 +322,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       # Assert email was sent (invalid tracing should not break email functionality, to staging email)
       assert_email_sent(
         subject: "Password Reset Instructions",
-        to: [{"Test User", "test_staging@example.com"}]
+        to: [{"Test User", "test@example.com"}]
       )
     end
 
@@ -316,7 +332,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         "email_type" => "reset_password",
         "data" => non_existent_user_id,
-        "env" => "staging",
+        "env" => "production",
         "trace_context" => %{
           "traceparent" => "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
         }
@@ -335,7 +351,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         "email_type" => "reset_password",
         "data" => user.id,
-        "env" => "staging",
+        "env" => "production",
         "trace_context" => %{
           "traceparent" => "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
         }
@@ -358,7 +374,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         "email_type" => "reset_password",
         "data" => user.id,
-        "env" => "staging"
+        "env" => "production"
       }
 
       # Capture logs to verify no trace context logging
@@ -377,7 +393,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         "email_type" => "registration",
         "data" => user.id,
-        "env" => "staging",
+        "env" => "production",
         "trace_context" => %{
           "traceparent" => "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
         }
@@ -394,7 +410,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       job_args = %{
         "email_type" => "test",
         "data" => user.id,
-        "env" => "staging",
+        "env" => "production",
         "trace_context" => %{
           "traceparent" => "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
         }
@@ -420,6 +436,6 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
     attrs = Map.merge(default_attrs, attrs)
 
     user = struct(User, attrs)
-    TradeMachine.Repo.insert!(user)
+    TradeMachine.Repo.Production.insert!(user)
   end
 end

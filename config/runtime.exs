@@ -103,31 +103,34 @@ else
 end
 
 # Oban configuration with environment-based settings
-oban_plugins =
-  if System.get_env("DATABASE_SCHEMA") == "staging" or System.get_env("ENABLE_CRON") == "true" do
-    [
-      {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
-      {Oban.Plugins.Cron,
-       crontab: [
-         {"0 2 * * *", TradeMachine.Jobs.MinorsSync}
-       ]}
-    ]
-  else
-    [
-      {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)}
-    ]
-  end
+# Skip Oban runtime config in test mode - test.exs handles it
+if config_env() != :test do
+  oban_plugins =
+    if System.get_env("DATABASE_SCHEMA") == "staging" or System.get_env("ENABLE_CRON") == "true" do
+      [
+        {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
+        {Oban.Plugins.Cron,
+         crontab: [
+           {"0 2 * * *", TradeMachine.Jobs.MinorsSync}
+         ]}
+      ]
+    else
+      [
+        {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)}
+      ]
+    end
 
-config :trade_machine, Oban,
-  repo: TradeMachine.Repo.Production,
-  plugins: oban_plugins,
-  queues: [
-    minors_sync: String.to_integer(System.get_env("OBAN_MINORS_SYNC_CONCURRENCY") || "1"),
-    draft_sync: String.to_integer(System.get_env("OBAN_DRAFT_SYNC_CONCURRENCY") || "1"),
-    emails: 2,
-    espn_sync: 1
-  ],
-  prefix: "public"
+  config :trade_machine, Oban,
+    repo: TradeMachine.Repo.Production,
+    plugins: oban_plugins,
+    queues: [
+      minors_sync: String.to_integer(System.get_env("OBAN_MINORS_SYNC_CONCURRENCY") || "1"),
+      draft_sync: String.to_integer(System.get_env("OBAN_DRAFT_SYNC_CONCURRENCY") || "1"),
+      emails: 2,
+      espn_sync: 1
+    ],
+    prefix: "public"
+end
 
 # PromEx (Prometheus metrics) configuration
 if config_env() == :test do

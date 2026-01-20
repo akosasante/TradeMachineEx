@@ -8,6 +8,9 @@ defmodule TradeMachine.SchemaValidationTest do
   Since Prisma (TypeScript) manages all database migrations, this test validates
   that our Elixir schemas don't reference columns that no longer exist.
 
+  In test environment, we validate against the 'test' schema which mirrors the
+  structure of both 'public' (production) and 'staging' schemas.
+
   Note: Ecto schemas only need to map the columns they use - not every column
   in the database table. This allows selective field mapping.
 
@@ -33,7 +36,7 @@ defmodule TradeMachine.SchemaValidationTest do
       for schema <- @schemas do
         table_name = schema.__schema__(:source)
 
-        # Check if table exists in database
+        # Check if table exists in test schema (mirrors production/staging structure)
         query = """
         SELECT EXISTS (
           SELECT FROM information_schema.tables
@@ -42,7 +45,7 @@ defmodule TradeMachine.SchemaValidationTest do
         )
         """
 
-        result = Ecto.Adapters.SQL.query!(Repo, query, [table_name])
+        result = Ecto.Adapters.SQL.query!(TradeMachine.Repo.Production, query, [table_name])
         table_exists = result.rows |> hd() |> hd()
 
         assert table_exists,
@@ -55,6 +58,9 @@ defmodule TradeMachine.SchemaValidationTest do
                3. The Ecto schema source is incorrect
 
                Action required: Update the Ecto schema or remove it if no longer needed.
+               
+               Note: This test validates against the 'test' schema which should mirror
+               both 'public' (production) and 'staging' schemas managed by Prisma.
                """
       end
     end
@@ -63,7 +69,7 @@ defmodule TradeMachine.SchemaValidationTest do
       for schema <- @schemas do
         table_name = schema.__schema__(:source)
         schema_fields = get_schema_fields(schema)
-        db_columns = get_database_columns(table_name)
+        db_columns = get_database_columns(table_name, TradeMachine.Repo.Production, "test")
 
         # Check that all schema fields exist as database columns
         for {field_name, field_info} <- schema_fields do
@@ -84,6 +90,9 @@ defmodule TradeMachine.SchemaValidationTest do
                  1. Check recent Prisma migrations for changes to this column
                  2. Update the Ecto schema field name or remove the field
                  3. Check field source mapping in TradeMachine.Schema if needed
+                 
+                 Note: This test validates against the 'test' schema which should mirror
+                 both 'public' (production) and 'staging' schemas managed by Prisma.
                  """
 
           # Validate field type compatibility (basic check)
@@ -113,15 +122,15 @@ defmodule TradeMachine.SchemaValidationTest do
     |> Map.new()
   end
 
-  defp get_database_columns(table_name) do
+  defp get_database_columns(table_name, repo, schema_name) do
     query = """
     SELECT column_name, data_type, is_nullable, column_default
     FROM information_schema.columns
-    WHERE table_schema = 'test' AND table_name = $1
+    WHERE table_schema = $1 AND table_name = $2
     ORDER BY ordinal_position
     """
 
-    result = Ecto.Adapters.SQL.query!(Repo, query, [table_name])
+    result = Ecto.Adapters.SQL.query!(repo, query, [schema_name, table_name])
 
     result.rows
     |> Enum.map(fn [name, type, nullable, default] ->

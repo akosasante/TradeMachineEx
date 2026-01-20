@@ -24,8 +24,8 @@ defmodule TradeMachine.PromEx do
       # Phoenix web metrics
       {Plugins.Phoenix, endpoint: TradeMachineWeb.Endpoint, router: TradeMachineWeb.Router},
 
-      # Database metrics
-      {Plugins.Ecto, repos: [TradeMachine.Repo]}
+      # Database metrics - monitor both Production and Staging repos
+      {Plugins.Ecto, repos: [TradeMachine.Repo.Production, TradeMachine.Repo.Staging]}
 
       # Oban job queue metrics (commented out since Oban is not running)
       # Plugins.Oban,
@@ -127,7 +127,8 @@ defmodule TradeMachine.PromEx.CustomMetrics do
           [:trade_machine, :database, :pool_size],
           event_name: [:prom_ex, :plugin, :trade_machine, :application_health],
           description: "Database connection pool size",
-          measurement: :pool_size
+          measurement: :pool_size,
+          tags: [:repo]
         ),
 
         # Active database connections
@@ -135,7 +136,8 @@ defmodule TradeMachine.PromEx.CustomMetrics do
           [:trade_machine, :database, :active_connections],
           event_name: [:prom_ex, :plugin, :trade_machine, :application_health],
           description: "Active database connections",
-          measurement: :active_connections
+          measurement: :active_connections,
+          tags: [:repo]
         )
       ]
     )
@@ -219,28 +221,35 @@ defmodule TradeMachine.PromEx.CustomMetrics do
   end
 
   def execute_application_health_metrics do
-    # Get database connection pool information
+    # Emit metrics for both Production and Staging repos
+    emit_repo_health_metrics(TradeMachine.Repo.Production, "production")
+    emit_repo_health_metrics(TradeMachine.Repo.Staging, "staging")
+  end
+
+  defp emit_repo_health_metrics(repo, repo_name) do
     try do
-      _pool_info = Ecto.Adapters.SQL.query!(TradeMachine.Repo, "SELECT 1", [])
+      # Test database connectivity
+      _pool_info = Ecto.Adapters.SQL.query!(repo, "SELECT 1", [])
 
       :telemetry.execute(
         [:prom_ex, :plugin, :trade_machine, :application_health],
         %{
-          pool_size: Application.get_env(:trade_machine, TradeMachine.Repo)[:pool_size] || 10,
-          # This is a simplified metric
+          pool_size: Application.get_env(:trade_machine, repo)[:pool_size] || 10,
+          # This is a simplified metric - in production you could get actual pool stats
           active_connections: 1
         },
-        %{}
+        %{repo: repo_name}
       )
     rescue
       _ ->
+        # If query fails, emit zero metrics to indicate unhealthy state
         :telemetry.execute(
           [:prom_ex, :plugin, :trade_machine, :application_health],
           %{
             pool_size: 0,
             active_connections: 0
           },
-          %{}
+          %{repo: repo_name}
         )
     end
   end
