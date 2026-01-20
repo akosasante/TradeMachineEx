@@ -29,15 +29,16 @@ defmodule TradeMachine.Release do
       # Log repo configuration for debugging
       config = Application.get_env(:trade_machine, repo)
       Logger.info("Repo config: #{inspect(config)}")
-      
-      {:ok, _, _} = Ecto.Migrator.with_repo(repo, fn repo_instance ->
-        # Check what migrations Ecto sees
-        migrations = Ecto.Migrator.migrations(repo_instance)
-        Logger.info("Migrations status for #{inspect(repo)}: #{inspect(migrations)}")
-        
-        # Run migrations
-        Ecto.Migrator.run(repo_instance, :up, all: true)
-      end)
+
+      {:ok, _, _} =
+        Ecto.Migrator.with_repo(repo, fn repo_instance ->
+          # Check what migrations Ecto sees
+          migrations = Ecto.Migrator.migrations(repo_instance)
+          Logger.info("Migrations status for #{inspect(repo)}: #{inspect(migrations)}")
+
+          # Run migrations
+          Ecto.Migrator.run(repo_instance, :up, all: true)
+        end)
     end
 
     Logger.info("Migrations completed successfully for #{inspect(repo)}")
