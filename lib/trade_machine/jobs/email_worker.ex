@@ -96,10 +96,6 @@ defmodule TradeMachine.Jobs.EmailWorker do
     end
   end
 
-  # Select the appropriate repo based on frontend environment
-  defp select_repo("production"), do: TradeMachine.Repo.Production
-  defp select_repo(_), do: TradeMachine.Repo.Staging
-
   # Fallback for jobs without required fields
   defp execute_email_job(args) do
     error_msg = "Invalid email job args: #{inspect(args)}"
@@ -113,6 +109,10 @@ defmodule TradeMachine.Jobs.EmailWorker do
     Logger.error(error_msg)
     {:error, :invalid_args}
   end
+
+  # Select the appropriate repo based on frontend environment
+  defp select_repo("production"), do: TradeMachine.Repo.Production
+  defp select_repo(_), do: TradeMachine.Repo.Staging
 
   # Helper function to handle email sending with tracing and error handling
   defp handle_email_send(email_type, send_fn, user_id) do
