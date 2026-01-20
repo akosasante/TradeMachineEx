@@ -96,13 +96,17 @@ defmodule TradeMachine.ESPN.Client do
   """
   @spec get_league_teams(t(), keyword()) ::
           {:ok, list(TradeMachine.ESPN.Types.FantasyTeam.t())} | {:error, term()}
-  def get_league_teams(%__MODULE__{} = client, opts \\ []) do
+  def get_league_teams(client = %__MODULE__{}, opts \\ []) do
     view = opts[:view] || "mTeam"
     raw = opts[:raw] || false
 
     case Req.get(client.req, url: "/teams", params: [view: view]) do
       {:ok, %{status: 200, body: teams}} ->
-        result = if raw, do: teams, else: Enum.map(teams, &TradeMachine.ESPN.Types.FantasyTeam.from_api/1)
+        result =
+          if raw,
+            do: teams,
+            else: Enum.map(teams, &TradeMachine.ESPN.Types.FantasyTeam.from_api/1)
+
         {:ok, result}
 
       {:ok, %{status: status, body: body}} ->
@@ -134,14 +138,16 @@ defmodule TradeMachine.ESPN.Client do
   """
   @spec get_league_members(t(), keyword()) ::
           {:ok, list(TradeMachine.ESPN.Types.LeagueMember.t())} | {:error, term()}
-  def get_league_members(%__MODULE__{} = client, opts \\ []) do
+  def get_league_members(client = %__MODULE__{}, opts \\ []) do
     view = opts[:view] || "mNav"
     raw = opts[:raw] || false
 
     case Req.get(client.req, url: "/members", params: [view: view]) do
       {:ok, %{status: 200, body: members}} ->
         result =
-          if raw, do: members, else: Enum.map(members, &TradeMachine.ESPN.Types.LeagueMember.from_api/1)
+          if raw,
+            do: members,
+            else: Enum.map(members, &TradeMachine.ESPN.Types.LeagueMember.from_api/1)
 
         {:ok, result}
 
@@ -171,7 +177,7 @@ defmodule TradeMachine.ESPN.Client do
   """
   @spec get_schedule(t(), keyword()) ::
           {:ok, list(TradeMachine.ESPN.Types.ScheduleMatchup.t())} | {:error, term()}
-  def get_schedule(%__MODULE__{} = client, opts \\ []) do
+  def get_schedule(client = %__MODULE__{}, opts \\ []) do
     view = opts[:view] || "mScoreboard"
     raw = opts[:raw] || false
 
@@ -212,7 +218,7 @@ defmodule TradeMachine.ESPN.Client do
   """
   @spec get_roster(t(), integer(), integer(), keyword()) ::
           {:ok, TradeMachine.ESPN.Types.Roster.t()} | {:error, term()}
-  def get_roster(%__MODULE__{} = client, team_id, scoring_period_id, opts \\ []) do
+  def get_roster(client = %__MODULE__{}, team_id, scoring_period_id, opts \\ []) do
     view = opts[:view] || "mRoster"
     raw = opts[:raw] || false
 
@@ -225,7 +231,10 @@ defmodule TradeMachine.ESPN.Client do
     case Req.get(client.req, url: "", params: params) do
       {:ok, %{status: 200, body: %{"teams" => [team | _]}}} ->
         roster_data = team["roster"]
-        result = if raw, do: roster_data, else: TradeMachine.ESPN.Types.Roster.from_api(roster_data)
+
+        result =
+          if raw, do: roster_data, else: TradeMachine.ESPN.Types.Roster.from_api(roster_data)
+
         {:ok, result}
 
       {:ok, %{status: 200, body: body}} ->
@@ -262,14 +271,18 @@ defmodule TradeMachine.ESPN.Client do
   """
   @spec get_all_players(t(), keyword()) ::
           {:ok, list(TradeMachine.ESPN.Types.PlayerPoolEntry.t())} | {:error, term()}
-  def get_all_players(%__MODULE__{} = client, opts \\ []) do
+  def get_all_players(client = %__MODULE__{}, opts \\ []) do
     limit = opts[:limit] || 100
     sleep_ms = opts[:sleep_ms] || 5000
     raw = opts[:raw] || false
 
     case fetch_players_paginated(client, [], 0, limit, sleep_ms, nil) do
       {:ok, players} ->
-        result = if raw, do: players, else: Enum.map(players, &TradeMachine.ESPN.Types.PlayerPoolEntry.from_api/1)
+        result =
+          if raw,
+            do: players,
+            else: Enum.map(players, &TradeMachine.ESPN.Types.PlayerPoolEntry.from_api/1)
+
         {:ok, result}
 
       error ->

@@ -105,7 +105,7 @@ defmodule TradeMachine.Teams do
   end
 
   # Recursively convert structs to maps, handling nested structs
-  defp struct_to_map(%_{} = struct) do
+  defp struct_to_map(struct = %_{}) do
     struct
     |> Map.from_struct()
     |> Enum.map(fn {key, value} -> {key, struct_to_map(value)} end)

@@ -1,7 +1,7 @@
 defmodule TradeMachine.ESPN.Types do
   @moduledoc """
   Ecto embedded schemas for ESPN Fantasy API responses.
-  
+
   These schemas provide type-safe structs for parsing and working with ESPN API data.
   """
 
@@ -9,6 +9,15 @@ defmodule TradeMachine.ESPN.Types do
     @moduledoc "ESPN league member information"
     use Ecto.Schema
     import Ecto.Changeset
+
+    @type t :: %__MODULE__{
+            id: String.t() | nil,
+            display_name: String.t() | nil,
+            first_name: String.t() | nil,
+            last_name: String.t() | nil,
+            is_league_creator: boolean() | nil,
+            is_league_manager: boolean() | nil
+          }
 
     @primary_key false
     embedded_schema do
@@ -22,7 +31,14 @@ defmodule TradeMachine.ESPN.Types do
 
     def changeset(member, attrs) do
       member
-      |> cast(attrs, [:id, :display_name, :first_name, :last_name, :is_league_creator, :is_league_manager])
+      |> cast(attrs, [
+        :id,
+        :display_name,
+        :first_name,
+        :last_name,
+        :is_league_creator,
+        :is_league_manager
+      ])
       |> validate_required([:id, :display_name])
     end
 
@@ -42,6 +58,18 @@ defmodule TradeMachine.ESPN.Types do
   defmodule RecordStats do
     @moduledoc "Team record statistics"
     use Ecto.Schema
+
+    @type t :: %__MODULE__{
+            games_back: float() | nil,
+            losses: integer() | nil,
+            percentage: float() | nil,
+            points_against: float() | nil,
+            points_for: float() | nil,
+            streak_length: integer() | nil,
+            streak_type: String.t() | nil,
+            ties: integer() | nil,
+            wins: integer() | nil
+          }
 
     @primary_key false
     embedded_schema do
@@ -77,6 +105,13 @@ defmodule TradeMachine.ESPN.Types do
     @moduledoc "Team record across different contexts"
     use Ecto.Schema
 
+    @type t :: %__MODULE__{
+            away: RecordStats.t() | nil,
+            division: RecordStats.t() | nil,
+            home: RecordStats.t() | nil,
+            overall: RecordStats.t() | nil
+          }
+
     @primary_key false
     embedded_schema do
       embeds_one :away, RecordStats
@@ -100,6 +135,19 @@ defmodule TradeMachine.ESPN.Types do
   defmodule TransactionCounter do
     @moduledoc "Team transaction statistics"
     use Ecto.Schema
+
+    @type t :: %__MODULE__{
+            acquisition_budget_spent: integer() | nil,
+            acquisitions: integer() | nil,
+            drops: integer() | nil,
+            matchup_acquisition_totals: map() | nil,
+            misc: integer() | nil,
+            move_to_active: integer() | nil,
+            move_to_ir: integer() | nil,
+            paid: float() | nil,
+            team_charges: float() | nil,
+            trades: integer() | nil
+          }
 
     @primary_key false
     embedded_schema do
@@ -136,6 +184,23 @@ defmodule TradeMachine.ESPN.Types do
   defmodule FantasyTeam do
     @moduledoc "ESPN fantasy team"
     use Ecto.Schema
+
+    @type t :: %__MODULE__{
+            id: integer() | nil,
+            abbrev: String.t() | nil,
+            name: String.t() | nil,
+            location: String.t() | nil,
+            nickname: String.t() | nil,
+            owners: [String.t()] | nil,
+            primary_owner: String.t() | nil,
+            logo: String.t() | nil,
+            logo_type: String.t() | nil,
+            points: float() | nil,
+            waiver_rank: integer() | nil,
+            values_by_stat: map() | nil,
+            record: TeamRecord.t() | nil,
+            transaction_counter: TransactionCounter.t() | nil
+          }
 
     @primary_key false
     embedded_schema do
@@ -180,6 +245,12 @@ defmodule TradeMachine.ESPN.Types do
     @moduledoc "Player ownership statistics"
     use Ecto.Schema
 
+    @type t :: %__MODULE__{
+            percent_owned: float() | nil,
+            percent_started: float() | nil,
+            percent_change: float() | nil
+          }
+
     @primary_key false
     embedded_schema do
       field :percent_owned, :float
@@ -201,6 +272,21 @@ defmodule TradeMachine.ESPN.Types do
   defmodule PlayerInfo do
     @moduledoc "MLB player information"
     use Ecto.Schema
+
+    @type t :: %__MODULE__{
+            id: integer() | nil,
+            first_name: String.t() | nil,
+            last_name: String.t() | nil,
+            full_name: String.t() | nil,
+            pro_team_id: integer() | nil,
+            eligible_slots: [integer()] | nil,
+            default_position_id: integer() | nil,
+            jersey: String.t() | nil,
+            injured: boolean() | nil,
+            injury_status: String.t() | nil,
+            active: boolean() | nil,
+            ownership: PlayerOwnership.t() | nil
+          }
 
     @primary_key false
     embedded_schema do
@@ -241,6 +327,13 @@ defmodule TradeMachine.ESPN.Types do
     @moduledoc "Player pool entry (player in league context)"
     use Ecto.Schema
 
+    @type t :: %__MODULE__{
+            id: integer() | nil,
+            on_team_id: integer() | nil,
+            status: String.t() | nil,
+            player: PlayerInfo.t() | nil
+          }
+
     @primary_key false
     embedded_schema do
       field :id, :integer
@@ -264,6 +357,12 @@ defmodule TradeMachine.ESPN.Types do
     @moduledoc "Roster entry for a team"
     use Ecto.Schema
 
+    @type t :: %__MODULE__{
+            lineup_slot_id: integer() | nil,
+            player_id: integer() | nil,
+            player_pool_entry: PlayerPoolEntry.t() | nil
+          }
+
     @primary_key false
     embedded_schema do
       field :lineup_slot_id, :integer
@@ -285,6 +384,10 @@ defmodule TradeMachine.ESPN.Types do
     @moduledoc "Team roster"
     use Ecto.Schema
 
+    @type t :: %__MODULE__{
+            entries: [RosterEntry.t()]
+          }
+
     @primary_key false
     embedded_schema do
       embeds_many :entries, RosterEntry
@@ -302,6 +405,13 @@ defmodule TradeMachine.ESPN.Types do
   defmodule CumulativeScore do
     @moduledoc "Cumulative matchup score"
     use Ecto.Schema
+
+    @type t :: %__MODULE__{
+            losses: integer() | nil,
+            wins: integer() | nil,
+            ties: integer() | nil,
+            score_by_stat: map() | nil
+          }
 
     @primary_key false
     embedded_schema do
@@ -326,6 +436,14 @@ defmodule TradeMachine.ESPN.Types do
   defmodule MatchupScore do
     @moduledoc "Matchup score for home or away team"
     use Ecto.Schema
+
+    @type t :: %__MODULE__{
+            team_id: integer() | nil,
+            total_points: float() | nil,
+            total_points_live: float() | nil,
+            cumulative_score: CumulativeScore.t() | nil,
+            roster_for_matchup_period: Roster.t() | nil
+          }
 
     @primary_key false
     embedded_schema do
@@ -353,6 +471,13 @@ defmodule TradeMachine.ESPN.Types do
   defmodule ScheduleMatchup do
     @moduledoc "Schedule matchup between two teams"
     use Ecto.Schema
+
+    @type t :: %__MODULE__{
+            id: integer() | nil,
+            winner: String.t() | nil,
+            home: MatchupScore.t() | nil,
+            away: MatchupScore.t() | nil
+          }
 
     @primary_key false
     embedded_schema do
