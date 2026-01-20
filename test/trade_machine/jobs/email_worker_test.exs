@@ -12,20 +12,20 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
     # Enable Ecto.Adapters.SQL.Sandbox for database isolation - checkout both repos
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Production)
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Staging)
-    
+
     # Set search_path to test schema for sandbox connections
     TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Production)
     TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Staging)
-    
+
     # IMPORTANT: For async tests, we need to allow both repos to share the same sandbox
     # This allows Staging repo to see data inserted by Production repo
     Ecto.Adapters.SQL.Sandbox.mode(TradeMachine.Repo.Production, {:shared, self()})
     Ecto.Adapters.SQL.Sandbox.mode(TradeMachine.Repo.Staging, {:shared, self()})
-    
+
     # Allow cross-repo visibility by sharing the sandbox between repos
     Ecto.Adapters.SQL.Sandbox.allow(TradeMachine.Repo.Production, self(), self())
     Ecto.Adapters.SQL.Sandbox.allow(TradeMachine.Repo.Staging, self(), self())
-    
+
     :ok
   end
 
@@ -253,7 +253,8 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
                  env: "production"
                })
 
-      assert :ok = perform_job(EmailWorker, %{email_type: "test", data: user.id, env: "production"})
+      assert :ok =
+               perform_job(EmailWorker, %{email_type: "test", data: user.id, env: "production"})
 
       # Assert both emails were sent
       assert_email_sent(subject: "You have been invited to register on FFF Trade Machine")

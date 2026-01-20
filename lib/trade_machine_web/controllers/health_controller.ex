@@ -73,8 +73,11 @@ defmodule TradeMachineWeb.HealthController do
   defp database_check do
     try do
       # Check both Production and Staging database connectivity
-      prod_result = Ecto.Adapters.SQL.query(TradeMachine.Repo.Production, "SELECT 1", [], timeout: 5000)
-      staging_result = Ecto.Adapters.SQL.query(TradeMachine.Repo.Staging, "SELECT 1", [], timeout: 5000)
+      prod_result =
+        Ecto.Adapters.SQL.query(TradeMachine.Repo.Production, "SELECT 1", [], timeout: 5000)
+
+      staging_result =
+        Ecto.Adapters.SQL.query(TradeMachine.Repo.Staging, "SELECT 1", [], timeout: 5000)
 
       case {prod_result, staging_result} do
         {{:ok, _}, {:ok, _}} ->

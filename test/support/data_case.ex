@@ -32,7 +32,7 @@ defmodule TradeMachine.DataCase do
     # Checkout both repos for tests
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Production)
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Staging)
-    
+
     # Set search_path to test schema for sandbox connections
     TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Production)
     TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Staging)

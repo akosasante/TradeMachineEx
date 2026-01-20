@@ -58,7 +58,7 @@ defmodule TradeMachine.SchemaValidationTest do
                3. The Ecto schema source is incorrect
 
                Action required: Update the Ecto schema or remove it if no longer needed.
-               
+
                Note: This test validates against the 'test' schema which should mirror
                both 'public' (production) and 'staging' schemas managed by Prisma.
                """
@@ -90,7 +90,7 @@ defmodule TradeMachine.SchemaValidationTest do
                  1. Check recent Prisma migrations for changes to this column
                  2. Update the Ecto schema field name or remove the field
                  3. Check field source mapping in TradeMachine.Schema if needed
-                 
+
                  Note: This test validates against the 'test' schema which should mirror
                  both 'public' (production) and 'staging' schemas managed by Prisma.
                  """
