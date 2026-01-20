@@ -61,3 +61,6 @@ sheet_creds.json
 
 # Ignore symlink
 TradeMachineServer*.erlang.cookie
+
+# for now let's not commit cursor hooks and stuff
+.cursor/
