@@ -154,7 +154,7 @@ jobs:
             docker images ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} --format "{{.Repository}}:{{.Tag}}" | tail -n +4 | xargs -r docker rmi
 
             # Verify deployment
-            sleep 10
+            sleep 40
             if ! curl -f http://localhost:4001/health; then
               echo "Health check failed, rolling back..."
               docker compose -f docker-compose.prod.yml logs app
