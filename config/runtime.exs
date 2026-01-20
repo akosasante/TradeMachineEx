@@ -111,7 +111,8 @@ if config_env() != :test do
         {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
         {Oban.Plugins.Cron,
          crontab: [
-           {"0 2 * * *", TradeMachine.Jobs.MinorsSync}
+           {"0 2 * * *", TradeMachine.Jobs.MinorsSync},
+           {"45 20 * * *", TradeMachine.Jobs.EspnTeamSync}
          ]}
       ]
     else
