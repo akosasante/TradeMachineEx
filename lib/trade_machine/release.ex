@@ -26,7 +26,18 @@ defmodule TradeMachine.Release do
     load_app()
 
     for repo <- repos(repo) do
-      {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+      # Log repo configuration for debugging
+      config = Application.get_env(:trade_machine, repo)
+      Logger.info("Repo config: #{inspect(config)}")
+      
+      {:ok, _, _} = Ecto.Migrator.with_repo(repo, fn repo_instance ->
+        # Check what migrations Ecto sees
+        migrations = Ecto.Migrator.migrations(repo_instance)
+        Logger.info("Migrations status for #{inspect(repo)}: #{inspect(migrations)}")
+        
+        # Run migrations
+        Ecto.Migrator.run(repo_instance, :up, all: true)
+      end)
     end
 
     Logger.info("Migrations completed successfully for #{inspect(repo)}")
