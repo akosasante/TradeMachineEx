@@ -18,7 +18,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: trader_test
           POSTGRES_PASSWORD: test_password
@@ -89,8 +89,6 @@ jobs:
           DATABASE_USER: trader_test
           DATABASE_PASSWORD: test_password
           DATABASE_NAME: trade_machine_test
-          # Both repos should connect to the same test database in CI
-          PROD_DATABASE_PORT: 5432
-          STAGING_DATABASE_PORT: 5432
+          DATABASE_PORT: 5432
           DATABASE_SCHEMA: test
           SCHEMA: test
