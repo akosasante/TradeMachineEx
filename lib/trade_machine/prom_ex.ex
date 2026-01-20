@@ -27,8 +27,8 @@ defmodule TradeMachine.PromEx do
       # Database metrics - monitor both Production and Staging repos
       {Plugins.Ecto, repos: [TradeMachine.Repo.Production, TradeMachine.Repo.Staging]}
 
-      # Oban job queue metrics (commented out since Oban is not running)
-      # Plugins.Oban,
+      # Oban job queue metrics - monitors both Production and Staging instances
+      # {Plugins.Oban, oban_supervisors: [Oban.Production, Oban.Staging]},
 
       # Custom business metrics (temporarily disabled to avoid buckets issue)
       # {TradeMachine.PromEx.CustomMetrics, []}

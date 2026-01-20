@@ -147,7 +147,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       }
 
       # Enqueue the job
-      EmailWorker.new(job_args) |> Oban.insert!()
+      EmailWorker.new(job_args) |> Oban.insert!(name: Oban.Production)
 
       # Assert job was enqueued with correct args
       assert_enqueued(
@@ -171,7 +171,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       assert job_changeset.changes.max_attempts == 3
 
       # Also verify by enqueuing and checking with assert_enqueued
-      EmailWorker.new(job_args) |> Oban.insert!()
+      EmailWorker.new(job_args) |> Oban.insert!(name: Oban.Production)
       assert_enqueued(queue: "emails", worker: EmailWorker)
     end
 
@@ -185,7 +185,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       }
 
       # Test the full flow: enqueue and perform
-      EmailWorker.new(job_args) |> Oban.insert!()
+      EmailWorker.new(job_args) |> Oban.insert!(name: Oban.Production)
 
       assert_enqueued(worker: EmailWorker, args: job_args)
       assert :ok = perform_job(EmailWorker, job_args)
@@ -203,10 +203,10 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
 
       # Enqueue multiple jobs
       EmailWorker.new(%{email_type: "reset_password", data: user1.id, env: "production"})
-      |> Oban.insert!()
+      |> Oban.insert!(name: Oban.Production)
 
       EmailWorker.new(%{email_type: "reset_password", data: user2.id, env: "production"})
-      |> Oban.insert!()
+      |> Oban.insert!(name: Oban.Production)
 
       # Assert both jobs are enqueued - filter by the specific user IDs
       assert_enqueued(worker: EmailWorker, args: %{data: user1.id})
@@ -237,9 +237,10 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
 
       # Enqueue registration and test email jobs
       EmailWorker.new(%{email_type: "registration", data: user.id, env: "production"})
-      |> Oban.insert!()
+      |> Oban.insert!(name: Oban.Production)
 
-      EmailWorker.new(%{email_type: "test", data: user.id, env: "production"}) |> Oban.insert!()
+      EmailWorker.new(%{email_type: "test", data: user.id, env: "production"})
+      |> Oban.insert!(name: Oban.Production)
 
       # Assert both jobs are enqueued - check for specific jobs
       assert_enqueued(worker: EmailWorker, args: %{email_type: "registration", data: user.id})

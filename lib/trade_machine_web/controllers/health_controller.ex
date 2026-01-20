@@ -119,12 +119,26 @@ defmodule TradeMachineWeb.HealthController do
 
   #  defp oban_check do
   #    try do
-  #      # Check if Oban is running and queues are operational
-  #      case Oban.check_queue(TradeMachine.Repo, queue: "minors_sync") do
-  #        {:ok, _stats} ->
-  #          %{healthy: true, message: "Oban job processing healthy"}
-  #        {:error, error} ->
-  #          %{healthy: false, message: "Oban error: #{inspect(error)}"}
+  #      # Check both Oban instances
+  #      prod_result = Oban.check_queue(name: Oban.Production, queue: "emails")
+  #      staging_result = Oban.check_queue(name: Oban.Staging, queue: "emails")
+  #
+  #      case {prod_result, staging_result} do
+  #        {{:ok, _prod_stats}, {:ok, _staging_stats}} ->
+  #          %{healthy: true, message: "Both Production and Staging Oban instances healthy"}
+  #
+  #        {{:error, prod_error}, {:ok, _}} ->
+  #          %{healthy: false, message: "Production Oban error: #{inspect(prod_error)}"}
+  #
+  #        {{:ok, _}, {:error, staging_error}} ->
+  #          %{healthy: false, message: "Staging Oban error: #{inspect(staging_error)}"}
+  #
+  #        {{:error, prod_error}, {:error, staging_error}} ->
+  #          %{
+  #            healthy: false,
+  #            message:
+  #              "Both Oban instances unhealthy - Prod: #{inspect(prod_error)}, Staging: #{inspect(staging_error)}"
+  #          }
   #      end
   #    rescue
   #      error ->

@@ -80,17 +80,17 @@ defmodule TradeMachineWeb.Telemetry do
       last_value("oban.queue.limit",
         event_name: [:oban, :queue, :stats],
         measurement: :limit,
-        tags: [:queue]
+        tags: [:queue, :oban_instance]
       ),
       last_value("oban.queue.available",
         event_name: [:oban, :queue, :stats],
         measurement: :available,
-        tags: [:queue]
+        tags: [:queue, :oban_instance]
       ),
       last_value("oban.queue.running",
         event_name: [:oban, :queue, :stats],
         measurement: :running,
-        tags: [:queue]
+        tags: [:queue, :oban_instance]
       ),
 
       # Google Sheets API Metrics
@@ -165,19 +165,37 @@ defmodule TradeMachineWeb.Telemetry do
   end
 
   def dispatch_oban_stats do
-    # Oban is configured to use Production repo exclusively
-    # All background jobs (including those that work with staging data) run through Production repo
+    # Check Production Oban instance (all queues)
     queues = ["minors_sync", "draft_sync", "emails", "espn_sync"]
 
     Enum.each(queues, fn queue_name ->
       try do
-        stats = Oban.check_queue(queue: queue_name)
-        :telemetry.execute([:oban, :queue, :stats], stats, %{queue: queue_name})
+        stats = Oban.check_queue(name: Oban.Production, queue: queue_name)
+
+        :telemetry.execute([:oban, :queue, :stats], stats, %{
+          queue: queue_name,
+          oban_instance: "production"
+        })
       rescue
         error ->
-          Logger.debug("Failed to get Oban stats for queue #{queue_name}: #{inspect(error)}")
+          Logger.debug(
+            "Failed to get Oban.Production stats for queue #{queue_name}: #{inspect(error)}"
+          )
       end
     end)
+
+    # Check Staging Oban instance (only emails queue)
+    try do
+      stats = Oban.check_queue(name: Oban.Staging, queue: "emails")
+
+      :telemetry.execute([:oban, :queue, :stats], stats, %{
+        queue: "emails",
+        oban_instance: "staging"
+      })
+    rescue
+      error ->
+        Logger.debug("Failed to get Oban.Staging stats for emails queue: #{inspect(error)}")
+    end
   end
 
   def dispatch_sheets_health do

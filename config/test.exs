@@ -42,9 +42,18 @@ config :trade_machine, TradeMachineWeb.Endpoint,
 # Print only warnings and errors during test
 config :logger, level: :warn
 
-# Configure Oban for testing
-config :trade_machine, Oban,
+# Configure Oban for testing - dual instances
+config :trade_machine, Oban.Production,
+  name: Oban.Production,
   repo: TradeMachine.Repo.Production,
+  prefix: "test",
+  testing: :manual,
+  plugins: false,
+  queues: false
+
+config :trade_machine, Oban.Staging,
+  name: Oban.Staging,
+  repo: TradeMachine.Repo.Staging,
   prefix: "test",
   testing: :manual,
   plugins: false,

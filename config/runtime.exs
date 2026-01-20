@@ -120,7 +120,9 @@ if config_env() != :test do
       ]
     end
 
-  config :trade_machine, Oban,
+  # Production Oban instance - handles all job types including cron jobs
+  config :trade_machine, Oban.Production,
+    name: Oban.Production,
     repo: TradeMachine.Repo.Production,
     plugins: oban_plugins,
     queues: [
@@ -130,6 +132,18 @@ if config_env() != :test do
       espn_sync: 1
     ],
     prefix: "public"
+
+  # Staging Oban instance - only handles email jobs, no cron jobs
+  config :trade_machine, Oban.Staging,
+    name: Oban.Staging,
+    repo: TradeMachine.Repo.Staging,
+    plugins: [
+      {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)}
+    ],
+    queues: [
+      emails: 2
+    ],
+    prefix: "staging"
 end
 
 # PromEx (Prometheus metrics) configuration

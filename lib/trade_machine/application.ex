@@ -54,8 +54,13 @@ defmodule TradeMachine.Application do
           {Phoenix.PubSub, name: TradeMachine.PubSub},
           # Start Finch HTTP client (required for Swoosh email adapter)
           {Finch, name: Swoosh.Finch},
-          # Start Oban. This is the queue/job runner that we use to periodically process changes from the Google Sheet
-          {Oban, Application.fetch_env!(:trade_machine, Oban)},
+          # Start Oban instances - Production handles all jobs including cron, Staging only handles emails
+          {Oban,
+           Application.fetch_env!(:trade_machine, Oban.Production)
+           |> Keyword.put(:name, Oban.Production)},
+          {Oban,
+           Application.fetch_env!(:trade_machine, Oban.Staging)
+           |> Keyword.put(:name, Oban.Staging)},
           # Start a GenServer whose job is just to keep the spreadsheet id and
           # Google OAuth (Goth) connection in-memory/state
           #      {TradeMachine.SheetReader, Application.get_env(:trade_machine, :spreadsheet_id)},
