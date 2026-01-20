@@ -16,7 +16,8 @@ if System.get_env("DATABASE_PASSWORD") do
     port: String.to_integer(System.get_env("PROD_DATABASE_PORT") || "5432"),
     pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
     show_sensitive_data_on_connection_error: false,
-    after_connect: {Postgrex, :query!, ["SET search_path TO public", []]}
+    after_connect: {Postgrex, :query!, ["SET search_path TO public", []]},
+    migration_default_prefix: "public"
 
   # Staging database configuration
   config :trade_machine, TradeMachine.Repo.Staging,
@@ -27,7 +28,8 @@ if System.get_env("DATABASE_PASSWORD") do
     port: String.to_integer(System.get_env("STAGING_DATABASE_PORT") || "5435"),
     pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
     show_sensitive_data_on_connection_error: false,
-    after_connect: {Postgrex, :query!, ["SET search_path TO staging", []]}
+    after_connect: {Postgrex, :query!, ["SET search_path TO staging", []]},
+    migration_default_prefix: "staging"
 end
 
 # Phoenix Endpoint configuration
