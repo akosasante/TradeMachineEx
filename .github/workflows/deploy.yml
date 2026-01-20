@@ -142,6 +142,14 @@ jobs:
             docker tag ${{ needs.build-and-push.outputs.image }} $LOCAL_TAG
             echo "Tagged image as: $LOCAL_TAG"
 
+            # Save the current running image tag for rollback
+            OLD_TAG=$(docker inspect trade_machine_ex_app --format='{{.Config.Image}}' 2>/dev/null || echo "")
+            if [ -n "$OLD_TAG" ]; then
+              echo "Current running image (for rollback): $OLD_TAG"
+            else
+              echo "No existing container found (first deployment)"
+            fi
+
             # Stop and remove old container
             docker compose -f docker-compose.prod.yml down
 
@@ -149,19 +157,69 @@ jobs:
             echo "Starting docker-compose with IMAGE_TAG=$LOCAL_TAG"
             IMAGE_TAG="$LOCAL_TAG" docker compose -f docker-compose.prod.yml up -d --pull never --build
 
+            # Wait for Docker's health check to pass
+            echo "Waiting for container to become healthy..."
+            TIMEOUT=90
+            ELAPSED=0
+            HEALTH_CHECK_PASSED=false
+
+            while [ $ELAPSED -lt $TIMEOUT ]; do
+              HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' trade_machine_ex_app 2>/dev/null || echo "starting")
+              echo "Container health status: $HEALTH_STATUS (${ELAPSED}s elapsed)"
+              
+              if [ "$HEALTH_STATUS" = "healthy" ]; then
+                echo "✓ Container is healthy!"
+                HEALTH_CHECK_PASSED=true
+                break
+              fi
+              
+              if [ "$HEALTH_STATUS" = "unhealthy" ]; then
+                echo "✗ Container is unhealthy"
+                break
+              fi
+              
+              sleep 5
+              ELAPSED=$((ELAPSED + 5))
+            done
+
+            # Handle failed health check with rollback
+            if [ "$HEALTH_CHECK_PASSED" != "true" ]; then
+              echo "✗ Health check failed after ${ELAPSED}s"
+              echo "Showing logs from failed deployment:"
+              docker compose -f docker-compose.prod.yml logs app
+              
+              # Stop the failed deployment
+              echo "Stopping failed deployment..."
+              docker compose -f docker-compose.prod.yml down
+              
+              # Rollback to old image if we have one
+              if [ -n "$OLD_TAG" ]; then
+                echo "Rolling back to previous version: $OLD_TAG"
+                IMAGE_TAG="$OLD_TAG" docker compose -f docker-compose.prod.yml up -d
+                
+                # Verify rollback worked
+                echo "Verifying rollback..."
+                sleep 30
+                if curl -f http://localhost:4001/health; then
+                  echo "✓ Rollback successful - service restored"
+                  echo "⚠️  Deployment failed but service is back online with previous version"
+                  exit 1
+                else
+                  echo "✗ Rollback also failed - manual intervention required"
+                  docker compose -f docker-compose.prod.yml logs app
+                  exit 1
+                fi
+              else
+                echo "✗ No previous version to rollback to - this was the first deployment"
+                exit 1
+              fi
+            fi
+
             # Clean up old images (keep last 3)
             docker image prune -f
             docker images ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} --format "{{.Repository}}:{{.Tag}}" | tail -n +4 | xargs -r docker rmi
 
-            # Verify deployment
-            sleep 40
-            if ! curl -f http://localhost:4001/health; then
-              echo "Health check failed, rolling back..."
-              docker compose -f docker-compose.prod.yml logs app
-              exit 1
-            fi
-
-            echo "Deployment successful!"
+            echo "✓ Deployment successful!"
 
   # Post-deployment verification
   verify:
