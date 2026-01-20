@@ -58,7 +58,7 @@ jobs:
           node-version: '18'
 
       - name: Install Prisma CLI
-        run: npm install -g prisma
+        run: npm install -g prisma@4.16.2  # Match TradeMachineServer version which is less strict on view validation
 
       - name: Download Prisma schema from TypeScript server
         run: |
