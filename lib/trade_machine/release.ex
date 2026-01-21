@@ -32,14 +32,11 @@ defmodule TradeMachine.Release do
 
       # Get the migrations path
       migrations_path = get_migrations_path(repo)
-      Logger.info("Migrations path for #{inspect(repo)}: #{migrations_path}")
-      Logger.info("Migrations path exists: #{File.dir?(migrations_path)}")
 
       {:ok, _, _} =
         Ecto.Migrator.with_repo(repo, fn repo_instance ->
           # Get the prefix from repo config
           prefix = config[:migration_default_prefix] || "public"
-          Logger.info("Using migration prefix: #{prefix}")
 
           # Check what migrations Ecto sees
           migrations = Ecto.Migrator.migrations(repo_instance, migrations_path)
