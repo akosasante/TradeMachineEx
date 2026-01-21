@@ -116,7 +116,7 @@ if config_env() != :test do
         {Oban.Plugins.Cron,
          crontab: [
            {"0 2 * * *", TradeMachine.Jobs.MinorsSync},
-           {"15 1 * * *", TradeMachine.Jobs.EspnTeamSync}
+           {"15 2 * * *", TradeMachine.Jobs.EspnTeamSync}
          ]}
       ]
     else
