@@ -37,12 +37,16 @@ defmodule TradeMachine.Release do
 
       {:ok, _, _} =
         Ecto.Migrator.with_repo(repo, fn repo_instance ->
+          # Get the prefix from repo config
+          prefix = config[:migration_default_prefix] || "public"
+          Logger.info("Using migration prefix: #{prefix}")
+
           # Check what migrations Ecto sees
           migrations = Ecto.Migrator.migrations(repo_instance, migrations_path)
           Logger.info("Migrations status for #{inspect(repo)}: #{inspect(migrations)}")
 
-          # Run migrations
-          Ecto.Migrator.run(repo_instance, migrations_path, :up, all: true)
+          # Run migrations with explicit prefix option
+          Ecto.Migrator.run(repo_instance, migrations_path, :up, all: true, prefix: prefix)
         end)
     end
 
@@ -66,9 +70,14 @@ defmodule TradeMachine.Release do
     for repo <- repos do
       Logger.info("Migrating #{inspect(repo)}")
       migrations_path = get_migrations_path(repo)
+      config = Application.get_env(:trade_machine, repo)
+      prefix = config[:migration_default_prefix] || "public"
 
       {:ok, _, _} =
-        Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, migrations_path, :up, all: true))
+        Ecto.Migrator.with_repo(
+          repo,
+          &Ecto.Migrator.run(&1, migrations_path, :up, all: true, prefix: prefix)
+        )
     end
 
     Logger.info("All migrations completed successfully")
@@ -88,9 +97,14 @@ defmodule TradeMachine.Release do
 
     for repo <- repos(repo) do
       migrations_path = get_migrations_path(repo)
+      config = Application.get_env(:trade_machine, repo)
+      prefix = config[:migration_default_prefix] || "public"
 
       {:ok, _, _} =
-        Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, migrations_path, :down, step: step))
+        Ecto.Migrator.with_repo(
+          repo,
+          &Ecto.Migrator.run(&1, migrations_path, :down, step: step, prefix: prefix)
+        )
     end
 
     Logger.info("Rollback completed for #{inspect(repo)}")
