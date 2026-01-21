@@ -15,11 +15,12 @@ defmodule TradeMachine.Repo.Migrations.AddObanJobsTable do
   end
 
   defp repo_config(key) do
-    repo = __MODULE__
-    |> Module.split()
-    |> Enum.take(2)
-    |> Module.concat()
-    
+    repo =
+      __MODULE__
+      |> Module.split()
+      |> Enum.take(2)
+      |> Module.concat()
+
     Application.get_env(:trade_machine, repo)[key]
   end
 end
