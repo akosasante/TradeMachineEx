@@ -30,14 +30,19 @@ defmodule TradeMachine.Release do
       config = Application.get_env(:trade_machine, repo)
       Logger.info("Repo config: #{inspect(config)}")
 
+      # Get the migrations path
+      migrations_path = get_migrations_path(repo)
+      Logger.info("Migrations path for #{inspect(repo)}: #{migrations_path}")
+      Logger.info("Migrations path exists: #{File.dir?(migrations_path)}")
+
       {:ok, _, _} =
         Ecto.Migrator.with_repo(repo, fn repo_instance ->
           # Check what migrations Ecto sees
-          migrations = Ecto.Migrator.migrations(repo_instance)
+          migrations = Ecto.Migrator.migrations(repo_instance, migrations_path)
           Logger.info("Migrations status for #{inspect(repo)}: #{inspect(migrations)}")
 
           # Run migrations
-          Ecto.Migrator.run(repo_instance, :up, all: true)
+          Ecto.Migrator.run(repo_instance, migrations_path, :up, all: true)
         end)
     end
 
@@ -60,7 +65,10 @@ defmodule TradeMachine.Release do
 
     for repo <- repos do
       Logger.info("Migrating #{inspect(repo)}")
-      {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+      migrations_path = get_migrations_path(repo)
+
+      {:ok, _, _} =
+        Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, migrations_path, :up, all: true))
     end
 
     Logger.info("All migrations completed successfully")
@@ -79,7 +87,10 @@ defmodule TradeMachine.Release do
     load_app()
 
     for repo <- repos(repo) do
-      {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, step: step))
+      migrations_path = get_migrations_path(repo)
+
+      {:ok, _, _} =
+        Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, migrations_path, :down, step: step))
     end
 
     Logger.info("Rollback completed for #{inspect(repo)}")
@@ -90,5 +101,18 @@ defmodule TradeMachine.Release do
 
   defp load_app do
     Application.load(@app)
+  end
+
+  defp get_migrations_path(repo) do
+    # In releases, priv directory is under lib/APP_NAME-VERSION/priv
+    # Try to find it dynamically
+    app_dir = Application.app_dir(@app, "priv/repo/migrations")
+
+    if File.dir?(app_dir) do
+      app_dir
+    else
+      # Fallback to relative path (for development)
+      "priv/repo/migrations"
+    end
   end
 end
