@@ -4,18 +4,21 @@ services:
   app:
     image: ${IMAGE_TAG:-ghcr.io/akosasante/trade-machine-ex:latest}
     container_name: trade_machine_ex_app
-    network_mode: "host" # Needed to connect to host's PostgreSQL
+    networks:
+      - production_trademachine_infra
+      - staging_trademachine_infra
     environment:
       - MIX_ENV=prod
       - PORT=4001
 
       # Database configuration (external PostgreSQL - Dual Repo Pattern)
-      - DATABASE_HOST=${DATABASE_HOST}
+      - PROD_DATABASE_HOST=${PROD_DATABASE_HOST:-production_postgres}
+      - STAGING_DATABASE_HOST=${STAGING_DATABASE_HOST:-staging_postgres}
       - DATABASE_USER=${DATABASE_USER}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}
       - DATABASE_NAME=${DATABASE_NAME:-trade_machine}
       - PROD_DATABASE_PORT=${PROD_DATABASE_PORT:-5432}
-      - STAGING_DATABASE_PORT=${STAGING_DATABASE_PORT:-5435}
+      - STAGING_DATABASE_PORT=${STAGING_DATABASE_PORT:-5432}
       - DATABASE_POOL_SIZE=${DATABASE_POOL_SIZE:-10}
 
       # Phoenix configuration
@@ -79,3 +82,11 @@ services:
       - "service=trade_machine_ex"
       - "environment=production"
       - "com.centurylinklabs.watchtower.enable=true"
+
+networks:
+  production_trademachine_infra:
+    name: production_trademachine_infra
+    external: true
+  staging_trademachine_infra:
+    name: staging_trademachine_infra
+    external: true
