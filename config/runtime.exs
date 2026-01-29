@@ -9,7 +9,7 @@ import Config
 if System.get_env("DATABASE_PASSWORD") do
   # Production database configuration
   config :trade_machine, TradeMachine.Repo.Production,
-    username: System.get_env("DATABASE_USER") || "trader_dev",
+    username: System.get_env("PROD_DATABASE_USER") || System.get_env("DATABASE_USER") || "trader_dev",
     password: System.fetch_env!("DATABASE_PASSWORD"),
     database: System.get_env("DATABASE_NAME") || "trade_machine",
     hostname: System.get_env("PROD_DATABASE_HOST") || System.get_env("DATABASE_HOST") || "localhost",
@@ -22,7 +22,7 @@ if System.get_env("DATABASE_PASSWORD") do
 
   # Staging database configuration
   config :trade_machine, TradeMachine.Repo.Staging,
-    username: System.get_env("DATABASE_USER") || "trader_dev",
+    username: System.get_env("STAGING_DATABASE_USER") || System.get_env("DATABASE_USER") || "trader_dev",
     password: System.fetch_env!("DATABASE_PASSWORD"),
     database: System.get_env("DATABASE_NAME") || "trade_machine",
     hostname: System.get_env("STAGING_DATABASE_HOST") || System.get_env("DATABASE_HOST") || "localhost",
