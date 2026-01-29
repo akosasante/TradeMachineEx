@@ -129,7 +129,7 @@ jobs:
 
             # Always download the latest docker-compose.prod.yml from repository
             echo "Downloading latest docker-compose.prod.yml from repository..."
-            curl -o docker-compose.prod.yml https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.prod.yml
+            curl -o docker-compose.yml https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.prod.yml
 
             # Authenticate with GitHub Container Registry
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -151,11 +151,11 @@ jobs:
             fi
 
             # Stop and remove old container
-            docker compose -f docker-compose.prod.yml down
+            docker compose down
 
             # Start with new image using the local tag
             echo "Starting docker-compose with IMAGE_TAG=$LOCAL_TAG"
-            IMAGE_TAG="$LOCAL_TAG" docker compose -f docker-compose.prod.yml up -d --pull never --build
+            IMAGE_TAG="$LOCAL_TAG" docker compose up -d --pull never --build
 
             # Wait for Docker's health check to pass
             echo "Waiting for container to become healthy..."
@@ -186,16 +186,16 @@ jobs:
             if [ "$HEALTH_CHECK_PASSED" != "true" ]; then
               echo "✗ Health check failed after ${ELAPSED}s"
               echo "Showing logs from failed deployment:"
-              docker compose -f docker-compose.prod.yml logs app
+              docker compose logs app
               
               # Stop the failed deployment
               echo "Stopping failed deployment..."
-              docker compose -f docker-compose.prod.yml down
+              docker compose down
               
               # Rollback to old image if we have one
               if [ -n "$OLD_TAG" ]; then
                 echo "Rolling back to previous version: $OLD_TAG"
-                IMAGE_TAG="$OLD_TAG" docker compose -f docker-compose.prod.yml up -d
+                IMAGE_TAG="$OLD_TAG" docker compose up -d
                 
                 # Verify rollback worked
                 echo "Verifying rollback..."
@@ -206,7 +206,7 @@ jobs:
                   exit 1
                 else
                   echo "✗ Rollback also failed - manual intervention required"
-                  docker compose -f docker-compose.prod.yml logs app
+                  docker compose logs app
                   exit 1
                 fi
               else
