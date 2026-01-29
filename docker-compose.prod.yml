@@ -7,6 +7,8 @@ services:
     networks:
       - production_trademachine_infra
       - staging_trademachine_infra
+    ports:
+      - "4001:4001"
     environment:
       - MIX_ENV=prod
       - PORT=4001
