@@ -9,10 +9,12 @@ import Config
 if System.get_env("DATABASE_PASSWORD") do
   # Production database configuration
   config :trade_machine, TradeMachine.Repo.Production,
-    username: System.get_env("PROD_DATABASE_USER") || System.get_env("DATABASE_USER") || "trader_dev",
+    username:
+      System.get_env("PROD_DATABASE_USER") || System.get_env("DATABASE_USER") || "trader_dev",
     password: System.fetch_env!("DATABASE_PASSWORD"),
     database: System.get_env("DATABASE_NAME") || "trade_machine",
-    hostname: System.get_env("PROD_DATABASE_HOST") || System.get_env("DATABASE_HOST") || "localhost",
+    hostname:
+      System.get_env("PROD_DATABASE_HOST") || System.get_env("DATABASE_HOST") || "localhost",
     port: String.to_integer(System.get_env("PROD_DATABASE_PORT") || "5432"),
     pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
     show_sensitive_data_on_connection_error: false,
@@ -22,10 +24,12 @@ if System.get_env("DATABASE_PASSWORD") do
 
   # Staging database configuration
   config :trade_machine, TradeMachine.Repo.Staging,
-    username: System.get_env("STAGING_DATABASE_USER") || System.get_env("DATABASE_USER") || "trader_dev",
+    username:
+      System.get_env("STAGING_DATABASE_USER") || System.get_env("DATABASE_USER") || "trader_dev",
     password: System.fetch_env!("DATABASE_PASSWORD"),
     database: System.get_env("DATABASE_NAME") || "trade_machine",
-    hostname: System.get_env("STAGING_DATABASE_HOST") || System.get_env("DATABASE_HOST") || "localhost",
+    hostname:
+      System.get_env("STAGING_DATABASE_HOST") || System.get_env("DATABASE_HOST") || "localhost",
     port: String.to_integer(System.get_env("STAGING_DATABASE_PORT") || "5432"),
     pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
     show_sensitive_data_on_connection_error: false,
