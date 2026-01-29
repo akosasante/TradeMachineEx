@@ -14,6 +14,8 @@ services:
       # Database configuration (external PostgreSQL - Dual Repo Pattern)
       - PROD_DATABASE_HOST=${PROD_DATABASE_HOST:-production_postgres}
       - STAGING_DATABASE_HOST=${STAGING_DATABASE_HOST:-staging_postgres}
+      - PROD_DATABASE_USER=${PROD_DATABASE_USER:-production_postgres}
+      - STAGING_DATABASE_USER=${STAGING_DATABASE_USER:-staging_postgres}
       - DATABASE_USER=${DATABASE_USER}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}
       - DATABASE_NAME=${DATABASE_NAME:-trade_machine}
