@@ -3,17 +3,23 @@
 
 # Parse command line arguments
 SKIP_INFRASTRUCTURE=false
+RESTART=false
 for arg in "$@"; do
     case $arg in
         --skip-infrastructure)
             SKIP_INFRASTRUCTURE=true
             shift
             ;;
+        --restart)
+            RESTART=true
+            shift
+            ;;
         -h|--help)
-            echo "Usage: $0 [--skip-infrastructure] [--help]"
+            echo "Usage: $0 [--skip-infrastructure] [--restart] [--help]"
             echo ""
             echo "Options:"
             echo "  --skip-infrastructure  Skip starting PostgreSQL and Redis containers"
+            echo "  --restart              Stop TradeMachineEx container before starting"
             echo "  -h, --help            Show this help message"
             exit 0
             ;;
@@ -32,6 +38,18 @@ echo ""
 if [ ! -f "mix.exs" ]; then
     echo "❌ Error: Please run this script from the TradeMachineEx directory"
     exit 1
+fi
+
+# Step 0: Optionally stop existing TradeMachineEx container
+if [ "$RESTART" = true ]; then
+    echo "🔄 Stopping existing TradeMachineEx container..."
+    docker compose down
+    if [ $? -eq 0 ]; then
+        echo "✅ Container stopped"
+    else
+        echo "⚠️  No container to stop or error occurred"
+    fi
+    echo ""
 fi
 
 # Step 1: Start shared infrastructure (unless skipped)
@@ -81,13 +99,31 @@ else
     export GIT_SHA="unknown"
 fi
 
+# Load environment variables to display actual connection info
+if [ -f ".env" ]; then
+    # Source the env file (handle both export and non-export formats)
+    set -a
+    source .env
+    set +a
+fi
+
+# Display actual connection details from env vars
+PROD_DB_HOST=${PROD_DATABASE_HOST:-${DATABASE_HOST:-localhost}}
+PROD_DB_PORT=${PROD_DATABASE_PORT:-${DATABASE_PORT:-5438}}
+STAGING_DB_HOST=${STAGING_DATABASE_HOST:-${DATABASE_HOST:-localhost}}
+STAGING_DB_PORT=${STAGING_DATABASE_PORT:-${DATABASE_PORT:-5438}}
+PROD_SCHEMA=${PROD_SCHEMA:-dev}
+STAGING_SCHEMA=${STAGING_SCHEMA:-dev}
+
 # Step 4: Start TradeMachineEx
 echo ""
 echo "🏗️  Starting TradeMachineEx application..."
-echo "   Connect to shared Postgres: localhost:5438"
+echo "   Connect to shared Postgres: "
+echo "      Production DB: ${PROD_DB_HOST}:${PROD_DB_PORT} (schema: ${PROD_SCHEMA})"
+echo "      Staging DB: ${STAGING_DB_HOST}:${STAGING_DB_PORT} (schema: ${STAGING_SCHEMA})"
 echo "   Connect to shared Redis: localhost:6379"
 echo "   TradeMachineEx app: localhost:4000"
 echo "   Metrics endpoint: localhost:4000/metrics"
 echo ""
 
-docker-compose up -d
+docker compose up -d
