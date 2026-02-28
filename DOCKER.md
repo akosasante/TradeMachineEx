@@ -14,6 +14,9 @@ docker-compose --profile monitoring up
 
 # View logs
 docker-compose logs -f app
+
+# Access IEx console in running container
+docker exec -it trademachineex-app-1 sh -c 'iex --sname console --remsh trade_machine@$(hostname)'
 ```
 
 ### Production
@@ -62,6 +65,8 @@ docker-compose -f docker-compose.prod.yml logs -f app
 - `DATABASE_USER` - Database username (default: trader_dev)
 - `DATABASE_NAME` - Database name (default: trade_machine)
 - `DATABASE_SCHEMA` - Schema to use (default: staging)
+- `PROD_SCHEMA` - PostgreSQL schema for Production repo (default: public, set to "dev" for local)
+- `STAGING_SCHEMA` - PostgreSQL schema for Staging repo (default: staging, set to "dev" for local)
 - `PHX_HOST` - Phoenix host for URL generation
 - `LOG_LEVEL` - Logging level (default: info)
 - `GOOGLE_SHEETS_CREDS_PATH` - Path to Google Sheets credentials
