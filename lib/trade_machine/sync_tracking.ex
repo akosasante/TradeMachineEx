@@ -49,7 +49,7 @@ defmodule TradeMachine.SyncTracking do
   """
   @spec complete_sync(SyncJobExecution.t(), map(), keyword()) ::
           {:ok, SyncJobExecution.t()} | {:error, Ecto.Changeset.t()}
-  def complete_sync(%SyncJobExecution{} = execution, metrics \\ %{}, opts \\ []) do
+  def complete_sync(execution = %SyncJobExecution{}, metrics \\ %{}, opts \\ []) do
     repo = Keyword.get(opts, :repo, TradeMachine.Repo.Production)
     now = DateTime.utc_now()
     duration_ms = DateTime.diff(now, execution.started_at, :millisecond)
@@ -82,7 +82,7 @@ defmodule TradeMachine.SyncTracking do
   """
   @spec fail_sync(SyncJobExecution.t(), String.t(), keyword()) ::
           {:ok, SyncJobExecution.t()} | {:error, Ecto.Changeset.t()}
-  def fail_sync(%SyncJobExecution{} = execution, error_message, opts \\ []) do
+  def fail_sync(execution = %SyncJobExecution{}, error_message, opts \\ []) do
     repo = Keyword.get(opts, :repo, TradeMachine.Repo.Production)
     now = DateTime.utc_now()
     duration_ms = DateTime.diff(now, execution.started_at, :millisecond)
