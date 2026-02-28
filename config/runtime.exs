@@ -214,17 +214,14 @@ end
 # OpenTelemetry runtime configuration - using official documented format
 otlp_endpoint = System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT") || "http://localhost:4318"
 
-# OpenTelemetry configuration - using working approach with custom processor config
+# OpenTelemetry configuration - using processors config for full control
 config :opentelemetry,
-  span_processor: :batch,
   traces_exporter: :otlp
 
-# Custom batch processor configuration to ensure faster exports for debugging
 config :opentelemetry, :processors,
   otel_batch_processor: %{
     exporter: {:opentelemetry_exporter, :otlp_traces},
     config: %{
-      # Export every 1 second for debugging
       scheduled_delay_ms: 1_000,
       max_queue_size: 2048,
       export_timeout_ms: 30_000,
