@@ -170,7 +170,7 @@ defmodule TradeMachineWeb.Telemetry do
 
     Enum.each(queues, fn queue_name ->
       try do
-        stats = Oban.check_queue(name: Oban.Production, queue: queue_name)
+        stats = Oban.check_queue(name: Oban.Production, queue: queue_name) || %{}
 
         :telemetry.execute([:oban, :queue, :stats], stats, %{
           queue: queue_name,
@@ -186,7 +186,7 @@ defmodule TradeMachineWeb.Telemetry do
 
     # Check Staging Oban instance (only emails queue)
     try do
-      stats = Oban.check_queue(name: Oban.Staging, queue: "emails")
+      stats = Oban.check_queue(name: Oban.Staging, queue: "emails") || %{}
 
       :telemetry.execute([:oban, :queue, :stats], stats, %{
         queue: "emails",

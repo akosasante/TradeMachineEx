@@ -5,6 +5,8 @@ import Config
 # environment-based configuration in Docker containers
 
 # Database configuration - Dual Repo Pattern
+prod_schema = System.get_env("PROD_SCHEMA") || "public"
+staging_schema = System.get_env("STAGING_SCHEMA") || "staging"
 # Only configure if DATABASE_PASSWORD is set (allows running without DB for testing)
 if System.get_env("DATABASE_PASSWORD") do
   # Production database configuration
@@ -18,8 +20,8 @@ if System.get_env("DATABASE_PASSWORD") do
     port: String.to_integer(System.get_env("PROD_DATABASE_PORT") || "5432"),
     pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
     show_sensitive_data_on_connection_error: false,
-    after_connect: {Postgrex, :query!, ["SET search_path TO public", []]},
-    migration_default_prefix: "public",
+    after_connect: {Postgrex, :query!, ["SET search_path TO #{prod_schema}", []]},
+    migration_default_prefix: "#{prod_schema}",
     priv: "priv/repo"
 
   # Staging database configuration
@@ -113,8 +115,8 @@ end
 # Oban configuration with environment-based settings
 # Skip Oban runtime config in test mode - test.exs handles it
 if config_env() != :test do
-  oban_plugins =
-    if System.get_env("DATABASE_SCHEMA") == "staging" or System.get_env("ENABLE_CRON") == "true" do
+  prod_oban_plugins =
+    if System.get_env("ENABLE_CRON") == "true" do
       [
         {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
         {Oban.Plugins.Cron,
@@ -133,14 +135,14 @@ if config_env() != :test do
   config :trade_machine, Oban.Production,
     name: Oban.Production,
     repo: TradeMachine.Repo.Production,
-    plugins: oban_plugins,
+    plugins: prod_oban_plugins,
     queues: [
       minors_sync: String.to_integer(System.get_env("OBAN_MINORS_SYNC_CONCURRENCY") || "1"),
       draft_sync: String.to_integer(System.get_env("OBAN_DRAFT_SYNC_CONCURRENCY") || "1"),
       emails: 2,
       espn_sync: 1
     ],
-    prefix: "public"
+    prefix: prod_schema
 
   # Staging Oban instance - only handles email jobs, no cron jobs
   config :trade_machine, Oban.Staging,
@@ -152,7 +154,7 @@ if config_env() != :test do
     queues: [
       emails: 2
     ],
-    prefix: "staging"
+    prefix: staging_schema
 end
 
 # PromEx (Prometheus metrics) configuration

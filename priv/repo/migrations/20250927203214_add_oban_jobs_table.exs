@@ -5,6 +5,7 @@ defmodule TradeMachine.Repo.Migrations.AddObanJobsTable do
     # Use Ecto's prefix() function which returns the migration prefix
     # This is set by migration_default_prefix in the repo config
     migration_prefix = prefix() || "public"
+    IO.puts("Running Oban migration up with prefix: #{migration_prefix}")
     Oban.Migration.up(version: 12, prefix: migration_prefix)
   end
 
