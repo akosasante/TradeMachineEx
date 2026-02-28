@@ -232,6 +232,27 @@ defmodule TradeMachine.Tracing.TraceContext do
   end
 
   @doc """
+  Returns the current trace ID as a hex string, or nil if no active span.
+  """
+  def current_trace_id do
+    case :otel_tracer.current_span_ctx() do
+      :undefined ->
+        nil
+
+      span_ctx ->
+        case :otel_span.trace_id(span_ctx) do
+          0 ->
+            nil
+
+          trace_id ->
+            Integer.to_string(trace_id, 16) |> String.downcase() |> String.pad_leading(32, "0")
+        end
+    end
+  rescue
+    _ -> nil
+  end
+
+  @doc """
   Injects current trace context for outbound calls.
 
   Returns trace headers that should be included when making HTTP requests
