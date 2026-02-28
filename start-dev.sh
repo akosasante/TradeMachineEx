@@ -90,4 +90,4 @@ echo "   TradeMachineEx app: localhost:4000"
 echo "   Metrics endpoint: localhost:4000/metrics"
 echo ""
 
-docker-compose up -d
+docker compose up -d
