@@ -5,7 +5,7 @@ defmodule TradeMachine.Data.Player do
     require Logger
 
     typed_embedded_schema do
-      field :name, :string, null: false
+      field(:name, :string, null: false)
 
       field(
         :league,
@@ -19,8 +19,8 @@ defmodule TradeMachine.Data.Player do
       # TODO can this be DRY-ed?
       field(:owner_id, Ecto.UUID, null: false)
       # TODO We can make this Enum probably
-      field :position, :string
-      field :mlb_team, :string
+      field(:position, :string)
+      field(:mlb_team, :string)
       field(:league_level, :string, null: false)
     end
   end
@@ -42,7 +42,7 @@ defmodule TradeMachine.Data.Player do
   @optional_fields [:mlb_team, :player_data_id, :meta, :leagueTeamId]
 
   typed_schema "player" do
-    field :name, :string, null: false
+    field(:name, :string, null: false)
 
     field(
       :league,
@@ -55,11 +55,12 @@ defmodule TradeMachine.Data.Player do
     )
 
     # TODO: check inclusion at changeset cast
-    field :mlb_team, :string
-    field :player_data_id, :integer
-    field :meta, :map, load_in_query: false
+    field(:mlb_team, :string)
+    field(:player_data_id, :integer)
+    field(:meta, :map, load_in_query: false)
+    field(:last_synced_at, :utc_datetime_usec)
 
-    belongs_to :owned_by, Team, source: :leagueTeamId, foreign_key: :leagueTeamId
+    belongs_to(:owned_by, Team, source: :leagueTeamId, foreign_key: :leagueTeamId)
 
     timestamps()
   end

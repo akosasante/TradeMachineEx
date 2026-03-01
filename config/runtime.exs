@@ -7,6 +7,9 @@ import Config
 # Database configuration - Dual Repo Pattern
 # Only configure if DATABASE_PASSWORD is set (allows running without DB for testing)
 if System.get_env("DATABASE_PASSWORD") do
+  prod_schema = System.get_env("PROD_SCHEMA") || "public"
+  staging_schema = System.get_env("STAGING_SCHEMA") || "staging"
+
   # Production database configuration
   config :trade_machine, TradeMachine.Repo.Production,
     username:
@@ -18,8 +21,8 @@ if System.get_env("DATABASE_PASSWORD") do
     port: String.to_integer(System.get_env("PROD_DATABASE_PORT") || "5432"),
     pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
     show_sensitive_data_on_connection_error: false,
-    after_connect: {Postgrex, :query!, ["SET search_path TO public", []]},
-    migration_default_prefix: "public",
+    after_connect: {Postgrex, :query!, ["SET search_path TO #{prod_schema}", []]},
+    migration_default_prefix: prod_schema,
     priv: "priv/repo"
 
   # Staging database configuration
@@ -33,8 +36,8 @@ if System.get_env("DATABASE_PASSWORD") do
     port: String.to_integer(System.get_env("STAGING_DATABASE_PORT") || "5432"),
     pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
     show_sensitive_data_on_connection_error: false,
-    after_connect: {Postgrex, :query!, ["SET search_path TO staging", []]},
-    migration_default_prefix: "staging",
+    after_connect: {Postgrex, :query!, ["SET search_path TO #{staging_schema}", []]},
+    migration_default_prefix: staging_schema,
     priv: "priv/repo"
 end
 
@@ -129,6 +132,9 @@ if config_env() != :test do
       ]
     end
 
+  prod_oban_schema = System.get_env("PROD_SCHEMA") || "public"
+  staging_oban_schema = System.get_env("STAGING_SCHEMA") || "staging"
+
   # Production Oban instance - handles all job types including cron jobs
   config :trade_machine, Oban.Production,
     name: Oban.Production,
@@ -140,7 +146,7 @@ if config_env() != :test do
       emails: 2,
       espn_sync: 1
     ],
-    prefix: "public"
+    prefix: prod_oban_schema
 
   # Staging Oban instance - only handles email jobs, no cron jobs
   config :trade_machine, Oban.Staging,
@@ -152,7 +158,7 @@ if config_env() != :test do
     queues: [
       emails: 2
     ],
-    prefix: "staging"
+    prefix: staging_oban_schema
 end
 
 # PromEx (Prometheus metrics) configuration
@@ -208,17 +214,14 @@ end
 # OpenTelemetry runtime configuration - using official documented format
 otlp_endpoint = System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT") || "http://localhost:4318"
 
-# OpenTelemetry configuration - using working approach with custom processor config
+# OpenTelemetry configuration - using processors config for full control
 config :opentelemetry,
-  span_processor: :batch,
   traces_exporter: :otlp
 
-# Custom batch processor configuration to ensure faster exports for debugging
 config :opentelemetry, :processors,
   otel_batch_processor: %{
     exporter: {:opentelemetry_exporter, :otlp_traces},
     config: %{
-      # Export every 1 second for debugging
       scheduled_delay_ms: 1_000,
       max_queue_size: 2048,
       export_timeout_ms: 30_000,

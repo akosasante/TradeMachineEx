@@ -9,7 +9,7 @@ defmodule TradeMachine.Data.DraftPick do
   @optional_fields [:pick_number, :currentOwnerId, :originalOwnerId]
 
   typed_schema "draft_pick" do
-    field :season, :integer, null: false
+    field(:season, :integer, null: false)
 
     field(
       :type,
@@ -23,11 +23,12 @@ defmodule TradeMachine.Data.DraftPick do
     )
 
     # TODO: Maybe decimal? Maybe eventually only allow integers?
-    field :round, :decimal, null: false
-    field :pick_number, :integer
+    field(:round, :decimal, null: false)
+    field(:pick_number, :integer)
+    field(:last_synced_at, :utc_datetime_usec)
 
-    belongs_to :owned_by, Team, source: :currentOwnerId, foreign_key: :currentOwnerId
-    belongs_to :original_owner, Team, source: :originalOwnerId, foreign_key: :originalOwnerId
+    belongs_to(:owned_by, Team, source: :currentOwnerId, foreign_key: :currentOwnerId)
+    belongs_to(:original_owner, Team, source: :originalOwnerId, foreign_key: :originalOwnerId)
 
     timestamps()
   end
