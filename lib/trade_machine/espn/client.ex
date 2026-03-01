@@ -276,7 +276,7 @@ defmodule TradeMachine.ESPN.Client do
     sleep_ms = opts[:sleep_ms] || 5000
     raw = opts[:raw] || false
 
-    case fetch_players_paginated(client, [], 0, limit, sleep_ms, nil) do
+    case fetch_players_paginated(client, [], 0, limit, sleep_ms, nil, 0) do
       {:ok, players} ->
         result =
           if raw,
@@ -290,8 +290,19 @@ defmodule TradeMachine.ESPN.Client do
     end
   end
 
+  @max_retries_per_page 3
+  @base_backoff_ms 10_000
+
   # Private helper for paginated player fetching
-  defp fetch_players_paginated(client, acc_players, offset, limit, sleep_ms, server_total) do
+  defp fetch_players_paginated(
+         client,
+         acc_players,
+         offset,
+         limit,
+         sleep_ms,
+         server_total,
+         retry_count
+       ) do
     filter = %{
       players: %{
         limit: limit,
@@ -312,7 +323,6 @@ defmodule TradeMachine.ESPN.Client do
         new_acc = acc_players ++ players
         new_total = length(new_acc)
 
-        # Get server total from headers on first request
         server_total =
           server_total ||
             case resp_headers["x-fantasy-filter-player-count"] do
@@ -324,14 +334,48 @@ defmodule TradeMachine.ESPN.Client do
           "Fetched #{length(players)} players (total: #{new_total}/#{server_total || "unknown"})"
         )
 
-        # Check if we need to fetch more
         if server_total > 0 and new_total < server_total do
-          # Sleep before next request
           Process.sleep(sleep_ms)
-          fetch_players_paginated(client, new_acc, offset + limit, limit, sleep_ms, server_total)
+
+          fetch_players_paginated(
+            client,
+            new_acc,
+            offset + limit,
+            limit,
+            sleep_ms,
+            server_total,
+            0
+          )
         else
           {:ok, new_acc}
         end
+
+      {:ok, %{status: 429}} when retry_count < @max_retries_per_page ->
+        backoff = rate_limit_backoff(retry_count)
+
+        Logger.warning(
+          "ESPN API rate limited (429) at offset #{offset}, " <>
+            "retry #{retry_count + 1}/#{@max_retries_per_page}, backing off #{backoff}ms"
+        )
+
+        Process.sleep(backoff)
+
+        fetch_players_paginated(
+          client,
+          acc_players,
+          offset,
+          limit,
+          sleep_ms,
+          server_total,
+          retry_count + 1
+        )
+
+      {:ok, %{status: 429, body: body}} ->
+        Logger.error(
+          "ESPN API rate limited (429) after #{@max_retries_per_page} retries at offset #{offset}"
+        )
+
+        {:error, {:http_error, 429, body}}
 
       {:ok, %{status: status, body: body}} ->
         Logger.error("ESPN API error fetching players: status=#{status}, body=#{inspect(body)}")
@@ -341,6 +385,10 @@ defmodule TradeMachine.ESPN.Client do
         Logger.error("ESPN API request failed for players: #{inspect(reason)}")
         error
     end
+  end
+
+  defp rate_limit_backoff(retry_count) do
+    trunc(:math.pow(3, retry_count) * @base_backoff_ms)
   end
 
   # Private helper to construct base URL based on year
