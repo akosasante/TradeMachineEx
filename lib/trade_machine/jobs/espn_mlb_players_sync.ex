@@ -52,6 +52,14 @@ defmodule TradeMachine.Jobs.EspnMlbPlayersSync do
 
   defp execute_sync_job(job_id) do
     season_year = Application.get_env(:trade_machine, :espn_season_year)
+    trace_id = TraceContext.current_trace_id()
+
+    {:ok, execution} =
+      SyncTracking.start_sync(:mlb_players_sync, :both,
+        oban_job_id: job_id,
+        trace_id: trace_id,
+        metadata: %{"season_year" => season_year}
+      )
 
     Logger.info("Starting ESPN MLB players sync", season_year: season_year)
 
@@ -62,22 +70,12 @@ defmodule TradeMachine.Jobs.EspnMlbPlayersSync do
 
     case Client.get_all_players(client, raw: true) do
       {:ok, espn_players} ->
-        {:ok, execution} = start_tracking(job_id, season_year)
         handle_players_fetch_success(espn_players, execution)
 
       {:error, reason} = error ->
-        {:ok, execution} = start_tracking(job_id, season_year)
         handle_players_fetch_error(reason, execution)
         error
     end
-  end
-
-  defp start_tracking(job_id, season_year) do
-    SyncTracking.start_sync(:mlb_players_sync, :both,
-      oban_job_id: job_id,
-      trace_id: TraceContext.current_trace_id(),
-      metadata: %{"season_year" => season_year}
-    )
   end
 
   defp handle_players_fetch_success(espn_players, execution) do
