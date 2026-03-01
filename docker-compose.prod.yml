@@ -7,6 +7,7 @@ services:
     networks:
       - production_trademachine_infra
       - staging_trademachine_infra
+      - monitoring
     ports:
       - "4001:4001"
     environment:
@@ -53,6 +54,7 @@ services:
       # Monitoring configuration
       - GRAFANA_HOST=${GRAFANA_HOST:-}
       - GRAFANA_TOKEN=${GRAFANA_TOKEN:-}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
 
       # Email configuration (Brevo/SendInBlue) and data needed to populate emails
       - BREVO_API_KEY=${BREVO_API_KEY}
@@ -94,3 +96,5 @@ networks:
   staging_trademachine_infra:
     name: staging_trademachine_infra
     external: true
+  monitoring:
+    external: true # App joins the network created by the alloy etc docker compose
