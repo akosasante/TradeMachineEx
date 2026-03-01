@@ -21,6 +21,7 @@ if System.get_env("DATABASE_PASSWORD") do
     port: String.to_integer(System.get_env("PROD_DATABASE_PORT") || "5432"),
     pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
     show_sensitive_data_on_connection_error: false,
+    socket_options: [keepalive: true],
     after_connect: {Postgrex, :query!, ["SET search_path TO #{prod_schema}", []]},
     migration_default_prefix: prod_schema,
     priv: "priv/repo"
@@ -36,6 +37,7 @@ if System.get_env("DATABASE_PASSWORD") do
     port: String.to_integer(System.get_env("STAGING_DATABASE_PORT") || "5432"),
     pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
     show_sensitive_data_on_connection_error: false,
+    socket_options: [keepalive: true],
     after_connect: {Postgrex, :query!, ["SET search_path TO #{staging_schema}", []]},
     migration_default_prefix: staging_schema,
     priv: "priv/repo"
