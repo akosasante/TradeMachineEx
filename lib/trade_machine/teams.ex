@@ -90,7 +90,11 @@ defmodule TradeMachine.Teams do
 
       team ->
         team
-        |> Ecto.Changeset.change(espn_team: espn_team_map, last_synced_at: now)
+        |> Ecto.Changeset.change(
+          name: espn_team.name,
+          espn_team: espn_team_map,
+          last_synced_at: now
+        )
         |> repo.update!()
 
         Logger.debug("Updated team data",
