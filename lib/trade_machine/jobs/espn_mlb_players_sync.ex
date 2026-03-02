@@ -18,36 +18,62 @@ defmodule TradeMachine.Jobs.EspnMlbPlayersSync do
   - Tracks execution via `SyncTracking` with `:mlb_players_sync` job type
   """
 
-  use Oban.Worker, queue: :espn_sync, max_attempts: 3
+  use Oban.Worker,
+    queue: :espn_sync,
+    max_attempts: 3,
+    unique: [period: :infinity, states: [:available, :scheduled, :executing, :retryable]]
+
   require Logger
 
   alias TradeMachine.ESPN.Client
   alias TradeMachine.Players
+  alias TradeMachine.SyncLock
   alias TradeMachine.SyncTracking
   alias TradeMachine.Tracing.TraceContext
+
+  @lock_name :mlb_players_sync
 
   @impl Oban.Worker
   def perform(%Oban.Job{id: job_id, args: args}) do
     Logger.info("EspnMlbPlayersSync.perform called", job_id: job_id)
 
-    result =
-      TraceContext.with_extracted_context(
-        args,
-        "trademachine.elixir.espn_mlb_players_sync.execute",
-        %{
-          "oban.job_id" => job_id,
-          "oban.queue" => "espn_sync",
-          "oban.worker" => "TradeMachine.Jobs.EspnMlbPlayersSync",
-          "service.name" => "trademachine-elixir",
-          "component" => "espn_mlb_players_sync"
-        },
-        fn ->
-          execute_sync_job(job_id)
-        end
-      )
+    case SyncLock.acquire(@lock_name) do
+      :acquired ->
+        try do
+          result =
+            TraceContext.with_extracted_context(
+              args,
+              "trademachine.elixir.espn_mlb_players_sync.execute",
+              %{
+                "oban.job_id" => job_id,
+                "oban.queue" => "espn_sync",
+                "oban.worker" => "TradeMachine.Jobs.EspnMlbPlayersSync",
+                "service.name" => "trademachine-elixir",
+                "component" => "espn_mlb_players_sync"
+              },
+              fn ->
+                execute_sync_job(job_id)
+              end
+            )
 
-    Logger.info("EspnMlbPlayersSync.perform completed", job_id: job_id, result: inspect(result))
-    result
+          Logger.info("EspnMlbPlayersSync.perform completed",
+            job_id: job_id,
+            result: inspect(result)
+          )
+
+          result
+        after
+          SyncLock.release(@lock_name)
+        end
+
+      {:already_running, acquired_at} ->
+        Logger.warning(
+          "EspnMlbPlayersSync: another sync is already running (since #{acquired_at}), skipping",
+          job_id: job_id
+        )
+
+        {:cancel, :already_running}
+    end
   end
 
   defp execute_sync_job(job_id) do

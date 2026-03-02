@@ -3,6 +3,7 @@ defmodule TradeMachine.Jobs.EspnMlbPlayersSyncTest do
   use Oban.Testing, repo: TradeMachine.Repo.Production, prefix: "test"
 
   alias TradeMachine.Jobs.EspnMlbPlayersSync
+  alias TradeMachine.SyncLock
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Production)
@@ -29,5 +30,23 @@ defmodule TradeMachine.Jobs.EspnMlbPlayersSyncTest do
 
   test "worker uses espn_sync queue" do
     assert EspnMlbPlayersSync.__opts__()[:queue] == :espn_sync
+  end
+
+  test "worker has unique constraint configured" do
+    unique_opts = EspnMlbPlayersSync.__opts__()[:unique]
+    assert unique_opts[:period] == :infinity
+    assert :executing in unique_opts[:states]
+    assert :available in unique_opts[:states]
+  end
+
+  test "perform returns {:cancel, :already_running} when lock is held" do
+    :acquired = SyncLock.acquire(:mlb_players_sync)
+
+    try do
+      result = EspnMlbPlayersSync.perform(%Oban.Job{id: 0, args: %{}})
+      assert {:cancel, :already_running} = result
+    after
+      SyncLock.release(:mlb_players_sync)
+    end
   end
 end

@@ -16,6 +16,7 @@ alias TradeMachine.Repo
 alias TradeMachine.ESPN.Client
 alias TradeMachine.ESPN.Constants
 alias TradeMachine.Players
+alias TradeMachine.SyncLock
 alias TradeMachine.SyncTracking
 
 require Ecto.Query
@@ -240,6 +241,10 @@ defmodule EspnPlayerSync do
   @doc """
   Run the actual sync.
 
+  Acquires the SyncLock to prevent concurrent runs (same lock used by the
+  Oban cron job). Returns `{:error, :already_running}` if another sync is
+  in progress.
+
   ## Examples
 
       EspnPlayerSync.run(espn_players, :prod)
@@ -248,6 +253,26 @@ defmodule EspnPlayerSync do
       EspnPlayerSync.run(espn_players, :prod, skip_if_synced_within: 0)
   """
   def run(espn_players, env \\ :prod, opts \\ []) do
+    case TradeMachine.SyncLock.acquire(:mlb_players_sync) do
+      :acquired ->
+        try do
+          do_run(espn_players, env, opts)
+        after
+          TradeMachine.SyncLock.release(:mlb_players_sync)
+        end
+
+      {:already_running, acquired_at} ->
+        IO.puts("⚠ Another MLB players sync is already running (since #{acquired_at}).")
+
+        IO.puts(
+          "  Use SyncLock.status() to inspect, or SyncLock.force_release(:mlb_players_sync) to override."
+        )
+
+        {:error, :already_running}
+    end
+  end
+
+  defp do_run(espn_players, env, opts) do
     repos =
       case env do
         :both -> [TradeMachine.Repo.Production, TradeMachine.Repo.Staging]
