@@ -50,6 +50,10 @@ defmodule TradeMachine.Players do
     {updates, inserts, skipped_count} =
       run_matching_engine(espn_players, db_players, teams, now, cutoff)
 
+    update_ids = Enum.map(updates, fn %{db_player: p} -> p.id end)
+    meta_by_id = fetch_meta_for_players(update_ids, repo)
+    updates = backfill_meta(updates, meta_by_id)
+
     repo.transaction(fn ->
       updated_count = execute_updates(updates, repo)
       inserted_count = execute_inserts(inserts, repo)
@@ -75,13 +79,14 @@ defmodule TradeMachine.Players do
   Loads all players that should be considered for ESPN sync:
   major leaguers (league=1) OR players with a non-null playerDataId.
 
-  Explicitly selects the `meta` field which is excluded from default queries.
+  The `meta` JSONB column is intentionally excluded (it has `load_in_query: false`)
+  to avoid loading large blobs for every player. Meta is fetched separately for
+  only the players that need updating via `fetch_meta_for_players/2`.
   """
   @spec get_syncable_players(Ecto.Repo.t()) :: [Player.t()]
   def get_syncable_players(repo) do
     Player
     |> where([p], p.league == :major or not is_nil(p.player_data_id))
-    |> select_merge([p], %{meta: p.meta})
     |> repo.all()
   end
 
@@ -90,6 +95,25 @@ defmodule TradeMachine.Players do
     Team
     |> where([t], not is_nil(t.espn_id))
     |> repo.all()
+  end
+
+  @spec fetch_meta_for_players([Ecto.UUID.t()], Ecto.Repo.t()) :: %{Ecto.UUID.t() => map()}
+  defp fetch_meta_for_players([], _repo), do: %{}
+
+  defp fetch_meta_for_players(player_ids, repo) do
+    Player
+    |> where([p], p.id in ^player_ids)
+    |> select([p], {p.id, p.meta})
+    |> repo.all()
+    |> Map.new()
+  end
+
+  defp backfill_meta(updates, meta_by_id) do
+    Enum.map(updates, fn %{db_player: db_player, changes: changes} = update ->
+      existing_meta = Map.get(meta_by_id, db_player.id) || %{}
+      merged_meta = Map.merge(existing_meta, changes.meta)
+      %{update | changes: %{changes | meta: merged_meta}}
+    end)
   end
 
   # ---------------------------------------------------------------------------
@@ -311,11 +335,10 @@ defmodule TradeMachine.Players do
     position_str = Constants.position(position_id)
     mlb_team = Constants.mlb_team_abbrev(pro_team_id) || db_player.mlb_team
 
-    new_meta =
-      Map.merge(db_player.meta || %{}, %{
-        "espnPlayer" => espn_player,
-        "position" => position_str
-      })
+    new_meta = %{
+      "espnPlayer" => espn_player,
+      "position" => position_str
+    }
 
     changes =
       %{
