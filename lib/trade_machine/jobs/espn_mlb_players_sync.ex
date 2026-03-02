@@ -85,8 +85,8 @@ defmodule TradeMachine.Jobs.EspnMlbPlayersSync do
 
     TraceContext.add_span_attributes(%{"espn.players.count" => player_count})
 
-    prod_result = Players.sync_espn_player_data(espn_players, TradeMachine.Repo.Production)
-    staging_result = Players.sync_espn_player_data(espn_players, TradeMachine.Repo.Staging)
+    {prod_result, staging_result} = sync_both_repos(espn_players)
+    :erlang.garbage_collect()
 
     case {prod_result, staging_result} do
       {{:ok, prod_stats}, {:ok, staging_stats}} ->
@@ -155,6 +155,12 @@ defmodule TradeMachine.Jobs.EspnMlbPlayersSync do
     })
 
     Logger.error("Failed to fetch players from ESPN API", error: inspect(reason))
+  end
+
+  defp sync_both_repos(espn_players) do
+    prod_result = Players.sync_espn_player_data(espn_players, TradeMachine.Repo.Production)
+    staging_result = Players.sync_espn_player_data(espn_players, TradeMachine.Repo.Staging)
+    {prod_result, staging_result}
   end
 
   defp collect_errors(prod_result, staging_result) do
