@@ -54,6 +54,7 @@ defmodule TradeMachine.Application do
           {Phoenix.PubSub, name: TradeMachine.PubSub},
           # Start Finch HTTP client (required for Swoosh email adapter)
           {Finch, name: Swoosh.Finch},
+          TradeMachine.SyncLock,
           # Start Oban instances - Production handles all jobs including cron, Staging only handles emails
           {Oban,
            Application.fetch_env!(:trade_machine, Oban.Production)
