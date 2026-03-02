@@ -116,6 +116,7 @@ config :trade_machine, Oban,
   prefix: prod_schema,
   plugins: [
     {Oban.Plugins.Pruner, max_age: 300},
+    Oban.Plugins.Lifeline,
     {Oban.Plugins.Cron,
      crontab: [
        {"*/2 * * * *", TradeMachine.Jobs.MinorsSync,
