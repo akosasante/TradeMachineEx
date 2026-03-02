@@ -122,6 +122,7 @@ if config_env() != :test do
     if System.get_env("DATABASE_SCHEMA") == "staging" or System.get_env("ENABLE_CRON") == "true" do
       [
         {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
+        Oban.Plugins.Lifeline,
         {Oban.Plugins.Cron,
          crontab: [
            {"0 2 * * *", TradeMachine.Jobs.MinorsSync},
@@ -131,7 +132,8 @@ if config_env() != :test do
       ]
     else
       [
-        {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)}
+        {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
+        Oban.Plugins.Lifeline
       ]
     end
 
@@ -156,7 +158,8 @@ if config_env() != :test do
     name: Oban.Staging,
     repo: TradeMachine.Repo.Staging,
     plugins: [
-      {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)}
+      {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
+      Oban.Plugins.Lifeline
     ],
     queues: [
       emails: 2

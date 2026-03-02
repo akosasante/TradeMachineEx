@@ -13,6 +13,7 @@ services:
     environment:
       - MIX_ENV=prod
       - PORT=4001
+      - ERL_CRASH_DUMP=/tmp/erl_crash.dump
 
       # Database configuration (external PostgreSQL - Dual Repo Pattern)
       - PROD_DATABASE_HOST=${PROD_DATABASE_HOST:-production_postgres}
@@ -62,7 +63,8 @@ services:
       - STAGING_FRONTEND_URL=${STAGING_FRONTEND_URL}
       - STAGING_EMAIL=${STAGING_EMAIL}
 
-    # Resource limits for production
+    stop_grace_period: 30s
+
     deploy:
       resources:
         limits:

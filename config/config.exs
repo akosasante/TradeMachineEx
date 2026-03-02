@@ -68,6 +68,7 @@ config :trade_machine, Oban,
   repo: TradeMachine.Repo.Production,
   plugins: [
     {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
+    Oban.Plugins.Lifeline,
     {Oban.Plugins.Cron,
      crontab: [
        {"*/5 * * * *", TradeMachine.Jobs.MinorsSync},
