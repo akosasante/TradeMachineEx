@@ -13,6 +13,7 @@ services:
     environment:
       - MIX_ENV=prod
       - PORT=4001
+      - ERL_CRASH_DUMP=/tmp/erl_crash.dump
 
       # Database configuration (external PostgreSQL - Dual Repo Pattern)
       - PROD_DATABASE_HOST=${PROD_DATABASE_HOST:-production_postgres}
