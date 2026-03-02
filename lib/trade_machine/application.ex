@@ -7,7 +7,7 @@ defmodule TradeMachine.Application do
   require Logger
 
   def start(_type, _args) do
-    # Initialize OpenTelemetry tracing
+    install_signal_handlers()
     initialize_telemetry()
 
     # Google Sheets integration is optional
@@ -74,14 +74,39 @@ defmodule TradeMachine.Application do
     Supervisor.start_link(children, opts)
   end
 
-  # Tell Phoenix to update the endpoint configuration
-  # whenever the application is updated.
+  @impl true
+  def prep_stop(state) do
+    Logger.warning(
+      "Application prep_stop called — supervision tree is shutting down. " <>
+        "Oban will attempt to finish in-flight jobs within the shutdown grace period."
+    )
+
+    state
+  end
+
   def config_change(changed, _new, removed) do
     TradeMachineWeb.Endpoint.config_change(changed, removed)
     :ok
   end
 
-  # Returns PromEx dashboard uploader child spec if Grafana is configured
+  defp install_signal_handlers do
+    :os.set_signal(:sigterm, :handle)
+
+    spawn(fn -> signal_listener() end)
+  end
+
+  defp signal_listener do
+    receive do
+      {:signal, :sigterm} ->
+        Logger.warning(
+          "Received SIGTERM — container is being stopped. " <>
+            "Initiating graceful shutdown (Oban will attempt to finish in-flight jobs)."
+        )
+
+        System.stop(0)
+    end
+  end
+
   defp dashboard_uploader_child do
     promex_config = Application.get_env(:trade_machine, TradeMachine.PromEx)
     grafana_host = promex_config[:grafana][:host]
