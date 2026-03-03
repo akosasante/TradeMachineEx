@@ -391,6 +391,139 @@ end
 
 IO.puts("\n✅ EspnPlayerSync helpers loaded. Type EspnPlayerSync. to see available functions.\n")
 
+defmodule MinorLeagueReconciliation do
+  @moduledoc """
+  IEx helpers for running the minor league ESPN reconciliation script.
+
+  This script:
+  1. Nullifies `playerDataId` for all minor league players
+  2. Searches ESPN for each minor leaguer to find their ESPN ID
+  3. Auto-applies exact matches, logs fuzzy/ambiguous/no-match for review
+
+  ## Quick start
+
+      # Dry run first (no DB changes, just see what would happen)
+      MinorLeagueReconciliation.run(:prod, dry_run: true)
+
+      # Run for real against prod
+      MinorLeagueReconciliation.run(:prod)
+
+      # Run against staging
+      MinorLeagueReconciliation.run(:staging)
+
+      # Run against both
+      MinorLeagueReconciliation.run(:both)
+
+  ## Options
+
+      # Skip phase 1 (don't nullify, useful for re-runs)
+      MinorLeagueReconciliation.run(:prod, skip_phase1: true)
+
+      # Faster requests (lower delay, higher rate-limit risk)
+      MinorLeagueReconciliation.run(:prod, delay_ms: 1000)
+
+  ## After running
+
+      # Review reports in priv/scripts/output/
+      # Then run the regular ESPN sync to backfill full espnPlayer data:
+      espn_players = EspnPlayerSync.fetch_players()
+      EspnPlayerSync.run(espn_players, :prod, skip_if_synced_within: 0)
+
+  ## Manual search
+
+      # Test the ESPN search for a single player
+      MinorLeagueReconciliation.search("Pedro Pineda")
+  """
+
+  alias TradeMachine.ESPN.Search
+
+  @doc """
+  Run the reconciliation against the given environment(s).
+
+  ## Options
+    - `:dry_run`     — preview only, no DB writes (default: false)
+    - `:delay_ms`    — ms between ESPN API calls (default: 1500)
+    - `:skip_phase1` — skip nullifying playerDataId (default: false)
+    - `:output_dir`  — where to write CSV reports (default: "priv/scripts/output")
+  """
+  def run(env, opts \\ []) do
+    repos = repos_for(env)
+
+    for repo <- repos do
+      IO.puts("\n" <> String.duplicate("─", 60))
+      IO.puts("Running reconciliation against #{inspect(repo)}")
+      IO.puts(String.duplicate("─", 60) <> "\n")
+
+      TradeMachine.MinorLeagueReconciliation.run(repo, opts)
+    end
+  end
+
+  @doc "Search ESPN for a player by name (for manual testing)."
+  def search(name) do
+    IO.puts("Searching ESPN for \"#{name}\"...\n")
+
+    case Search.search_mlb_player(name) do
+      {:ok, results} ->
+        if results == [] do
+          IO.puts("  No MLB baseball players found.")
+        else
+          Enum.each(results, fn r ->
+            IO.puts(
+              "  #{r.espn_id || "?"} | #{r.name} | #{r.team || "?"} | " <>
+                "#{r.league_slug || "?"} | #{r.description || "?"}"
+            )
+          end)
+        end
+
+        IO.puts("\n  #{length(results)} result(s).\n")
+        results
+
+      {:error, reason} ->
+        IO.puts("  Error: #{inspect(reason)}")
+        []
+    end
+  end
+
+  @doc "Show current minor league players and their playerDataId status."
+  def status(env \\ :prod) do
+    repo = List.first(repos_for(env))
+
+    import Ecto.Query
+
+    total =
+      TradeMachine.Data.Player
+      |> where([p], p.league == :minor)
+      |> repo.aggregate(:count)
+
+    with_id =
+      TradeMachine.Data.Player
+      |> where([p], p.league == :minor and not is_nil(p.player_data_id))
+      |> repo.aggregate(:count)
+
+    without_id =
+      TradeMachine.Data.Player
+      |> where([p], p.league == :minor and is_nil(p.player_data_id))
+      |> repo.aggregate(:count)
+
+    IO.puts("""
+
+    Minor League Player Status (#{inspect(repo)})
+    ─────────────────────────────────────
+      Total minor leaguers:    #{total}
+      With playerDataId:       #{with_id}
+      Without playerDataId:    #{without_id}
+    """)
+  end
+
+  defp repos_for(:both), do: [TradeMachine.Repo.Production, TradeMachine.Repo.Staging]
+  defp repos_for(:staging), do: [TradeMachine.Repo.Staging]
+  defp repos_for(_), do: [TradeMachine.Repo.Production]
+end
+
+IO.puts(
+  "✅ MinorLeagueReconciliation helpers loaded. Type MinorLeagueReconciliation. to see available functions.\n"
+)
+
 # defmodule StartupModule do
 #  require Kernel.SpecialForms
 #
