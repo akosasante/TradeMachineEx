@@ -405,17 +405,7 @@ defmodule TradeMachine.Players do
     updates
     |> Enum.chunk_every(@update_batch_size)
     |> Enum.reduce({0, 0}, fn batch, {processed, batch_idx} ->
-      batch_ids = Enum.map(batch, fn %{db_player: p} -> p.id end)
-      meta_by_id = fetch_meta_for_players(batch_ids, repo)
-      batch = backfill_meta(batch, meta_by_id)
-
-      repo.transaction(fn ->
-        Enum.each(batch, fn %{db_player: db_player, changes: changes} ->
-          db_player
-          |> Ecto.Changeset.change(changes)
-          |> repo.update!()
-        end)
-      end)
+      flush_update_batch(batch, repo)
 
       new_processed = processed + length(batch)
       new_batch_idx = batch_idx + 1
@@ -428,6 +418,20 @@ defmodule TradeMachine.Players do
       {new_processed, new_batch_idx}
     end)
     |> elem(0)
+  end
+
+  defp flush_update_batch(batch, repo) do
+    batch_ids = Enum.map(batch, fn %{db_player: p} -> p.id end)
+    meta_by_id = fetch_meta_for_players(batch_ids, repo)
+    batch = backfill_meta(batch, meta_by_id)
+
+    repo.transaction(fn ->
+      Enum.each(batch, fn %{db_player: db_player, changes: changes} ->
+        db_player
+        |> Ecto.Changeset.change(changes)
+        |> repo.update!()
+      end)
+    end)
   end
 
   defp execute_inserts([], _repo), do: 0
