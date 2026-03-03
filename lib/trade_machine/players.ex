@@ -404,8 +404,8 @@ defmodule TradeMachine.Players do
 
     updates
     |> Enum.chunk_every(@update_batch_size)
-    |> Enum.reduce({0, 0}, fn batch, {processed, batch_idx} ->
-      flush_update_batch(batch, repo)
+    |> Enum.reduce({0, 0, 0}, fn batch, {processed, batch_idx, failed_acc} ->
+      batch_failed = flush_update_batch(batch, repo)
 
       new_processed = processed + length(batch)
       new_batch_idx = batch_idx + 1
@@ -415,22 +415,46 @@ defmodule TradeMachine.Players do
       end
 
       :erlang.garbage_collect()
-      {new_processed, new_batch_idx}
+      {new_processed, new_batch_idx, failed_acc + batch_failed}
     end)
-    |> elem(0)
+    |> then(fn {processed, _batch_idx, failed} ->
+      if failed > 0 do
+        Logger.warning("Skipped #{failed}/#{total} updates due to constraint errors")
+      end
+
+      processed - failed
+    end)
   end
 
+  @spec flush_update_batch([map()], Ecto.Repo.t()) :: non_neg_integer()
   defp flush_update_batch(batch, repo) do
     batch_ids = Enum.map(batch, fn %{db_player: p} -> p.id end)
     meta_by_id = fetch_meta_for_players(batch_ids, repo)
     batch = backfill_meta(batch, meta_by_id)
 
-    repo.transaction(fn ->
-      Enum.each(batch, fn %{db_player: db_player, changes: changes} ->
+    Enum.count(batch, fn %{db_player: db_player, changes: changes} ->
+      changeset =
         db_player
         |> Ecto.Changeset.change(changes)
-        |> repo.update!()
-      end)
+        |> Ecto.Changeset.unique_constraint(:name,
+          name: "UQ_b3fd08fd2ba540e6fc2b6946e2c",
+          message: "name+playerDataId already exists"
+        )
+
+      case repo.update(changeset) do
+        {:ok, _player} ->
+          false
+
+        {:error, changeset} ->
+          Logger.warning(
+            "Skipping update for player #{db_player.name} (id=#{db_player.id}): " <>
+              inspect(changeset.errors),
+            player_id: db_player.id,
+            player_data_id: db_player.player_data_id
+          )
+
+          true
+      end
     end)
   end
 
