@@ -15,6 +15,8 @@ defmodule TradeMachine.Players do
   alias TradeMachine.ESPN.Constants
 
   @default_skip_window_seconds 300
+  @update_batch_size 25
+  @insert_batch_size 50
 
   @doc """
   Syncs ESPN player data to the database for a single repo.
@@ -23,6 +25,9 @@ defmodule TradeMachine.Players do
   1. Match by `playerDataId`
   2. Claim unclaimed DB players via ownership + name/team/position
   3. Insert new players not yet in DB
+
+  Updates and inserts are processed in small batches with garbage collection
+  between batches to keep memory usage bounded within container limits.
 
   ## Options
     - `:skip_if_synced_within` - seconds; skip updating players whose
@@ -39,6 +44,8 @@ defmodule TradeMachine.Players do
 
     espn_players = dedup_espn_players(espn_players)
 
+    log_memory("sync start")
+
     Logger.info("Starting ESPN player sync",
       espn_count: length(espn_players),
       repo: inspect(repo)
@@ -50,29 +57,30 @@ defmodule TradeMachine.Players do
     {updates, inserts, skipped_count} =
       run_matching_engine(espn_players, db_players, teams, now, cutoff)
 
-    update_ids = Enum.map(updates, fn %{db_player: p} -> p.id end)
-    meta_by_id = fetch_meta_for_players(update_ids, repo)
-    updates = backfill_meta(updates, meta_by_id)
+    log_memory("after matching", updates: length(updates), inserts: length(inserts))
 
-    repo.transaction(fn ->
-      updated_count = execute_updates(updates, repo)
-      inserted_count = execute_inserts(inserts, repo)
+    updated_count = execute_updates_batched(updates, repo)
+    :erlang.garbage_collect()
+    log_memory("after all updates")
 
-      stats = %{
-        updated: updated_count,
-        inserted: inserted_count,
-        skipped: skipped_count
-      }
+    inserted_count = execute_inserts(inserts, repo)
+    :erlang.garbage_collect()
+    log_memory("after all inserts")
 
-      Logger.info("ESPN player sync completed",
-        updated: updated_count,
-        inserted: inserted_count,
-        skipped: skipped_count,
-        repo: inspect(repo)
-      )
+    stats = %{
+      updated: updated_count,
+      inserted: inserted_count,
+      skipped: skipped_count
+    }
 
-      stats
-    end)
+    Logger.info("ESPN player sync completed",
+      updated: updated_count,
+      inserted: inserted_count,
+      skipped: skipped_count,
+      repo: inspect(repo)
+    )
+
+    {:ok, stats}
   end
 
   @doc """
@@ -388,23 +396,45 @@ defmodule TradeMachine.Players do
   end
 
   # ---------------------------------------------------------------------------
-  # Persistence
+  # Persistence (batched to stay within container memory limits)
   # ---------------------------------------------------------------------------
 
-  defp execute_updates(updates, repo) do
-    Enum.each(updates, fn %{db_player: db_player, changes: changes} ->
-      db_player
-      |> Ecto.Changeset.change(changes)
-      |> repo.update!()
-    end)
+  defp execute_updates_batched(updates, repo) do
+    total = length(updates)
 
-    length(updates)
+    updates
+    |> Enum.chunk_every(@update_batch_size)
+    |> Enum.reduce({0, 0}, fn batch, {processed, batch_idx} ->
+      batch_ids = Enum.map(batch, fn %{db_player: p} -> p.id end)
+      meta_by_id = fetch_meta_for_players(batch_ids, repo)
+      batch = backfill_meta(batch, meta_by_id)
+
+      repo.transaction(fn ->
+        Enum.each(batch, fn %{db_player: db_player, changes: changes} ->
+          db_player
+          |> Ecto.Changeset.change(changes)
+          |> repo.update!()
+        end)
+      end)
+
+      new_processed = processed + length(batch)
+      new_batch_idx = batch_idx + 1
+
+      if rem(new_batch_idx, 4) == 0 or new_processed == total do
+        log_memory("updates #{new_processed}/#{total}")
+      end
+
+      :erlang.garbage_collect()
+      {new_processed, new_batch_idx}
+    end)
+    |> elem(0)
   end
 
   defp execute_inserts([], _repo), do: 0
 
   defp execute_inserts(inserts, repo) do
     now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+    total = length(inserts)
 
     rows =
       inserts
@@ -416,12 +446,19 @@ defmodule TradeMachine.Players do
       end)
 
     rows
-    |> Enum.chunk_every(50)
-    |> Enum.each(fn chunk ->
+    |> Enum.chunk_every(@insert_batch_size)
+    |> Enum.with_index()
+    |> Enum.each(fn {chunk, chunk_idx} ->
       repo.insert_all(Player, chunk,
         on_conflict: {:replace, [:meta, :mlb_team, :last_synced_at, :updated_at]},
         conflict_target: [:name, :player_data_id]
       )
+
+      if rem(chunk_idx + 1, 4) == 0 do
+        processed = min((chunk_idx + 1) * @insert_batch_size, total)
+        log_memory("inserts #{processed}/#{total}")
+        :erlang.garbage_collect()
+      end
     end)
 
     length(rows)
@@ -450,5 +487,14 @@ defmodule TradeMachine.Players do
     Enum.group_by(espn_players, fn ep ->
       get_in(ep, ["player", "fullName"])
     end)
+  end
+
+  defp log_memory(label, extra \\ []) do
+    mem_mb = :erlang.memory(:total) / 1_048_576
+
+    Logger.info(
+      "Memory [#{label}]: #{Float.round(mem_mb, 1)}MB",
+      [{:memory_mb, Float.round(mem_mb, 1)} | extra]
+    )
   end
 end

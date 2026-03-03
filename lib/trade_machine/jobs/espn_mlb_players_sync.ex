@@ -106,8 +106,12 @@ defmodule TradeMachine.Jobs.EspnMlbPlayersSync do
 
   defp handle_players_fetch_success(espn_players, execution) do
     player_count = length(espn_players)
+    mem_mb = Float.round(:erlang.memory(:total) / 1_048_576, 1)
 
-    Logger.info("Fetched players from ESPN", player_count: player_count)
+    Logger.info("Fetched players from ESPN",
+      player_count: player_count,
+      memory_mb: mem_mb
+    )
 
     TraceContext.add_span_attributes(%{"espn.players.count" => player_count})
 
