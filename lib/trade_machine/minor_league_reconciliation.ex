@@ -41,7 +41,8 @@ defmodule TradeMachine.MinorLeagueReconciliation do
   @max_retries 3
   @retry_backoff_base_ms 10_000
 
-  @type classification :: :exact | :exact_team | :fuzzy | :ambiguous | :no_match | :error
+  @type classification ::
+          :exact | :exact_team | :fuzzy | :ambiguous | :no_match | :conflict | :error
 
   @type result :: %{
           player_id: String.t(),
@@ -146,15 +147,25 @@ defmodule TradeMachine.MinorLeagueReconciliation do
       end
 
       result = search_with_retry(player)
-
-      if not dry_run and result.classification in [:exact, :exact_team] do
-        apply_match(player, result, repo)
-      end
+      result = maybe_apply_match(result, player, repo, dry_run)
 
       if idx < total, do: Process.sleep(delay_ms)
 
       result
     end)
+  end
+
+  defp maybe_apply_match(result, _player, _repo, _dry_run = true), do: result
+
+  defp maybe_apply_match(result, _player, _repo, _dry_run)
+       when result.classification not in [:exact, :exact_team],
+       do: result
+
+  defp maybe_apply_match(result, player, repo, _dry_run) do
+    case apply_match(player, result, repo) do
+      {:ok, _} -> result
+      {:error, :constraint_violation} -> %{result | classification: :conflict}
+    end
   end
 
   defp search_with_retry(player, attempt \\ 0) do
@@ -279,8 +290,24 @@ defmodule TradeMachine.MinorLeagueReconciliation do
         }
       })
 
-    from(p in Player, where: p.id == ^player.id)
-    |> repo.update_all(set: [player_data_id: espn_id, meta: new_meta])
+    try do
+      result =
+        from(p in Player, where: p.id == ^player.id)
+        |> repo.update_all(set: [player_data_id: espn_id, meta: new_meta])
+
+      {:ok, result}
+    rescue
+      e in Postgrex.Error ->
+        if e.postgres.code == :unique_violation do
+          IO.puts(
+            "    CONFLICT: #{player.name} — ESPN ID #{espn_id} already used by another row, skipping"
+          )
+
+          {:error, :constraint_violation}
+        else
+          reraise e, __STACKTRACE__
+        end
+    end
   end
 
   # ---------------------------------------------------------------------------
@@ -384,6 +411,7 @@ defmodule TradeMachine.MinorLeagueReconciliation do
     IO.puts("  Fuzzy matches:    #{length(grouped[:fuzzy] || [])}")
     IO.puts("  Ambiguous:        #{length(grouped[:ambiguous] || [])}")
     IO.puts("  No match:         #{length(grouped[:no_match] || [])}")
+    IO.puts("  Conflicts:        #{length(grouped[:conflict] || [])}")
     IO.puts("  Errors:           #{length(grouped[:error] || [])}")
     IO.puts(String.duplicate("=", 60))
 
@@ -395,7 +423,7 @@ defmodule TradeMachine.MinorLeagueReconciliation do
   defp write_reports(results, output_dir) do
     timestamp = Calendar.strftime(DateTime.utc_now(), "%Y%m%d_%H%M%S")
 
-    for classification <- [:exact, :exact_team, :fuzzy, :ambiguous, :no_match, :error] do
+    for classification <- [:exact, :exact_team, :fuzzy, :ambiguous, :no_match, :conflict, :error] do
       write_csv(results, classification, "#{output_dir}/#{classification}_#{timestamp}.csv")
     end
   end
