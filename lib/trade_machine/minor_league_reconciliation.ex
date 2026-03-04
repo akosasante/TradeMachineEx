@@ -70,7 +70,7 @@ defmodule TradeMachine.MinorLeagueReconciliation do
   def run(repo, opts \\ []) do
     dry_run = Keyword.get(opts, :dry_run, false)
     delay_ms = Keyword.get(opts, :delay_ms, @default_delay_ms)
-    output_dir = Keyword.get(opts, :output_dir, "priv/scripts/output")
+    output_dir = Keyword.get(opts, :output_dir, default_output_dir())
     skip_phase1 = Keyword.get(opts, :skip_phase1, false)
 
     if dry_run, do: IO.puts("=== DRY RUN MODE (no DB changes) ===\n")
@@ -436,6 +436,13 @@ defmodule TradeMachine.MinorLeagueReconciliation do
       csv_escape(espn_summary)
     ]
     |> Enum.join(",")
+  end
+
+  defp default_output_dir do
+    case :code.priv_dir(:trade_machine) do
+      {:error, _} -> "/tmp/reconciliation_output"
+      priv_dir -> Path.join(to_string(priv_dir), "scripts/output")
+    end
   end
 
   defp csv_escape(val) when is_binary(val) do
