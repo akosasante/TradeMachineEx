@@ -8,6 +8,7 @@ services:
     ports:
       - "4000:4000"  # Phoenix application (includes /metrics endpoint via PromEx plug)
     environment:
+      - ERL_AFLAGS=-kernel shell_history enabled shell_history_path '"/app/.erlang_history"'
       - MIX_ENV=dev
       - PORT=${PORT}
       # Database configuration - dual repo support
@@ -27,6 +28,9 @@ services:
       - LOG_LEVEL=${LOG_LEVEL}
       - GOOGLE_SHEETS_CREDS_PATH=${GOOGLE_SHEETS_CREDS_PATH}
       - GOOGLE_SPREADSHEET_ID=${GOOGLE_SPREADSHEET_ID}
+      # Minor league sheet (public CSV export)
+      - MINOR_LEAGUE_SHEET_ID=${MINOR_LEAGUE_SHEET_ID}
+      - MINOR_LEAGUE_SHEET_GID=${MINOR_LEAGUE_SHEET_GID:-}
       - ENABLE_CRON=${ENABLE_CRON}
       - OBAN_MINORS_SYNC_CONCURRENCY=${OBAN_MINORS_SYNC_CONCURRENCY}
       - OBAN_DRAFT_SYNC_CONCURRENCY=${OBAN_DRAFT_SYNC_CONCURRENCY}
@@ -57,6 +61,8 @@ services:
       - /root/.mix
       - /root/.hex
       - /root/.cache
+      # Persist IEx/Erlang shell history across container restarts
+      - erlang_history:/app/.erlang_history
       # Mount Google Sheets credentials if available locally
       - ${GOOGLE_SHEETS_CREDS_FILE:-./sheet_creds.json}:/app/sheet_creds.json:ro
     networks:
@@ -69,6 +75,9 @@ services:
       retries: 3
       start_period: 10s
     # Note: No depends_on since external services might not be defined in this compose file
+
+volumes:
+  erlang_history:
 
 # Use the shared infrastructure network
 networks:
