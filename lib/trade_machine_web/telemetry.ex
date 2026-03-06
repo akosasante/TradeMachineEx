@@ -180,7 +180,6 @@ defmodule TradeMachineWeb.Telemetry do
             running: stats |> Map.get(:running, []) |> length(),
             available: Map.get(stats, :available, 0)
           }
-        stats = Oban.check_queue(name: Oban.Production, queue: queue_name) || %{}
 
           :telemetry.execute([:oban, :queue, :stats], measurements, %{
             queue: queue_name,
@@ -195,20 +194,6 @@ defmodule TradeMachineWeb.Telemetry do
         Logger.debug(
           "Failed to get #{inspect(oban_name)} stats for queue #{queue_name}: #{inspect(error)}"
         )
-      end
-    end)
-
-    # Check Staging Oban instance (only emails queue)
-    try do
-      stats = Oban.check_queue(name: Oban.Staging, queue: "emails") || %{}
-
-      :telemetry.execute([:oban, :queue, :stats], stats, %{
-        queue: "emails",
-        oban_instance: "staging"
-      })
-    rescue
-      error ->
-        Logger.debug("Failed to get Oban.Staging stats for emails queue: #{inspect(error)}")
     end
   end
 
