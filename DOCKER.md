@@ -69,8 +69,8 @@ docker-compose -f docker-compose.prod.yml logs -f app
 - `STAGING_SCHEMA` - PostgreSQL schema for Staging repo (default: staging, set to "dev" for local)
 - `PHX_HOST` - Phoenix host for URL generation
 - `LOG_LEVEL` - Logging level (default: info)
-- `GOOGLE_SHEETS_CREDS_PATH` - Path to Google Sheets credentials
-- `GOOGLE_SPREADSHEET_ID` - Google Spreadsheet ID
+- `MINOR_LEAGUE_SHEET_ID` - Google Sheet ID for minor league data (required)
+- `MINOR_LEAGUE_SHEET_GID` - Tab GID within the sheet (default: 806978055)
 - `ENABLE_CRON` - Enable scheduled jobs (default: false)
 
 ## Ports

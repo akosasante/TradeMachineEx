@@ -6,67 +6,33 @@ defmodule TradeMachine.Application do
   use Application
   require Logger
 
+  @impl true
   def start(_type, _args) do
-    # Initialize OpenTelemetry tracing
+    install_signal_handlers()
     initialize_telemetry()
 
-    # Google Sheets integration is optional
-    goth_child =
-      case Application.get_env(:trade_machine, :sheets_creds_filepath) do
-        nil ->
-          []
-
-        "" ->
-          []
-
-        filepath when is_binary(filepath) ->
-          case File.read(filepath) do
-            {:ok, content} ->
-              credentials = Jason.decode!(content)
-
-              source =
-                {:service_account, credentials,
-                 scopes: ["https://www.googleapis.com/auth/spreadsheets"]}
-
-              [{Goth, name: TradeMachine.Goth, source: source}]
-
-            {:error, _reason} ->
-              Logger.info(
-                "Google Sheets credentials file not found, skipping Goth initialization"
-              )
-
-              []
-          end
-
-        _ ->
-          []
-      end
-
     children =
-      goth_child ++
-        [
-          # Start both Ecto repositories (Production and Staging)
-          TradeMachine.Repo.Production,
-          TradeMachine.Repo.Staging,
-          # Start the Telemetry supervisor
-          TradeMachineWeb.Telemetry,
-          # Start the PubSub system (not currently in use for anything)
-          {Phoenix.PubSub, name: TradeMachine.PubSub},
-          # Start Finch HTTP client (required for Swoosh email adapter)
-          {Finch, name: Swoosh.Finch},
-          # Start Oban instances - Production handles all jobs including cron, Staging only handles emails
-          {Oban,
-           Application.fetch_env!(:trade_machine, Oban.Production)
-           |> Keyword.put(:name, Oban.Production)},
-          {Oban,
-           Application.fetch_env!(:trade_machine, Oban.Staging)
-           |> Keyword.put(:name, Oban.Staging)},
-          # Start a GenServer whose job is just to keep the spreadsheet id and
-          # Google OAuth (Goth) connection in-memory/state
-          #      {TradeMachine.SheetReader, Application.get_env(:trade_machine, :spreadsheet_id)},
-          # Start the Phoenix Endpoint (http/https)
-          TradeMachineWeb.Endpoint
-        ] ++ dashboard_uploader_child()
+      [
+        # Start both Ecto repositories (Production and Staging)
+        TradeMachine.Repo.Production,
+        TradeMachine.Repo.Staging,
+        # Start the Telemetry supervisor
+        TradeMachineWeb.Telemetry,
+        # Start the PubSub system (not currently in use for anything)
+        {Phoenix.PubSub, name: TradeMachine.PubSub},
+        # Start Finch HTTP client (required for Swoosh email adapter)
+        {Finch, name: Swoosh.Finch},
+        TradeMachine.SyncLock,
+        # Start Oban instances - Production handles all jobs including cron, Staging only handles emails
+        {Oban,
+         Application.fetch_env!(:trade_machine, Oban.Production)
+         |> Keyword.put(:name, Oban.Production)},
+        {Oban,
+         Application.fetch_env!(:trade_machine, Oban.Staging)
+         |> Keyword.put(:name, Oban.Staging)},
+        # Start the Phoenix Endpoint (http/https)
+        TradeMachineWeb.Endpoint
+      ] ++ dashboard_uploader_child()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
@@ -74,14 +40,40 @@ defmodule TradeMachine.Application do
     Supervisor.start_link(children, opts)
   end
 
-  # Tell Phoenix to update the endpoint configuration
-  # whenever the application is updated.
+  @impl true
+  def prep_stop(state) do
+    Logger.warning(
+      "Application prep_stop called — supervision tree is shutting down. " <>
+        "Oban will attempt to finish in-flight jobs within the shutdown grace period."
+    )
+
+    state
+  end
+
+  @impl true
   def config_change(changed, _new, removed) do
     TradeMachineWeb.Endpoint.config_change(changed, removed)
     :ok
   end
 
-  # Returns PromEx dashboard uploader child spec if Grafana is configured
+  defp install_signal_handlers do
+    :os.set_signal(:sigterm, :handle)
+
+    spawn(fn -> signal_listener() end)
+  end
+
+  defp signal_listener do
+    receive do
+      {:signal, :sigterm} ->
+        Logger.warning(
+          "Received SIGTERM — container is being stopped. " <>
+            "Initiating graceful shutdown (Oban will attempt to finish in-flight jobs)."
+        )
+
+        System.stop(0)
+    end
+  end
+
   defp dashboard_uploader_child do
     promex_config = Application.get_env(:trade_machine, TradeMachine.PromEx)
     grafana_host = promex_config[:grafana][:host]

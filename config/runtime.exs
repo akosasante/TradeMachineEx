@@ -20,6 +20,7 @@ if System.get_env("DATABASE_PASSWORD") do
     port: String.to_integer(System.get_env("PROD_DATABASE_PORT") || "5432"),
     pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
     show_sensitive_data_on_connection_error: false,
+    socket_options: [keepalive: true],
     after_connect: {Postgrex, :query!, ["SET search_path TO #{prod_schema}", []]},
     migration_default_prefix: "#{prod_schema}",
     priv: "priv/repo"
@@ -35,8 +36,9 @@ if System.get_env("DATABASE_PASSWORD") do
     port: String.to_integer(System.get_env("STAGING_DATABASE_PORT") || "5432"),
     pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE") || "10"),
     show_sensitive_data_on_connection_error: false,
-    after_connect: {Postgrex, :query!, ["SET search_path TO staging", []]},
-    migration_default_prefix: "staging",
+    socket_options: [keepalive: true],
+    after_connect: {Postgrex, :query!, ["SET search_path TO #{staging_schema}", []]},
+    migration_default_prefix: staging_schema,
     priv: "priv/repo"
 end
 
@@ -57,13 +59,12 @@ config :trade_machine, TradeMachineWeb.Endpoint,
     ),
   server: true
 
-# Google Sheets credentials configuration
-# In containers, this should point to a mounted secret or env var
-sheets_creds_path = System.get_env("GOOGLE_SHEETS_CREDS_PATH") || "./sheet_creds.json"
-
-config :trade_machine,
-  sheets_creds_filepath: sheets_creds_path,
-  spreadsheet_id: System.get_env("GOOGLE_SPREADSHEET_ID")
+# Minor league sheet configuration (public CSV export via Req)
+if config_env() != :test do
+  config :trade_machine,
+    minor_league_sheet_id: System.fetch_env!("MINOR_LEAGUE_SHEET_ID"),
+    minor_league_sheet_gid: System.get_env("MINOR_LEAGUE_SHEET_GID") || "806978055"
+end
 
 # Logger configuration for structured logging in containers
 if config_env() == :prod do
@@ -119,15 +120,18 @@ if config_env() != :test do
     if System.get_env("ENABLE_CRON") == "true" do
       [
         {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
+        Oban.Plugins.Lifeline,
         {Oban.Plugins.Cron,
          crontab: [
            {"0 2 * * *", TradeMachine.Jobs.MinorsSync},
-           {"22 7 * * *", TradeMachine.Jobs.EspnTeamSync}
+           {"22 7 * * *", TradeMachine.Jobs.EspnTeamSync},
+           {"32 7 * * *", TradeMachine.Jobs.EspnMlbPlayersSync}
          ]}
       ]
     else
       [
-        {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)}
+        {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
+        Oban.Plugins.Lifeline
       ]
     end
 
@@ -149,7 +153,8 @@ if config_env() != :test do
     name: Oban.Staging,
     repo: TradeMachine.Repo.Staging,
     plugins: [
-      {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)}
+      {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
+      Oban.Plugins.Lifeline
     ],
     queues: [
       emails: 2
@@ -210,17 +215,14 @@ end
 # OpenTelemetry runtime configuration - using official documented format
 otlp_endpoint = System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT") || "http://localhost:4318"
 
-# OpenTelemetry configuration - using working approach with custom processor config
+# OpenTelemetry configuration - using processors config for full control
 config :opentelemetry,
-  span_processor: :batch,
   traces_exporter: :otlp
 
-# Custom batch processor configuration to ensure faster exports for debugging
 config :opentelemetry, :processors,
   otel_batch_processor: %{
     exporter: {:opentelemetry_exporter, :otlp_traces},
     config: %{
-      # Export every 1 second for debugging
       scheduled_delay_ms: 1_000,
       max_queue_size: 2048,
       export_timeout_ms: 30_000,

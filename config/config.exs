@@ -68,10 +68,12 @@ config :trade_machine, Oban,
   repo: TradeMachine.Repo.Production,
   plugins: [
     {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
+    Oban.Plugins.Lifeline,
     {Oban.Plugins.Cron,
      crontab: [
        {"*/5 * * * *", TradeMachine.Jobs.MinorsSync},
-       {"22 7 * * *", TradeMachine.Jobs.EspnTeamSync}
+       {"22 7 * * *", TradeMachine.Jobs.EspnTeamSync},
+       {"32 7 * * *", TradeMachine.Jobs.EspnMlbPlayersSync}
      ]}
   ],
   queues: [minors_sync: 1, draft_sync: 1, emails: 2, espn_sync: 1]

@@ -3,14 +3,8 @@ import Config
 # Development configuration - uses environment variables with sensible defaults
 # For containerized development, these are set in docker-compose.yml
 # For direct machine development, set these in your shell environment
-config :trade_machine,
-  spreadsheet_id:
-    System.get_env("GOOGLE_SPREADSHEET_ID", "16SjDZBO2vY6rGj9CM7nW2pG21i4pZ85LGlbMCODVQtk")
 
 # Database configuration with environment variable support - Dual Repo Pattern
-# Schema can be overridden via PROD_SCHEMA/STAGING_SCHEMA env vars
-# For local dev: set both to "dev" in .env to use the dev schema
-# For production: defaults to "public" and "staging" respectively
 prod_schema = System.get_env("PROD_SCHEMA", "dev")
 staging_schema = System.get_env("STAGING_SCHEMA", "dev")
 
@@ -23,7 +17,9 @@ config :trade_machine, TradeMachine.Repo.Production,
   port: String.to_integer(System.get_env("PROD_DATABASE_PORT", "5432")),
   show_sensitive_data_on_connection_error: true,
   pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE", "10")),
+  socket_options: [keepalive: true],
   after_connect: {Postgrex, :query!, ["SET search_path TO #{prod_schema}", []]},
+  migration_default_prefix: prod_schema,
   migration_source: "schema_migrations"
 
 # Staging database configuration
@@ -35,7 +31,9 @@ config :trade_machine, TradeMachine.Repo.Staging,
   port: String.to_integer(System.get_env("STAGING_DATABASE_PORT", "5435")),
   show_sensitive_data_on_connection_error: true,
   pool_size: String.to_integer(System.get_env("DATABASE_POOL_SIZE", "10")),
+  socket_options: [keepalive: true],
   after_connect: {Postgrex, :query!, ["SET search_path TO #{staging_schema}", []]},
+  migration_default_prefix: staging_schema,
   migration_source: "schema_migrations"
 
 # For development, we disable any cache and enable
@@ -115,9 +113,9 @@ config :trade_machine, Oban,
   prefix: prod_schema,
   plugins: [
     {Oban.Plugins.Pruner, max_age: 300},
+    Oban.Plugins.Lifeline,
     {Oban.Plugins.Cron,
      crontab: [
-       {"*/2 * * * *", TradeMachine.Jobs.MinorsSync,
-        args: %{sheet_id: "16SjDZBO2vY6rGj9CM7nW2pG21i4pZ85LGlbMCODVQtk"}}
+       {"*/2 * * * *", TradeMachine.Jobs.MinorsSync}
      ]}
   ]

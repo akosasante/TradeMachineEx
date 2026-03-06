@@ -135,10 +135,7 @@ defmodule TradeMachineWeb.Telemetry do
     [
       # VM measurements
       {__MODULE__, :dispatch_vm_stats, []},
-      # Oban queue stats (all queues including espn_sync)
       {__MODULE__, :dispatch_oban_stats, []}
-      # Google Sheets connection health
-      #      {__MODULE__, :dispatch_sheets_health, []}
     ]
   end
 
@@ -165,22 +162,39 @@ defmodule TradeMachineWeb.Telemetry do
   end
 
   def dispatch_oban_stats do
-    # Check Production Oban instance (all queues)
     queues = ["minors_sync", "draft_sync", "emails", "espn_sync"]
 
     Enum.each(queues, fn queue_name ->
-      try do
+      emit_queue_stats(Oban.Production, queue_name, "production")
+    end)
+
+    emit_queue_stats(Oban.Staging, "emails", "staging")
+  end
+
+  defp emit_queue_stats(oban_name, queue_name, instance_label) do
+    try do
+      case Oban.check_queue(name: oban_name, queue: queue_name) do
+        %{} = stats ->
+          measurements = %{
+            limit: Map.get(stats, :limit, 0),
+            running: stats |> Map.get(:running, []) |> length(),
+            available: Map.get(stats, :available, 0)
+          }
         stats = Oban.check_queue(name: Oban.Production, queue: queue_name) || %{}
 
-        :telemetry.execute([:oban, :queue, :stats], stats, %{
-          queue: queue_name,
-          oban_instance: "production"
-        })
-      rescue
-        error ->
-          Logger.debug(
-            "Failed to get Oban.Production stats for queue #{queue_name}: #{inspect(error)}"
-          )
+          :telemetry.execute([:oban, :queue, :stats], measurements, %{
+            queue: queue_name,
+            oban_instance: instance_label
+          })
+
+        _ ->
+          :ok
+      end
+    rescue
+      error ->
+        Logger.debug(
+          "Failed to get #{inspect(oban_name)} stats for queue #{queue_name}: #{inspect(error)}"
+        )
       end
     end)
 

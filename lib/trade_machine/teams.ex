@@ -76,9 +76,8 @@ defmodule TradeMachine.Teams do
 
   # Private function to sync a single team
   defp sync_single_team(espn_team, acc, repo) do
-    # Convert FantasyTeam struct to map for JSON storage
-    # We need to handle nested structs (record, transaction_counter)
     espn_team_map = struct_to_map(espn_team)
+    now = DateTime.utc_now()
 
     case repo.get_by(Team, espn_id: espn_team.id) do
       nil ->
@@ -91,7 +90,11 @@ defmodule TradeMachine.Teams do
 
       team ->
         team
-        |> Ecto.Changeset.change(espn_team: espn_team_map)
+        |> Ecto.Changeset.change(
+          name: espn_team.name,
+          espn_team: espn_team_map,
+          last_synced_at: now
+        )
         |> repo.update!()
 
         Logger.debug("Updated team data",

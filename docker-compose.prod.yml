@@ -7,11 +7,13 @@ services:
     networks:
       - production_trademachine_infra
       - staging_trademachine_infra
+      - monitoring
     ports:
       - "4001:4001"
     environment:
       - MIX_ENV=prod
       - PORT=4001
+      - ERL_CRASH_DUMP=/tmp/erl_crash.dump
 
       # Database configuration (external PostgreSQL - Dual Repo Pattern)
       - PROD_DATABASE_HOST=${PROD_DATABASE_HOST:-production_postgres}
@@ -35,9 +37,9 @@ services:
       # Logging configuration
       - LOG_LEVEL=${LOG_LEVEL:-info}
 
-      # Google Sheets integration (optional)
-      - GOOGLE_SHEETS_CREDS_PATH=${GOOGLE_SHEETS_CREDS_PATH:-}
-      - GOOGLE_SPREADSHEET_ID=${GOOGLE_SPREADSHEET_ID:-}
+      # Minor league sheet (public CSV export)
+      - MINOR_LEAGUE_SHEET_ID=${MINOR_LEAGUE_SHEET_ID}
+      - MINOR_LEAGUE_SHEET_GID=${MINOR_LEAGUE_SHEET_GID:-}
 
       # Job processing configuration
       - ENABLE_CRON=${ENABLE_CRON:-false}
@@ -53,6 +55,7 @@ services:
       # Monitoring configuration
       - GRAFANA_HOST=${GRAFANA_HOST:-}
       - GRAFANA_TOKEN=${GRAFANA_TOKEN:-}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
 
       # Email configuration (Brevo/SendInBlue) and data needed to populate emails
       - BREVO_API_KEY=${BREVO_API_KEY}
@@ -66,6 +69,9 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
       - OTEL_TRACES_SAMPLER=${OTEL_TRACES_SAMPLER:-}
       - OTEL_TRACES_SAMPLER_ARG=${OTEL_TRACES_SAMPLER_ARG:-}
+
+    stop_grace_period: 30s
+
 
     # Resource limits for production
     deploy:
@@ -101,3 +107,5 @@ networks:
   staging_trademachine_infra:
     name: staging_trademachine_infra
     external: true
+  monitoring:
+    external: true # App joins the network created by the alloy etc docker compose
