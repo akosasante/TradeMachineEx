@@ -94,7 +94,6 @@ defmodule TradeMachineWeb.HealthController do
     end
   end
 
-  @dialyzer {:nowarn_function, oban_check: 0}
   defp oban_check do
     prod_result = safe_check_queue(Oban.Production, :emails)
     staging_result = safe_check_queue(Oban.Staging, :emails)
@@ -110,12 +109,11 @@ defmodule TradeMachineWeb.HealthController do
     %{healthy: healthy, message: message}
   end
 
-  @dialyzer {:nowarn_function, safe_check_queue: 2}
   defp safe_check_queue(oban_name, queue) do
     try do
-      case Oban.check_queue(name: oban_name, queue: queue) do
+      case Oban.check_queue(oban_name, queue: queue) do
         %{} -> :ok
-        other -> {:error, other}
+        nil -> {:error, :queue_not_running}
       end
     catch
       kind, reason -> {:error, {kind, reason}}
