@@ -52,6 +52,9 @@ services:
       - ESPN_LEAGUE_ID=${ESPN_LEAGUE_ID:-545}
       - ESPN_SEASON_YEAR=${ESPN_SEASON_YEAR}
 
+      # Discord configuration
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+
       # Monitoring configuration
       - GRAFANA_HOST=${GRAFANA_HOST:-}
       - GRAFANA_TOKEN=${GRAFANA_TOKEN:-}

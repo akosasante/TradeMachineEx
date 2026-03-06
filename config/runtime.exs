@@ -217,7 +217,7 @@ otlp_endpoint = System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT") || "http://localho
 
 # OpenTelemetry configuration - using processors config for full control
 config :opentelemetry,
-#  span_processor: :batch,
+  #  span_processor: :batch,
   traces_exporter: :otlp
 
 # Custom batch processor configuration to ensure faster exports for debugging
@@ -276,3 +276,15 @@ config :trade_machine,
        nil -> Date.utc_today().year
        year_str -> String.to_integer(year_str)
      end)
+
+# Discord/Nostrum configuration
+# Only configure if DISCORD_BOT_TOKEN is set
+if discord_token = System.get_env("DISCORD_BOT_TOKEN") do
+  config :nostrum,
+    token: discord_token,
+    # Gateway intents - minimal for now, add more when needed
+    gateway_intents: [
+      :guilds,
+      :guild_messages
+    ]
+end
