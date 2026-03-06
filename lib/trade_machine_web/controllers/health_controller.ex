@@ -94,36 +94,32 @@ defmodule TradeMachineWeb.HealthController do
     end
   end
 
+  @dialyzer {:nowarn_function, oban_check: 0}
   defp oban_check do
     prod_result = safe_check_queue(Oban.Production, :emails)
     staging_result = safe_check_queue(Oban.Staging, :emails)
 
-    case {prod_result, staging_result} do
-      {:ok, :ok} ->
-        %{healthy: true, message: "Both Production and Staging Oban instances healthy"}
+    healthy = match?({:ok, :ok}, {prod_result, staging_result})
 
-      {{:error, reason}, :ok} ->
-        %{healthy: false, message: "Production Oban error: #{inspect(reason)}"}
+    message =
+      case {prod_result, staging_result} do
+        {:ok, :ok} -> "Both Production and Staging Oban instances healthy"
+        _ -> "Prod: #{inspect(prod_result)}, Staging: #{inspect(staging_result)}"
+      end
 
-      {:ok, {:error, reason}} ->
-        %{healthy: false, message: "Staging Oban error: #{inspect(reason)}"}
-
-      {{:error, prod_reason}, {:error, stg_reason}} ->
-        %{
-          healthy: false,
-          message:
-            "Both unhealthy - Prod: #{inspect(prod_reason)}, Staging: #{inspect(stg_reason)}"
-        }
-    end
+    %{healthy: healthy, message: message}
   end
 
+  @dialyzer {:nowarn_function, safe_check_queue: 2}
   defp safe_check_queue(oban_name, queue) do
-    case Oban.check_queue(name: oban_name, queue: queue) do
-      %{} -> :ok
-      other -> {:error, other}
+    try do
+      case Oban.check_queue(name: oban_name, queue: queue) do
+        %{} -> :ok
+        other -> {:error, other}
+      end
+    catch
+      kind, reason -> {:error, {kind, reason}}
     end
-  catch
-    kind, reason -> {:error, {kind, reason}}
   end
 
   defp database_ready? do
