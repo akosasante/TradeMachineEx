@@ -54,9 +54,8 @@ defmodule TradeMachineWeb.HealthController do
 
   defp perform_health_checks do
     checks = %{
-      database: database_check()
-      #      google_sheets: sheets_check(),
-      #      oban: oban_check()
+      database: database_check(),
+      oban: oban_check()
     }
 
     healthy = Enum.all?(checks, fn {_service, status} -> status.healthy end)
@@ -95,56 +94,23 @@ defmodule TradeMachineWeb.HealthController do
     end
   end
 
-  #  defp sheets_check do
-  #    try do
-  #      # Check if Google Sheets processes are running
-  #      goth_alive = Process.whereis(TradeMachine.Goth) != nil
-  #      reader_alive = Process.whereis(TradeMachine.SheetReader) != nil
-  #
-  #      case {goth_alive, reader_alive} do
-  #        {true, true} ->
-  #          %{healthy: true, message: "Google Sheets integration healthy"}
-  #        {false, true} ->
-  #          %{healthy: false, message: "Goth (Google Auth) process not running"}
-  #        {true, false} ->
-  #          %{healthy: false, message: "SheetReader process not running"}
-  #        {false, false} ->
-  #          %{healthy: false, message: "Both Goth and SheetReader processes not running"}
-  #      end
-  #    rescue
-  #      error ->
-  #        %{healthy: false, message: "Sheets check exception: #{inspect(error)}"}
-  #    end
-  #  end
+  defp oban_check do
+    try do
+      prod_result = Oban.check_queue(name: Oban.Production, queue: :emails)
+      staging_result = Oban.check_queue(name: Oban.Staging, queue: :emails)
 
-  #  defp oban_check do
-  #    try do
-  #      # Check both Oban instances
-  #      prod_result = Oban.check_queue(name: Oban.Production, queue: "emails")
-  #      staging_result = Oban.check_queue(name: Oban.Staging, queue: "emails")
-  #
-  #      case {prod_result, staging_result} do
-  #        {{:ok, _prod_stats}, {:ok, _staging_stats}} ->
-  #          %{healthy: true, message: "Both Production and Staging Oban instances healthy"}
-  #
-  #        {{:error, prod_error}, {:ok, _}} ->
-  #          %{healthy: false, message: "Production Oban error: #{inspect(prod_error)}"}
-  #
-  #        {{:ok, _}, {:error, staging_error}} ->
-  #          %{healthy: false, message: "Staging Oban error: #{inspect(staging_error)}"}
-  #
-  #        {{:error, prod_error}, {:error, staging_error}} ->
-  #          %{
-  #            healthy: false,
-  #            message:
-  #              "Both Oban instances unhealthy - Prod: #{inspect(prod_error)}, Staging: #{inspect(staging_error)}"
-  #          }
-  #      end
-  #    rescue
-  #      error ->
-  #        %{healthy: false, message: "Oban check exception: #{inspect(error)}"}
-  #    end
-  #  end
+      case {prod_result, staging_result} do
+        {%{} = _prod, %{} = _stg} ->
+          %{healthy: true, message: "Both Production and Staging Oban instances healthy"}
+
+        _ ->
+          %{healthy: false, message: "Unexpected Oban check_queue result"}
+      end
+    rescue
+      error ->
+        %{healthy: false, message: "Oban check exception: #{inspect(error)}"}
+    end
+  end
 
   defp database_ready? do
     try do
@@ -157,10 +123,4 @@ defmodule TradeMachineWeb.HealthController do
       _ -> false
     end
   end
-
-  #  defp dependencies_ready? do
-  #    # Check critical dependencies are running
-  #    Process.whereis(TradeMachine.Goth) != nil &&
-  #    Process.whereis(TradeMachine.SheetReader) != nil
-  #  end
 end

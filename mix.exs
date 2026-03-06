@@ -47,8 +47,6 @@ defmodule TradeMachine.MixProject do
       {:esbuild, "~> 0.4", runtime: Mix.env() == :dev},
       {:finch, "~> 0.20"},
       {:gettext, "~> 0.19.1"},
-      {:goth, "~> 1.3-rc"},
-      {:google_api_sheets, "~> 0.29.3"},
       {:jason, "~> 1.3"},
       {:nimble_csv, "~> 1.2"},
       {:oban, "~> 2.19"},

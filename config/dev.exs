@@ -3,9 +3,6 @@ import Config
 # Development configuration - uses environment variables with sensible defaults
 # For containerized development, these are set in docker-compose.yml
 # For direct machine development, set these in your shell environment
-config :trade_machine,
-  spreadsheet_id:
-    System.get_env("GOOGLE_SPREADSHEET_ID", "16SjDZBO2vY6rGj9CM7nW2pG21i4pZ85LGlbMCODVQtk")
 
 # Database configuration with environment variable support - Dual Repo Pattern
 prod_schema = System.get_env("PROD_SCHEMA", "public")

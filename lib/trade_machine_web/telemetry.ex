@@ -135,10 +135,7 @@ defmodule TradeMachineWeb.Telemetry do
     [
       # VM measurements
       {__MODULE__, :dispatch_vm_stats, []},
-      # Oban queue stats (all queues including espn_sync)
       {__MODULE__, :dispatch_oban_stats, []}
-      # Google Sheets connection health
-      #      {__MODULE__, :dispatch_sheets_health, []}
     ]
   end
 
@@ -197,31 +194,6 @@ defmodule TradeMachineWeb.Telemetry do
         Logger.debug(
           "Failed to get #{inspect(oban_name)} stats for queue #{queue_name}: #{inspect(error)}"
         )
-    end
-  end
-
-  def dispatch_sheets_health do
-    try do
-      # Simple health check for Google Sheets connectivity
-      case Process.whereis(TradeMachine.SheetReader) do
-        pid when is_pid(pid) ->
-          :telemetry.execute([:sheets, :health], %{status: 1}, %{component: "sheet_reader"})
-
-        nil ->
-          :telemetry.execute([:sheets, :health], %{status: 0}, %{component: "sheet_reader"})
-      end
-
-      case Process.whereis(TradeMachine.Goth) do
-        pid when is_pid(pid) ->
-          :telemetry.execute([:sheets, :health], %{status: 1}, %{component: "goth"})
-
-        nil ->
-          :telemetry.execute([:sheets, :health], %{status: 0}, %{component: "goth"})
-      end
-    rescue
-      error ->
-        Logger.debug("Failed to check sheets health: #{inspect(error)}")
-        :telemetry.execute([:sheets, :health], %{status: 0}, %{component: "error"})
     end
   end
 
