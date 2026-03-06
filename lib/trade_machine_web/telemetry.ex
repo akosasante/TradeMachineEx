@@ -135,10 +135,7 @@ defmodule TradeMachineWeb.Telemetry do
     [
       # VM measurements
       {__MODULE__, :dispatch_vm_stats, []},
-      # Oban queue stats (all queues including espn_sync)
       {__MODULE__, :dispatch_oban_stats, []}
-      # Google Sheets connection health
-      #      {__MODULE__, :dispatch_sheets_health, []}
     ]
   end
 
@@ -198,10 +195,6 @@ defmodule TradeMachineWeb.Telemetry do
           "Failed to get #{inspect(oban_name)} stats for queue #{queue_name}: #{inspect(error)}"
         )
     end
-  end
-
-  def dispatch_sheets_health do
-    :ok
   end
 
   # Helper function to categorize HTTP status codes

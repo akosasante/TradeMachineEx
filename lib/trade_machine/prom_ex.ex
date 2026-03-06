@@ -7,7 +7,7 @@ defmodule TradeMachine.PromEx do
   - Database/Ecto metrics (query times, connection pool)
   - Oban job processing metrics
   - BEAM VM metrics (memory, processes, garbage collection)
-  - Custom business metrics for Google Sheets integration
+  - Custom business metrics (application health, Oban queues)
   """
 
   use PromEx, otp_app: :trade_machine
@@ -72,10 +72,6 @@ defmodule TradeMachine.PromEx.CustomMetrics do
     poll_rate = Keyword.get(opts, :poll_rate, 5_000)
 
     [
-      # Google Sheets health metrics
-      sheets_health_polling_metrics(poll_rate),
-
-      # Application-specific metrics
       application_health_polling_metrics(poll_rate)
     ]
   end
@@ -83,37 +79,8 @@ defmodule TradeMachine.PromEx.CustomMetrics do
   @impl true
   def event_metrics(_opts) do
     [
-      # Google Sheets API call metrics
-      google_sheets_event_metrics(),
-
-      # Custom telemetry event metrics
       custom_telemetry_event_metrics()
     ]
-  end
-
-  defp sheets_health_polling_metrics(poll_rate) do
-    Polling.build(
-      :trade_machine_sheets_health_polling_metrics,
-      poll_rate,
-      {__MODULE__, :execute_sheets_health_metrics, []},
-      [
-        # Google Sheets connection status
-        last_value(
-          [:trade_machine, :sheets, :connection_status],
-          event_name: [:prom_ex, :plugin, :trade_machine, :sheets_health],
-          description: "Google Sheets API connection status (1=connected, 0=disconnected)",
-          measurement: :connected
-        ),
-
-        # Sheet reader process status
-        last_value(
-          [:trade_machine, :sheets, :reader_status],
-          event_name: [:prom_ex, :plugin, :trade_machine, :sheets_health],
-          description: "Sheet reader process status (1=alive, 0=dead)",
-          measurement: :reader_alive
-        )
-      ]
-    )
   end
 
   defp application_health_polling_metrics(poll_rate) do
@@ -143,66 +110,18 @@ defmodule TradeMachine.PromEx.CustomMetrics do
     )
   end
 
-  defp google_sheets_event_metrics do
-    Event.build(
-      :trade_machine_google_sheets_event_metrics,
-      [
-        # API request counter
-        counter(
-          [:trade_machine, :sheets, :api_requests_total],
-          event_name: [:trade_machine, :sheets, :api_request],
-          description: "Total number of Google Sheets API requests",
-          tags: [:operation, :status]
-        ),
-
-        # API request duration
-        distribution(
-          [:trade_machine, :sheets, :api_request_duration_milliseconds],
-          event_name: [:trade_machine, :sheets, :api_request],
-          description: "Duration of Google Sheets API requests in milliseconds",
-          measurement: :duration,
-          unit: {:native, :millisecond},
-          tags: [:operation, :status],
-          buckets: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10_000]
-        )
-      ]
-    )
-  end
-
   defp custom_telemetry_event_metrics do
     Event.build(
       :trade_machine_custom_telemetry_event_metrics,
       [
-        # Oban job queue depth
         last_value(
           [:trade_machine, :oban, :queue_depth],
           event_name: [:oban, :queue, :stats],
           description: "Current depth of Oban job queues",
           measurement: :available,
           tags: [:queue]
-        ),
-
-        # Custom health check metrics
-        last_value(
-          [:trade_machine, :health_check, :status],
-          event_name: [:sheets, :health],
-          description: "Health check status (1=healthy, 0=unhealthy)",
-          measurement: :status,
-          tags: [:component]
         )
       ]
-    )
-  end
-
-  # Callback functions for polling metrics
-  def execute_sheets_health_metrics do
-    :telemetry.execute(
-      [:prom_ex, :plugin, :trade_machine, :sheets_health],
-      %{
-        connected: 0,
-        reader_alive: 0
-      },
-      %{}
     )
   end
 
