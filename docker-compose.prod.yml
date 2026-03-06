@@ -52,6 +52,9 @@ services:
       - ESPN_LEAGUE_ID=${ESPN_LEAGUE_ID:-545}
       - ESPN_SEASON_YEAR=${ESPN_SEASON_YEAR}
 
+      # Discord configuration
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+
       # Monitoring configuration
       - GRAFANA_HOST=${GRAFANA_HOST:-}
       - GRAFANA_TOKEN=${GRAFANA_TOKEN:-}
@@ -63,8 +66,17 @@ services:
       - STAGING_FRONTEND_URL=${STAGING_FRONTEND_URL}
       - STAGING_EMAIL=${STAGING_EMAIL}
 
+      # OpenTelemetry configuration
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME}
+      - OTEL_SERVICE_VERSION=${OTEL_SERVICE_VERSION}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
+      - OTEL_TRACES_SAMPLER=${OTEL_TRACES_SAMPLER:-}
+      - OTEL_TRACES_SAMPLER_ARG=${OTEL_TRACES_SAMPLER_ARG:-}
+
     stop_grace_period: 30s
 
+
+    # Resource limits for production
     deploy:
       resources:
         limits:

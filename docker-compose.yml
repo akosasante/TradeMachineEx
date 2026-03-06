@@ -46,6 +46,8 @@ services:
       - ESPN_COOKIE=${ESPN_COOKIE}
       - ESPN_SWID=${ESPN_SWID}
       - ESPN_LEAGUE_ID=${ESPN_LEAGUE_ID}
+      # Discord
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
     volumes:
       # Mount source code for development
       - .:/app

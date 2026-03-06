@@ -5,11 +5,10 @@ import Config
 # environment-based configuration in Docker containers
 
 # Database configuration - Dual Repo Pattern
+prod_schema = System.get_env("PROD_SCHEMA") || "public"
+staging_schema = System.get_env("STAGING_SCHEMA") || "staging"
 # Only configure if DATABASE_PASSWORD is set (allows running without DB for testing)
 if System.get_env("DATABASE_PASSWORD") do
-  prod_schema = System.get_env("PROD_SCHEMA") || "public"
-  staging_schema = System.get_env("STAGING_SCHEMA") || "staging"
-
   # Production database configuration
   config :trade_machine, TradeMachine.Repo.Production,
     username:
@@ -23,7 +22,7 @@ if System.get_env("DATABASE_PASSWORD") do
     show_sensitive_data_on_connection_error: false,
     socket_options: [keepalive: true],
     after_connect: {Postgrex, :query!, ["SET search_path TO #{prod_schema}", []]},
-    migration_default_prefix: prod_schema,
+    migration_default_prefix: "#{prod_schema}",
     priv: "priv/repo"
 
   # Staging database configuration
@@ -117,8 +116,8 @@ end
 # Oban configuration with environment-based settings
 # Skip Oban runtime config in test mode - test.exs handles it
 if config_env() != :test do
-  oban_plugins =
-    if System.get_env("DATABASE_SCHEMA") == "staging" or System.get_env("ENABLE_CRON") == "true" do
+  prod_oban_plugins =
+    if System.get_env("ENABLE_CRON") == "true" do
       [
         {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
         Oban.Plugins.Lifeline,
@@ -136,21 +135,18 @@ if config_env() != :test do
       ]
     end
 
-  prod_oban_schema = System.get_env("PROD_SCHEMA") || "public"
-  staging_oban_schema = System.get_env("STAGING_SCHEMA") || "staging"
-
   # Production Oban instance - handles all job types including cron jobs
   config :trade_machine, Oban.Production,
     name: Oban.Production,
     repo: TradeMachine.Repo.Production,
-    plugins: oban_plugins,
+    plugins: prod_oban_plugins,
     queues: [
       minors_sync: String.to_integer(System.get_env("OBAN_MINORS_SYNC_CONCURRENCY") || "1"),
       draft_sync: String.to_integer(System.get_env("OBAN_DRAFT_SYNC_CONCURRENCY") || "1"),
       emails: 2,
       espn_sync: 1
     ],
-    prefix: prod_oban_schema
+    prefix: prod_schema
 
   # Staging Oban instance - only handles email jobs, no cron jobs
   config :trade_machine, Oban.Staging,
@@ -163,7 +159,7 @@ if config_env() != :test do
     queues: [
       emails: 2
     ],
-    prefix: staging_oban_schema
+    prefix: staging_schema
 end
 
 # PromEx (Prometheus metrics) configuration
@@ -221,7 +217,7 @@ otlp_endpoint = System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT") || "http://localho
 
 # OpenTelemetry configuration - using processors config for full control
 config :opentelemetry,
-#  span_processor: :batch,
+  #  span_processor: :batch,
   traces_exporter: :otlp
 
 # Custom batch processor configuration to ensure faster exports for debugging
@@ -280,3 +276,17 @@ config :trade_machine,
        nil -> Date.utc_today().year
        year_str -> String.to_integer(year_str)
      end)
+
+# Discord/Nostrum configuration
+# Only configure if DISCORD_BOT_TOKEN is set and not in test environment
+if config_env() != :test do
+  if discord_token = System.get_env("DISCORD_BOT_TOKEN") do
+    config :nostrum,
+      token: discord_token,
+      # Gateway intents - minimal for now, add more when needed
+      gateway_intents: [
+        :guilds,
+        :guild_messages
+      ]
+  end
+end

@@ -49,6 +49,7 @@ defmodule TradeMachine.MixProject do
       {:gettext, "~> 0.19.1"},
       {:jason, "~> 1.3"},
       {:nimble_csv, "~> 1.2"},
+      {:nostrum, "~> 0.10", runtime: Mix.env() != :test},
       {:oban, "~> 2.19"},
       {:opentelemetry, "~> 1.6"},
       {:opentelemetry_api, "~> 1.4"},

@@ -5,8 +5,8 @@ import Config
 # For direct machine development, set these in your shell environment
 
 # Database configuration with environment variable support - Dual Repo Pattern
-prod_schema = System.get_env("PROD_SCHEMA", "public")
-staging_schema = System.get_env("STAGING_SCHEMA", "staging")
+prod_schema = System.get_env("PROD_SCHEMA", "dev")
+staging_schema = System.get_env("STAGING_SCHEMA", "dev")
 
 # Production database configuration
 config :trade_machine, TradeMachine.Repo.Production,

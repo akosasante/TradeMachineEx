@@ -78,8 +78,6 @@ config :trade_machine, Oban,
   ],
   queues: [minors_sync: 1, draft_sync: 1, emails: 2, espn_sync: 1]
 
-config :tesla, disable_deprecated_builder_warning: true
-
 # Emailing
 config :swoosh,
   api_client: Swoosh.ApiClient.Finch

@@ -197,6 +197,31 @@ defmodule TradeMachineWeb.Telemetry do
     end
   end
 
+  def dispatch_sheets_health do
+    try do
+      # Simple health check for Google Sheets connectivity
+      case Process.whereis(TradeMachine.SheetReader) do
+        pid when is_pid(pid) ->
+          :telemetry.execute([:sheets, :health], %{status: 1}, %{component: "sheet_reader"})
+
+        nil ->
+          :telemetry.execute([:sheets, :health], %{status: 0}, %{component: "sheet_reader"})
+      end
+
+      case Process.whereis(TradeMachine.Goth) do
+        pid when is_pid(pid) ->
+          :telemetry.execute([:sheets, :health], %{status: 1}, %{component: "goth"})
+
+        nil ->
+          :telemetry.execute([:sheets, :health], %{status: 0}, %{component: "goth"})
+      end
+    rescue
+      error ->
+        Logger.debug("Failed to check sheets health: #{inspect(error)}")
+        :telemetry.execute([:sheets, :health], %{status: 0}, %{component: "error"})
+    end
+  end
+
   # Helper function to categorize HTTP status codes
   defp get_status_class(%{status: status}) when status < 400, do: %{status_class: "2xx_3xx"}
   defp get_status_class(%{status: status}) when status < 500, do: %{status_class: "4xx"}
