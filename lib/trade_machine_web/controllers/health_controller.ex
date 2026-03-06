@@ -58,7 +58,7 @@ defmodule TradeMachineWeb.HealthController do
       oban: oban_check()
     }
 
-    healthy = Enum.all?(checks, fn {_service, status} -> status.healthy end)
+    healthy = checks.database.healthy
 
     %{
       healthy: healthy,
@@ -95,21 +95,35 @@ defmodule TradeMachineWeb.HealthController do
   end
 
   defp oban_check do
-    try do
-      prod_result = Oban.check_queue(name: Oban.Production, queue: :emails)
-      staging_result = Oban.check_queue(name: Oban.Staging, queue: :emails)
+    prod_result = safe_check_queue(Oban.Production, :emails)
+    staging_result = safe_check_queue(Oban.Staging, :emails)
 
-      case {prod_result, staging_result} do
-        {%{} = _prod, %{} = _stg} ->
-          %{healthy: true, message: "Both Production and Staging Oban instances healthy"}
+    case {prod_result, staging_result} do
+      {:ok, :ok} ->
+        %{healthy: true, message: "Both Production and Staging Oban instances healthy"}
 
-        _ ->
-          %{healthy: false, message: "Unexpected Oban check_queue result"}
-      end
-    rescue
-      error ->
-        %{healthy: false, message: "Oban check exception: #{inspect(error)}"}
+      {{:error, reason}, :ok} ->
+        %{healthy: false, message: "Production Oban error: #{inspect(reason)}"}
+
+      {:ok, {:error, reason}} ->
+        %{healthy: false, message: "Staging Oban error: #{inspect(reason)}"}
+
+      {{:error, prod_reason}, {:error, stg_reason}} ->
+        %{
+          healthy: false,
+          message:
+            "Both unhealthy - Prod: #{inspect(prod_reason)}, Staging: #{inspect(stg_reason)}"
+        }
     end
+  end
+
+  defp safe_check_queue(oban_name, queue) do
+    case Oban.check_queue(name: oban_name, queue: queue) do
+      %{} -> :ok
+      other -> {:error, other}
+    end
+  catch
+    kind, reason -> {:error, {kind, reason}}
   end
 
   defp database_ready? do
