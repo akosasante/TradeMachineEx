@@ -278,13 +278,15 @@ config :trade_machine,
      end)
 
 # Discord/Nostrum configuration
-# Only configure if DISCORD_BOT_TOKEN is set
-if discord_token = System.get_env("DISCORD_BOT_TOKEN") do
-  config :nostrum,
-    token: discord_token,
-    # Gateway intents - minimal for now, add more when needed
-    gateway_intents: [
-      :guilds,
-      :guild_messages
-    ]
+# Only configure if DISCORD_BOT_TOKEN is set and not in test environment
+if config_env() != :test do
+  if discord_token = System.get_env("DISCORD_BOT_TOKEN") do
+    config :nostrum,
+      token: discord_token,
+      # Gateway intents - minimal for now, add more when needed
+      gateway_intents: [
+        :guilds,
+        :guild_messages
+      ]
+  end
 end
