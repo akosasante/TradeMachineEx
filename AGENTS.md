@@ -48,15 +48,14 @@ TradeMachineEx operates as a microservice that connects to **shared infrastructu
 - `TradeMachine.Repo` - Ecto repository connecting to shared PostgreSQL
 - `TradeMachineWeb.Telemetry` - Metrics and monitoring
 - `Phoenix.PubSub` - Message passing (currently unused)
-- `Oban` - Job queue processor (commented out but available)
-- `Goth` - Google Sheets OAuth integration (optional)
+- `Oban` - Job queue processor for background and cron jobs
 - `PromEx.DashboardUploader` - Grafana dashboard management (optional)
 
 **Directory Structure**:
 - `lib/trade_machine/data/` - Ecto schemas and data models
 - `lib/trade_machine/jobs/` - Background job processors
 - `lib/trade_machine/mailer/` - Email templates and delivery
-- `lib/trade_machine/sheet_reader/` - Google Sheets integration
+- `lib/trade_machine/minor_leagues/` - Minor league sheet sync (fetch, parse, sync)
 - `lib/trade_machine_web/` - Phoenix web layer
 
 ### Email System
@@ -66,7 +65,7 @@ TradeMachineEx operates as a microservice that connects to **shared infrastructu
 - **Layout Structure**: Separate layout and email views with stadium background image
 
 ### Data Processing
-- **Google Sheets**: Optional integration for importing Excel data via Google Sheets API
+- **Minor League Sync**: Fetches public Google Sheet as CSV via `Req`, parses the multi-team layout, and syncs player ownership to the database
 - **Concurrent Jobs**: Designed to leverage Elixir's concurrency for data processing tasks
 - **Type Safety**: Uses `typed_ecto_schema` for compile-time type checking
 

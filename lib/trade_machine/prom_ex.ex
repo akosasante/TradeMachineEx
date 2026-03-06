@@ -196,25 +196,11 @@ defmodule TradeMachine.PromEx.CustomMetrics do
 
   # Callback functions for polling metrics
   def execute_sheets_health_metrics do
-    # Check Google Sheets connection
-    sheets_connected =
-      case Process.whereis(TradeMachine.Goth) do
-        pid when is_pid(pid) -> 1
-        nil -> 0
-      end
-
-    # Check sheet reader process
-    reader_alive =
-      case Process.whereis(TradeMachine.SheetReader) do
-        pid when is_pid(pid) -> 1
-        nil -> 0
-      end
-
     :telemetry.execute(
       [:prom_ex, :plugin, :trade_machine, :sheets_health],
       %{
-        connected: sheets_connected,
-        reader_alive: reader_alive
+        connected: 0,
+        reader_alive: 0
       },
       %{}
     )

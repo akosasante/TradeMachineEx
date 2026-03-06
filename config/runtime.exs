@@ -60,14 +60,6 @@ config :trade_machine, TradeMachineWeb.Endpoint,
     ),
   server: true
 
-# Google Sheets credentials configuration (legacy Goth — will be removed once Req migration is confirmed)
-# In containers, this should point to a mounted secret or env var
-sheets_creds_path = System.get_env("GOOGLE_SHEETS_CREDS_PATH") || "./sheet_creds.json"
-
-config :trade_machine,
-  sheets_creds_filepath: sheets_creds_path,
-  spreadsheet_id: System.get_env("GOOGLE_SPREADSHEET_ID")
-
 # Minor league sheet configuration (public CSV export via Req)
 if config_env() != :test do
   config :trade_machine,
