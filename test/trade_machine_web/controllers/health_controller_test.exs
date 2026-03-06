@@ -31,8 +31,12 @@ defmodule TradeMachineWeb.HealthControllerTest do
     end
 
     test "oban status does not affect HTTP status when database is healthy", %{conn: conn} do
-      # In test env Oban queues are disabled, so oban check will report unhealthy.
-      # The endpoint should still return 200 since only the database check determines status.
+      # In test env Oban queues are disabled (queues: false in test.exs), so the oban
+      # check will always report unhealthy here. We don't test the oban.healthy == true
+      # path because Oban.start_queue/2 only signals already-running producers and
+      # won't create producers when queues are fully disabled — it would be a flaky no-op.
+      # The happy path is simple enough to verify by reading the code directly.
+      # What matters here is that a failing Oban check does NOT cause a 503.
       conn = get(conn, "/health")
 
       body = json_response(conn, 200)
