@@ -13,6 +13,7 @@ TradeMachineEx is an Elixir Phoenix application that serves as the job processin
 - **Start development server (recommended)**: `./start-dev.sh --skip-infrastructure`
 - **Start development server (local)**: `mix phx.server`
 - **Start with infrastructure**: `./start-dev.sh` (starts PostgreSQL and Redis containers)
+- **iex REPL in running container**: `./console.sh` or `./console.sh <name>` (to provide a custom name for the node) eg: `./console.sh myrepl`
 
 ### Testing
 - **Run all tests**: `./test.sh`
@@ -105,9 +106,10 @@ end
 - Stadium background image embedded as base64 in layout
 
 ### Job Processing
-- Designed for Oban integration (currently disabled)
+- Uses Oban for all background and scheduled jobs
 - Jobs should handle failures gracefully with retry logic
 - Use structured logging for monitoring
+- All sync jobs use `SyncTracking` to record execution metadata to the DB and `TraceContext` for OpenTelemetry distributed tracing
 
 ## Important Notes
 
@@ -149,3 +151,102 @@ docker exec -it trade_machine_ex_app /app/bin/trade_machine eval "TradeMachine.R
 - Tests use `.env.test` environment sourced by `test.sh` script
 - Test database should be separate from development database
 - Use `./test.sh` script rather than `mix test` directly for proper environment setup
+
+---
+
+## Oban Jobs Reference
+
+Quick-reference for the job system. All jobs live in `lib/trade_machine/jobs/`. For detailed per-job documentation (data flows, step-by-step descriptions, architecture diagram), see [docs/job-system.md](docs/job-system.md).
+
+### Repos and Oban Instances
+
+There are two PostgreSQL repos and two Oban instances, one per environment:
+
+| Repo | DB Schema | Oban Instance | Queues |
+|---|---|---|---|
+| `TradeMachine.Repo.Production` | `public` (or `$PROD_SCHEMA`) | `Oban.Production` | `minors_sync`, `espn_sync`, `draft_sync`, `emails` |
+| `TradeMachine.Repo.Staging` | `staging` (or `$STAGING_SCHEMA`) | `Oban.Staging` | `emails` only |
+
+Cron jobs always run against **Production** only. The Staging Oban instance only processes emails enqueued by the TypeScript server when `APP_ENV=staging`.
+
+---
+
+### Scheduled (Cron) Jobs
+
+Cron is enabled in production when `DATABASE_SCHEMA=staging` or `ENABLE_CRON=true`. Schedules are in UTC.
+
+| Job | Module | Cron (production) | Queue | Max Attempts |
+|---|---|---|---|---|
+| Minor League Sync | `TradeMachine.Jobs.MinorsSync` | `0 2 * * *` (2:00 AM) | `minors_sync` | 5 |
+| ESPN Team Sync | `TradeMachine.Jobs.EspnTeamSync` | `22 7 * * *` (7:22 AM) | `espn_sync` | 3 |
+| ESPN MLB Players Sync | `TradeMachine.Jobs.EspnMlbPlayersSync` | `32 7 * * *` (7:32 AM) | `espn_sync` | 3 |
+
+> **Dev note:** In `dev.exs`, MinorsSync runs every 2 minutes (`*/2 * * * *`) for easy testing. In `config.exs` (the base config), it runs every 5 minutes and all three jobs are scheduled.
+
+---
+
+### On-Demand Jobs
+
+Enqueued by the TypeScript server (`TradeMachineServer`) via direct Prisma inserts into the `oban_jobs` table.
+
+| Job | Module | Queue | Max Attempts | Enqueued by |
+|---|---|---|---|---|
+| Email Worker | `TradeMachine.Jobs.EmailWorker` | `emails` | 3 | `TradeMachineServer/src/DAO/v2/ObanDAO.ts` |
+
+---
+
+### Job Details
+
+#### `MinorsSync` — `lib/trade_machine/jobs/minors_sync.ex`
+
+Syncs minor league player ownership from a public Google Sheet to both databases.\
+**Env vars:** `MINOR_LEAGUE_SHEET_ID`, `MINOR_LEAGUE_SHEET_GID` (default `"806978055"`)\
+**Concurrency guard:** `SyncLock` (`:minors_sync`) prevents overlapping runs\
+**Unique constraint:** Only one job allowed in `available/scheduled/executing/retryable` states at a time
+
+---
+
+#### `EspnTeamSync` — `lib/trade_machine/jobs/espn_team_sync.ex`
+
+Syncs ESPN fantasy team metadata (`team.espnTeam` JSON column) to both databases. Runs 10 minutes before `EspnMlbPlayersSync` so team data is fresh. Uses `ESPN_SEASON_YEAR` env var.
+
+---
+
+#### `EspnMlbPlayersSync` — `lib/trade_machine/jobs/espn_mlb_players_sync.ex`
+
+Syncs the full ESPN major league player pool to both databases via paginated API fetch and multi-phase matching engine.\
+**Env vars:** `ESPN_SEASON_YEAR`\
+**Concurrency guard:** `SyncLock` (`:mlb_players_sync`) prevents overlapping runs\
+**Unique constraint:** Only one job allowed in `available/scheduled/executing/retryable` states at a time
+
+---
+
+#### `EmailWorker` — `lib/trade_machine/jobs/email_worker.ex`
+
+Sends transactional emails. Enqueued by the TypeScript server when a user registers or requests a password reset. Selects repo based on `env` arg (`"production"` → Production repo, anything else → Staging).
+
+**Supported email types:**
+
+| `email_type` arg | Email sent |
+|---|---|
+| `"reset_password"` | Password reset link |
+| `"registration"` or `"registration_email"` | Welcome / registration confirmation |
+| `"test"` | Test email (dev use) |
+
+> `"registration_email"` is the value sent by `ObanDAO.ts` in TradeMachineServer; `"registration"` is accepted as an alias for forward compatibility.
+
+**Enqueue args:** `{ "email_type": "...", "data": "<userId>", "env": "production"|"staging" }`
+
+> **How jobs get enqueued:** The TypeScript server (`ObanDAO.ts`) inserts rows directly into the `oban_jobs` table via Prisma. The Elixir app picks them up from the `emails` queue. The `env` field tells the worker which database to use so the correct user record is found.
+
+---
+
+### Shared Job Infrastructure
+
+| Module | Purpose |
+|---|---|
+| `TradeMachine.SyncLock` | In-memory lock to prevent concurrent runs of the same sync job |
+| `TradeMachine.SyncTracking` | Writes job execution metadata (start, complete, fail) to `SyncJobExecution` table |
+| `TradeMachine.Tracing.TraceContext` | OpenTelemetry span management; propagates trace context from TypeScript server |
+| `Oban.Plugins.Pruner` | Cleans up completed/discarded jobs after 48 hours (production) |
+| `Oban.Plugins.Lifeline` | Rescues orphaned jobs that were executing when the node crashed |

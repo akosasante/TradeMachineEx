@@ -114,7 +114,7 @@ defmodule TradeMachine.Release do
     Application.load(@app)
   end
 
-  defp get_migrations_path(repo) do
+  defp get_migrations_path(_repo) do
     # In releases, priv directory is under lib/APP_NAME-VERSION/priv
     # Try to find it dynamically
     app_dir = Application.app_dir(@app, "priv/repo/migrations")

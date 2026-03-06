@@ -214,7 +214,10 @@ defmodule TradeMachine.MinorLeagues.Sync do
   defp update_player(db_player, parsed, sheet_meta, team_id, now, repo) do
     existing_meta = db_player.meta || %{}
 
-    new_meta = Map.put(existing_meta, "minorLeaguePlayerFromSheet", sheet_meta)
+    new_meta =
+      existing_meta
+      |> Map.put("minorLeaguePlayerFromSheet", sheet_meta)
+      |> Map.put("position", parsed.position)
 
     changeset =
       db_player
@@ -245,7 +248,7 @@ defmodule TradeMachine.MinorLeagues.Sync do
       league: :minor,
       mlb_team: parsed.mlb_team,
       leagueTeamId: team_id,
-      meta: %{"minorLeaguePlayerFromSheet" => sheet_meta},
+      meta: %{"minorLeaguePlayerFromSheet" => sheet_meta, "position" => parsed.position},
       last_synced_at: now
     }
 

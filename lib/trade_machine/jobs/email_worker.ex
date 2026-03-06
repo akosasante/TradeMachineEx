@@ -63,7 +63,7 @@ defmodule TradeMachine.Jobs.EmailWorker do
           data
         )
 
-      "registration" ->
+      type when type in ["registration", "registration_email"] ->
         handle_email_send(
           "registration",
           fn -> Mailer.send_registration_email(data, frontend_environment, repo) end,

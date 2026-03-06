@@ -68,3 +68,4 @@ TradeMachineServer*.erlang.cookie
 
 # for now let's not commit cursor hooks and stuff
 .cursor/
+.claude
