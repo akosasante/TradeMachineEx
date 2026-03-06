@@ -75,6 +75,7 @@ defmodule TradeMachine.Data.Player do
     |> validate_required(@required_fields)
   end
 
+  @deprecated "Use TradeMachine.MinorLeagues.Sync instead — this function uses TradeMachine.Repo which is not started"
   @spec get_all_minor_leaguers() :: list(__MODULE__.t())
   def get_all_minor_leaguers do
     __MODULE__
@@ -94,6 +95,7 @@ defmodule TradeMachine.Data.Player do
     |> TradeMachine.Repo.all()
   end
 
+  @deprecated "Use TradeMachine.MinorLeagues.Sync instead — this function uses TradeMachine.Repo which is not started"
   @spec batch_insert_minor_leaguers(list(IncomingMinorLeaguer.t())) ::
           {:ok,
            %{

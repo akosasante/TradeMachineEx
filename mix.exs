@@ -50,6 +50,7 @@ defmodule TradeMachine.MixProject do
       {:goth, "~> 1.3-rc"},
       {:google_api_sheets, "~> 0.29.3"},
       {:jason, "~> 1.3"},
+      {:nimble_csv, "~> 1.2"},
       {:oban, "~> 2.19"},
       {:opentelemetry, "~> 1.6"},
       {:opentelemetry_api, "~> 1.4"},
