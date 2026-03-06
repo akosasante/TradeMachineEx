@@ -118,56 +118,49 @@ defmodule TradeMachine.Jobs.EspnMlbPlayersSync do
     {prod_result, staging_result} = sync_both_repos(espn_players)
     :erlang.garbage_collect()
 
-    case {prod_result, staging_result} do
-      {{:ok, prod_stats}, {:ok, staging_stats}} ->
-        total_updated = prod_stats.updated + staging_stats.updated
-        total_inserted = prod_stats.inserted + staging_stats.inserted
-        total_skipped = prod_stats.skipped + staging_stats.skipped
+    {:ok, prod_stats} = prod_result
+    {:ok, staging_stats} = staging_result
 
-        SyncTracking.complete_sync(execution, %{
-          records_processed: player_count * 2,
-          records_updated: total_updated + total_inserted,
-          records_skipped: total_skipped,
-          metadata: %{
-            "production" => stringify_stats(prod_stats),
-            "staging" => stringify_stats(staging_stats)
-          }
-        })
+    total_updated = prod_stats.updated + staging_stats.updated
+    total_inserted = prod_stats.inserted + staging_stats.inserted
+    total_skipped = prod_stats.skipped + staging_stats.skipped
 
-        TraceContext.add_span_event("espn.players_sync.success", %{
-          production_updated: prod_stats.updated,
-          production_inserted: prod_stats.inserted,
-          production_skipped: prod_stats.skipped,
-          staging_updated: staging_stats.updated,
-          staging_inserted: staging_stats.inserted,
-          staging_skipped: staging_stats.skipped,
-          total_espn_players: player_count
-        })
+    SyncTracking.complete_sync(execution, %{
+      records_processed: player_count * 2,
+      records_updated: total_updated + total_inserted,
+      records_skipped: total_skipped,
+      metadata: %{
+        "production" => stringify_stats(prod_stats),
+        "staging" => stringify_stats(staging_stats)
+      }
+    })
 
-        TraceContext.add_span_attributes(%{
-          "espn.sync.production.players_updated" => prod_stats.updated,
-          "espn.sync.production.players_inserted" => prod_stats.inserted,
-          "espn.sync.production.players_skipped" => prod_stats.skipped,
-          "espn.sync.staging.players_updated" => staging_stats.updated,
-          "espn.sync.staging.players_inserted" => staging_stats.inserted,
-          "espn.sync.staging.players_skipped" => staging_stats.skipped
-        })
+    TraceContext.add_span_event("espn.players_sync.success", %{
+      production_updated: prod_stats.updated,
+      production_inserted: prod_stats.inserted,
+      production_skipped: prod_stats.skipped,
+      staging_updated: staging_stats.updated,
+      staging_inserted: staging_stats.inserted,
+      staging_skipped: staging_stats.skipped,
+      total_espn_players: player_count
+    })
 
-        Logger.info("ESPN MLB players sync completed successfully",
-          production: prod_stats,
-          staging: staging_stats,
-          total_espn: player_count
-        )
+    TraceContext.add_span_attributes(%{
+      "espn.sync.production.players_updated" => prod_stats.updated,
+      "espn.sync.production.players_inserted" => prod_stats.inserted,
+      "espn.sync.production.players_skipped" => prod_stats.skipped,
+      "espn.sync.staging.players_updated" => staging_stats.updated,
+      "espn.sync.staging.players_inserted" => staging_stats.inserted,
+      "espn.sync.staging.players_skipped" => staging_stats.skipped
+    })
 
-        :ok
+    Logger.info("ESPN MLB players sync completed successfully",
+      production: prod_stats,
+      staging: staging_stats,
+      total_espn: player_count
+    )
 
-      {prod_result, staging_result} ->
-        errors = collect_errors(prod_result, staging_result)
-
-        SyncTracking.fail_sync(execution, Enum.join(errors, "; "))
-
-        {:error, :sync_failed}
-    end
+    :ok
   end
 
   defp handle_players_fetch_error(reason, execution) do
@@ -191,43 +184,6 @@ defmodule TradeMachine.Jobs.EspnMlbPlayersSync do
     prod_result = Players.sync_espn_player_data(espn_players, TradeMachine.Repo.Production)
     staging_result = Players.sync_espn_player_data(espn_players, TradeMachine.Repo.Staging)
     {prod_result, staging_result}
-  end
-
-  defp collect_errors(prod_result, staging_result) do
-    errors = []
-
-    errors =
-      if match?({:error, _}, prod_result) do
-        {:error, reason} = prod_result
-
-        TraceContext.add_span_attributes(%{
-          "espn.sync.production.error" => inspect(reason)
-        })
-
-        Logger.error("Failed to sync players to production database",
-          error: inspect(reason)
-        )
-
-        ["production: #{inspect(reason)}" | errors]
-      else
-        errors
-      end
-
-    if match?({:error, _}, staging_result) do
-      {:error, reason} = staging_result
-
-      TraceContext.add_span_attributes(%{
-        "espn.sync.staging.error" => inspect(reason)
-      })
-
-      Logger.error("Failed to sync players to staging database",
-        error: inspect(reason)
-      )
-
-      ["staging: #{inspect(reason)}" | errors]
-    else
-      errors
-    end
   end
 
   defp stringify_stats(stats) do
