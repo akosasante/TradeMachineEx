@@ -524,6 +524,182 @@ IO.puts(
   "✅ MinorLeagueReconciliation helpers loaded. Type MinorLeagueReconciliation. to see available functions.\n"
 )
 
+defmodule MinorLeagueSync do
+  @moduledoc """
+  IEx helpers for testing the minor league sheet sync locally.
+
+  ## Quick start
+
+      # Fetch CSV rows from the sheet
+      {:ok, rows} = MinorLeagueSync.fetch()
+
+      # Parse into player maps
+      players = MinorLeagueSync.parse()
+
+      # Preview a few parsed players
+      MinorLeagueSync.preview()
+
+      # Run the sync against production
+      MinorLeagueSync.run(:prod)
+
+      # Run against both repos
+      MinorLeagueSync.run(:both)
+
+      # Check sync history
+      MinorLeagueSync.sync_history()
+  """
+
+  alias TradeMachine.MinorLeagues.{SheetFetcher, Parser, Sync}
+
+  @doc "Fetch raw CSV rows from the minor league sheet."
+  def fetch do
+    SheetFetcher.fetch_from_config()
+  end
+
+  @doc "Fetch and parse the sheet into player maps."
+  def parse do
+    {:ok, rows} = fetch()
+    Parser.parse(rows)
+  end
+
+  @doc "Preview the first N parsed players (default 20)."
+  def preview(count \\ 20) do
+    players = parse()
+    IO.puts("Parsed #{length(players)} players total. Showing first #{count}:\n")
+
+    players
+    |> Enum.take(count)
+    |> Enum.each(fn p ->
+      IO.puts(
+        "  #{p.name} | #{p.league_level} | #{p.position} | #{p.mlb_team} | owner=#{p.owner_csv_name}"
+      )
+    end)
+
+    owners = players |> Enum.map(& &1.owner_csv_name) |> Enum.uniq() |> Enum.sort()
+    IO.puts("\nOwners found (#{length(owners)}): #{Enum.join(owners, ", ")}")
+
+    players
+  end
+
+  @doc "Show owner name mapping: which sheet names resolve to teams."
+  def check_owners(env \\ :prod) do
+    repo = repo_for(env)
+    owner_map = Sync.build_owner_map(repo)
+    players = parse()
+
+    sheet_owners = players |> Enum.map(& &1.owner_csv_name) |> Enum.uniq() |> Enum.sort()
+
+    IO.puts("Owner mapping (#{inspect(repo)}):\n")
+
+    Enum.each(sheet_owners, fn name ->
+      case Map.get(owner_map, name) do
+        nil -> IO.puts("  ✗ #{name} → NOT FOUND")
+        team_id -> IO.puts("  ✓ #{name} → #{team_id}")
+      end
+    end)
+
+    unmatched = Enum.reject(sheet_owners, &Map.has_key?(owner_map, &1))
+
+    if unmatched != [] do
+      IO.puts("\n⚠ #{length(unmatched)} owner(s) could not be resolved: #{inspect(unmatched)}")
+    end
+
+    owner_map
+  end
+
+  @doc """
+  Run the sync against the given environment.
+
+  ## Examples
+
+      MinorLeagueSync.run(:prod)
+      MinorLeagueSync.run(:staging)
+      MinorLeagueSync.run(:both)
+  """
+  def run(env \\ :prod) do
+    case TradeMachine.SyncLock.acquire(:minors_sync) do
+      :acquired ->
+        try do
+          do_run(env)
+        after
+          TradeMachine.SyncLock.release(:minors_sync)
+        end
+
+      {:already_running, acquired_at} ->
+        IO.puts(
+          "Another minor league sync is already running (since #{acquired_at}).\n" <>
+            "Use SyncLock.force_release(:minors_sync) to override."
+        )
+
+        {:error, :already_running}
+    end
+  end
+
+  defp do_run(env) do
+    players = parse()
+    repos = repos_for(env)
+
+    for repo <- repos do
+      IO.puts("Syncing #{length(players)} players against #{inspect(repo)}...")
+
+      case Sync.sync_from_sheet(players, repo) do
+        {:ok, stats} ->
+          IO.puts("  Matched:  #{stats.matched}")
+          IO.puts("  Inserted: #{stats.inserted}")
+          IO.puts("  Cleared:  #{stats.cleared}")
+          IO.puts("  Skipped:  #{stats.skipped_no_owner}\n")
+          {:ok, stats}
+
+        {:error, reason} ->
+          IO.puts("  ERROR: #{inspect(reason)}\n")
+          {:error, reason}
+      end
+    end
+  end
+
+  @doc "Show recent sync job execution history for minors_sync."
+  def sync_history(limit \\ 10) do
+    import Ecto.Query
+
+    repo = TradeMachine.Repo.Production
+
+    history =
+      TradeMachine.Data.SyncJobExecution
+      |> where([s], s.job_type == :minors_sync)
+      |> order_by([s], desc: s.started_at)
+      |> Ecto.Query.limit(^limit)
+      |> repo.all()
+
+    IO.puts("Last #{min(length(history), limit)} minors_sync executions:\n")
+
+    Enum.each(history, fn s ->
+      duration =
+        if s.completed_at && s.started_at do
+          DateTime.diff(s.completed_at, s.started_at, :second)
+        else
+          "-"
+        end
+
+      IO.puts(
+        "  #{s.status} | #{Calendar.strftime(s.started_at, "%Y-%m-%d %H:%M:%S")} | " <>
+          "duration=#{duration}s | processed=#{s.records_processed || "-"} " <>
+          "updated=#{s.records_updated || "-"} skipped=#{s.records_skipped || "-"}"
+      )
+    end)
+
+    history
+  end
+
+  defp repo_for(:staging), do: TradeMachine.Repo.Staging
+  defp repo_for(_), do: TradeMachine.Repo.Production
+
+  defp repos_for(:both), do: [TradeMachine.Repo.Production, TradeMachine.Repo.Staging]
+  defp repos_for(:staging), do: [TradeMachine.Repo.Staging]
+  defp repos_for(_), do: [TradeMachine.Repo.Production]
+end
+
+IO.puts("✅ MinorLeagueSync helpers loaded. Type MinorLeagueSync. to see available functions.\n")
+
 # defmodule StartupModule do
 #  require Kernel.SpecialForms
 #
