@@ -119,7 +119,6 @@ config :trade_machine, Oban,
     Oban.Plugins.Lifeline,
     {Oban.Plugins.Cron,
      crontab: [
-       {"*/2 * * * *", TradeMachine.Jobs.MinorsSync,
-        args: %{sheet_id: "16SjDZBO2vY6rGj9CM7nW2pG21i4pZ85LGlbMCODVQtk"}}
+       {"*/2 * * * *", TradeMachine.Jobs.MinorsSync}
      ]}
   ]
