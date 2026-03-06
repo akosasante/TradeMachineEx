@@ -91,6 +91,7 @@ defmodule TradeMachine.MinorLeagues.SyncTest do
       assert player.leagueTeamId == team.id
       assert player.meta["minorLeaguePlayerFromSheet"]["position"] == "P"
       assert player.meta["minorLeaguePlayerFromSheet"]["leagueLevel"] == "HM"
+      assert player.meta["position"] == "P"
     end
 
     test "inserts multiple players for different owners", %{team: team, team2: team2} do
@@ -144,8 +145,13 @@ defmodule TradeMachine.MinorLeagues.SyncTest do
       assert stats.matched == 1
       assert stats.inserted == 0
 
-      player = @repo.one!(from(p in Player, where: p.name == "Andrew Walters"))
+      player =
+        @repo.one!(
+          from(p in Player, where: p.name == "Andrew Walters", select: %{p | meta: p.meta})
+        )
+
       assert player.leagueTeamId == team.id
+      assert player.meta["position"] == "P"
     end
 
     test "matches by fallback (name + mlb_team) when no meta exists", %{team: team} do
@@ -174,6 +180,7 @@ defmodule TradeMachine.MinorLeagues.SyncTest do
 
       assert player.leagueTeamId == team.id
       assert player.meta["minorLeaguePlayerFromSheet"]["position"] == "3B"
+      assert player.meta["position"] == "3B"
     end
   end
 
