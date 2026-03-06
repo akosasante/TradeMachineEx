@@ -25,13 +25,10 @@ defmodule TradeMachine.PromEx do
       {Plugins.Phoenix, endpoint: TradeMachineWeb.Endpoint, router: TradeMachineWeb.Router},
 
       # Database metrics - monitor both Production and Staging repos
-      {Plugins.Ecto, repos: [TradeMachine.Repo.Production, TradeMachine.Repo.Staging]}
+      {Plugins.Ecto, repos: [TradeMachine.Repo.Production, TradeMachine.Repo.Staging]},
 
       # Oban job queue metrics - monitors both Production and Staging instances
-      # {Plugins.Oban, oban_supervisors: [Oban.Production, Oban.Staging]},
-
-      # Custom business metrics (temporarily disabled to avoid buckets issue)
-      # {TradeMachine.PromEx.CustomMetrics, []}
+      {Plugins.Oban, oban_supervisors: [Oban.Production, Oban.Staging]}
     ]
   end
 
