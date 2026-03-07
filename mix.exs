@@ -73,7 +73,8 @@ defmodule TradeMachine.MixProject do
       {:swoosh, "~> 1.19"},
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
-      {:typed_ecto_schema, "~> 0.4.0", runtime: false}
+      {:typed_ecto_schema, "~> 0.4.0", runtime: false},
+      {:tzdata, "~> 1.1"}
     ]
   end
 

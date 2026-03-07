@@ -7,6 +7,9 @@
 # General application configuration
 import Config
 
+# Configure timezone database for proper timezone support
+config :elixir, :time_zone_database, Tzdata.TimeZoneDatabase
+
 config :trade_machine,
   # Elixir app uses Ecto for data operations only -
   ## no migration management. Prisma (TypeScript) handles all schema changes

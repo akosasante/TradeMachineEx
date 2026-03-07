@@ -417,36 +417,39 @@ defmodule TradeMachine.Discord.EmbedTester do
     # Example: Trade submitted March 6 at 11:10 PM ET -> upheld March 8 at 11:00 PM ET
     #          Trade submitted March 6 at 10:55 PM ET -> upheld March 7 at 11:00 PM ET
 
-    now = DateTime.utc_now()
-    eastern_tz = "America/New_York"
+    now_utc = DateTime.utc_now()
 
-    # Convert to Eastern Time
-    now_eastern = DateTime.shift_zone!(now, eastern_tz)
+    # Convert to Eastern Time (handles EST/EDT automatically)
+    now_eastern = DateTime.shift_zone!(now_utc, "America/New_York")
 
     # Get today at 11:00 PM Eastern
-    today_11pm = %{now_eastern | hour: 23, minute: 0, second: 0, microsecond: {0, 6}}
+    today_11pm_eastern = %{now_eastern | hour: 23, minute: 0, second: 0, microsecond: {0, 6}}
 
-    # Calculate 24 hours from now
+    # Calculate minimum uphold time (24 hours from now in Eastern)
     minimum_uphold_time = DateTime.add(now_eastern, 86_400, :second)
 
-    # Find the next 11:00 PM that's at least 24 hours away
-    uphold_time =
-      if DateTime.compare(today_11pm, minimum_uphold_time) == :gt do
-        # Today's 11pm is more than 24 hours away
-        today_11pm
-      else
-        # Need to go to tomorrow's 11pm (or later)
-        tomorrow_11pm = DateTime.add(today_11pm, 86_400, :second)
+    # Find the next 11:00 PM Eastern that's at least 24 hours away
+    uphold_time_eastern =
+      cond do
+        DateTime.compare(today_11pm_eastern, minimum_uphold_time) == :gt ->
+          # Today's 11pm is more than 24 hours away
+          today_11pm_eastern
 
-        if DateTime.compare(tomorrow_11pm, minimum_uphold_time) == :gt do
-          tomorrow_11pm
-        else
-          # Need day after tomorrow
-          DateTime.add(tomorrow_11pm, 86_400, :second)
-        end
+        true ->
+          # Try tomorrow, or day after if needed
+          tomorrow_11pm_eastern = DateTime.add(today_11pm_eastern, 86_400, :second)
+
+          if DateTime.compare(tomorrow_11pm_eastern, minimum_uphold_time) == :gt do
+            tomorrow_11pm_eastern
+          else
+            # Day after tomorrow
+            DateTime.add(tomorrow_11pm_eastern, 86_400, :second)
+          end
       end
 
-    DateTime.to_unix(uphold_time)
+    # Convert back to UTC for the timestamp
+    uphold_time_utc = DateTime.shift_zone!(uphold_time_eastern, "Etc/UTC")
+    DateTime.to_unix(uphold_time_utc)
   end
 
   defp get_team_color(team) do
