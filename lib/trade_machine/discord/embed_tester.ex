@@ -422,29 +422,28 @@ defmodule TradeMachine.Discord.EmbedTester do
     # Convert to Eastern Time (handles EST/EDT automatically)
     now_eastern = DateTime.shift_zone!(now_utc, "America/New_York")
 
-    # Get today at 11:00 PM Eastern
-    today_11pm_eastern = %{now_eastern | hour: 23, minute: 0, second: 0, microsecond: {0, 6}}
-
     # Calculate minimum uphold time (24 hours from now in Eastern)
     minimum_uphold_time = DateTime.add(now_eastern, 86_400, :second)
 
-    # Find the next 11:00 PM Eastern that's at least 24 hours away
+    # Get today at 11:00 PM Eastern
+    today_11pm_eastern = %{now_eastern | hour: 23, minute: 0, second: 0, microsecond: {0, 6}}
+
+    # Start from today's 11pm, but if it's already passed, start from tomorrow's 11pm
+    next_11pm_eastern =
+      if DateTime.compare(today_11pm_eastern, now_eastern) == :gt do
+        today_11pm_eastern
+      else
+        # Today's 11pm has passed, start from tomorrow
+        DateTime.add(today_11pm_eastern, 86_400, :second)
+      end
+
+    # Find the next 11:00 PM Eastern that's at least 24 hours away from now
     uphold_time_eastern =
-      cond do
-        DateTime.compare(today_11pm_eastern, minimum_uphold_time) == :gt ->
-          # Today's 11pm is more than 24 hours away
-          today_11pm_eastern
-
-        true ->
-          # Try tomorrow, or day after if needed
-          tomorrow_11pm_eastern = DateTime.add(today_11pm_eastern, 86_400, :second)
-
-          if DateTime.compare(tomorrow_11pm_eastern, minimum_uphold_time) == :gt do
-            tomorrow_11pm_eastern
-          else
-            # Day after tomorrow
-            DateTime.add(tomorrow_11pm_eastern, 86_400, :second)
-          end
+      if DateTime.compare(next_11pm_eastern, minimum_uphold_time) == :gt do
+        next_11pm_eastern
+      else
+        # Need to go to the next day's 11pm
+        DateTime.add(next_11pm_eastern, 86_400, :second)
       end
 
     # Convert back to UTC for the timestamp
