@@ -637,14 +637,16 @@ defmodule TradeMachine.Discord.EmbedTester do
         name: "The Mad King",
         team: %{name: "The Mad King"},
         owners: [
-          %{display_name: "Ryan Neeson", discord_user_id: nil, csv_name: "Ryan"}
+          %{display_name: "Ryan Neeson", discord_user_id: "667047645914857503", csv_name: "Ryan"}
         ]
       },
       recipients: [
         %{
           name: "Birchmount Boyz",
           team: %{name: "Birchmount Boyz"},
-          owners: [%{display_name: "Mikey", discord_user_id: nil, csv_name: "Mikey"}]
+          owners: [
+            %{display_name: "Mikey", discord_user_id: "99582359824769024", csv_name: "Mikey"}
+          ]
         },
         %{
           name: "Team James",
@@ -659,7 +661,13 @@ defmodule TradeMachine.Discord.EmbedTester do
         %{
           team: %{
             name: "The Mad King",
-            owners: [%{display_name: "Ryan Neeson", discord_user_id: nil, csv_name: "Ryan"}]
+            owners: [
+              %{
+                display_name: "Ryan Neeson",
+                discord_user_id: "667047645914857503",
+                csv_name: "Ryan"
+              }
+            ]
           },
           received_items: [
             %{
@@ -688,7 +696,9 @@ defmodule TradeMachine.Discord.EmbedTester do
         %{
           team: %{
             name: "Birchmount Boyz",
-            owners: [%{display_name: "Mikey", discord_user_id: nil, csv_name: "Mikey"}]
+            owners: [
+              %{display_name: "Mikey", discord_user_id: "99582359824769024", csv_name: "Mikey"}
+            ]
           },
           received_items: [
             %{
