@@ -16,8 +16,8 @@ defmodule TradeMachine.MixProject do
       releases: [
         trade_machine: [
           cookie: System.get_env("RELEASE_COOKIE", "dev_cookie_please_change_in_production"),
-          iex: [
-            dot_iex_path: "rel/.iex.exs"
+          overlays: [
+            {:copy, "rel/.iex.exs", ".iex.exs"}
           ]
         ]
       ]
