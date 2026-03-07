@@ -416,6 +416,8 @@ defmodule TradeMachine.Discord.EmbedTester do
     # Trades are upheld at 11:00 PM Eastern, with minimum 24 hours from submission
     # Example: Trade submitted March 6 at 11:10 PM ET -> upheld March 8 at 11:00 PM ET
     #          Trade submitted March 6 at 10:55 PM ET -> upheld March 7 at 11:00 PM ET
+    # Note: During DST transitions, we prioritize the next calendar day at 11 PM
+    # rather than exactly 24 hours of elapsed time
 
     now_utc = DateTime.utc_now()
 
@@ -429,20 +431,35 @@ defmodule TradeMachine.Discord.EmbedTester do
     today_11pm_eastern = %{now_eastern | hour: 23, minute: 0, second: 0, microsecond: {0, 6}}
 
     # Start from today's 11pm, but if it's already passed, start from tomorrow's 11pm
+    # Use Date.add to handle DST transitions properly (adds calendar days, not seconds)
     next_11pm_eastern =
       if DateTime.compare(today_11pm_eastern, now_eastern) == :gt do
         today_11pm_eastern
       else
-        # Today's 11pm has passed, start from tomorrow
-        DateTime.add(today_11pm_eastern, 86_400, :second)
+        # Today's 11pm has passed, start from tomorrow's 11pm
+        tomorrow_date = Date.add(DateTime.to_date(now_eastern), 1)
+
+        {:ok, tomorrow_11pm} =
+          DateTime.new(tomorrow_date, ~T[23:00:00.000000], "America/New_York")
+
+        tomorrow_11pm
       end
 
     # Find the next 11:00 PM Eastern that's at least 24 hours away from now
+    # Use Date.add to move to next day's 11pm if needed (handles DST)
     uphold_time_eastern =
       case DateTime.compare(next_11pm_eastern, minimum_uphold_time) do
-        :gt -> next_11pm_eastern
-        :eq -> next_11pm_eastern
-        :lt -> DateTime.add(next_11pm_eastern, 86_400, :second)
+        :gt ->
+          next_11pm_eastern
+
+        :eq ->
+          next_11pm_eastern
+
+        :lt ->
+          # Move to next calendar day's 11pm
+          next_date = Date.add(DateTime.to_date(next_11pm_eastern), 1)
+          {:ok, next_day_11pm} = DateTime.new(next_date, ~T[23:00:00.000000], "America/New_York")
+          next_day_11pm
       end
 
     # Convert back to UTC for the timestamp
