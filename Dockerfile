@@ -28,7 +28,6 @@ COPY assets/ ./assets/
 COPY priv/ ./priv/
 COPY config/ ./config/
 COPY lib/ ./lib/
-COPY rel/ ./rel/
 
 # Build assets and compile application
 RUN mix assets.deploy && \
@@ -36,9 +35,6 @@ RUN mix assets.deploy && \
 
 # Build the release
 RUN mix release
-
-# Copy .iex.exs to the release root for remote IEx sessions
-RUN cp rel/.iex.exs _build/prod/rel/trade_machine/.iex.exs
 
 # Runtime stage: use same exact alpine version as builder to ensure OpenSSL compatibility
 FROM alpine:3.20.3 AS runtime
