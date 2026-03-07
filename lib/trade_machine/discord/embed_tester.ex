@@ -48,7 +48,7 @@ defmodule TradeMachine.Discord.EmbedTester do
     test_format("Option 1: Compact (Slack-like)", build_compact_embed(trade, opts), opts)
     :timer.sleep(2000)
 
-    test_format("Option 2: Inline Fields (Side-by-side)", build_inline_embed(trade, opts), opts)
+    test_format("Option 2: Condensed (All in description)", build_inline_embed(trade, opts), opts)
     :timer.sleep(2000)
 
     test_format("Option 3: Multiple Embeds (One per team)", build_multi_embed(trade, opts), opts)
@@ -66,7 +66,7 @@ defmodule TradeMachine.Discord.EmbedTester do
     do: test_single("Option 1: Compact", &build_compact_embed/2, opts)
 
   def test_format_2(opts \\ []),
-    do: test_single("Option 2: Inline Fields", &build_inline_embed/2, opts)
+    do: test_single("Option 2: Condensed", &build_inline_embed/2, opts)
 
   def test_format_3(opts \\ []),
     do: test_single("Option 3: Multiple Embeds", &build_multi_embed/2, opts)
@@ -133,38 +133,32 @@ defmodule TradeMachine.Discord.EmbedTester do
   end
 
   # ============================================================================
-  # Option 2: Inline Fields (Side-by-side for 2-team trades)
+  # Option 2: Condensed Format (All info in description, no fields)
   # ============================================================================
 
   defp build_inline_embed(trade, opts) do
+    participants_text =
+      trade.participants
+      |> Enum.map(fn participant ->
+        items_text = format_received_items(trade, participant, opts)
+        "**#{format_participant_name(participant, opts)}** receives:\n#{items_text}"
+      end)
+      |> Enum.join("\n\n")
+
     %{
       title: "🔊  A Trade Has Been Submitted  🔊",
       description: """
-      Trade submitted between **#{format_participant_name(trade.creator, opts)}** & **#{format_recipients(trade.recipients, opts)}**
-
-      **#{format_date()}** | Requested by #{format_mentions(trade.creator.owners)}
+      **#{format_date()}** | Trade requested by #{format_mentions(trade.creator.owners)}
       Trading with: #{format_mentions(trade.recipients |> Enum.flat_map(& &1.owners))}
-      Uphold time: <t:#{calculate_uphold_timestamp()}:F>
+      Trade will be upheld after: <t:#{calculate_uphold_timestamp()}:F>
+
+      #{participants_text}
       """,
       color: 0x3498DB,
-      fields: build_inline_fields(trade, opts),
       footer: %{
         text: "🔗 Submit trades on FlexFoxFantasy TradeMachine by 11:00PM ET"
       }
     }
-  end
-
-  defp build_inline_fields(trade, opts) do
-    # For 2-team trades, set inline: true to show side-by-side
-    inline = length(trade.participants) == 2
-
-    Enum.map(trade.participants, fn participant ->
-      %{
-        name: "#{format_participant_name(participant, opts)} receives:",
-        value: format_received_items(trade, participant, opts),
-        inline: inline
-      }
-    end)
   end
 
   # ============================================================================
