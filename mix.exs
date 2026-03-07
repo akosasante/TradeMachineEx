@@ -15,10 +15,7 @@ defmodule TradeMachine.MixProject do
       deps: deps(),
       releases: [
         trade_machine: [
-          cookie: System.get_env("RELEASE_COOKIE", "dev_cookie_please_change_in_production"),
-          overlays: [
-            {:copy, "rel/.iex.exs", ".iex.exs"}
-          ]
+          cookie: System.get_env("RELEASE_COOKIE", "dev_cookie_please_change_in_production")
         ]
       ]
     ]
