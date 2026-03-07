@@ -381,9 +381,9 @@ defmodule TradeMachine.Discord.EmbedTester do
   defp format_minor_player(item, opts) do
     strategy = Keyword.get(opts, :missing_data_strategy, :show_unknown)
 
-    position = format_field(item.position, strategy)
-    league_level = format_field(item.league_level, strategy)
-    team = format_field(item.team, strategy)
+    position = format_field(item.position, strategy, :position)
+    league_level = format_field(item.league_level, strategy, :league_level)
+    team = format_field(item.team, strategy, :team)
 
     case strategy do
       :skip_missing ->
@@ -404,7 +404,7 @@ defmodule TradeMachine.Discord.EmbedTester do
     end
   end
 
-  defp format_field(value, strategy) do
+  defp format_field(value, strategy, field_type) do
     cond do
       # If value exists and is not "undefined" string, use it
       value not in [nil, "undefined"] ->
@@ -412,7 +412,11 @@ defmodule TradeMachine.Discord.EmbedTester do
 
       # Handle missing data based on strategy
       strategy == :show_unknown ->
-        "Unknown"
+        case field_type do
+          :position -> "Unknown Position"
+          :league_level -> "Unknown Level"
+          :team -> "Unknown Team"
+        end
 
       strategy == :skip_missing ->
         nil
@@ -420,9 +424,13 @@ defmodule TradeMachine.Discord.EmbedTester do
       strategy == :show_undefined ->
         "undefined"
 
-      # Default fallback
+      # Default fallback (same as :show_unknown)
       true ->
-        "Unknown"
+        case field_type do
+          :position -> "Unknown Position"
+          :league_level -> "Unknown Level"
+          :team -> "Unknown Team"
+        end
     end
   end
 
