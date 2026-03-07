@@ -251,11 +251,13 @@ defmodule TradeMachine.Discord.EmbedTester do
     %{
       author: %{
         name: "FlexFoxFantasy TradeMachine",
-        url: "https://trades.flexfoxfantasy.com"
-        # icon_url: "https://your-logo-url.com/logo.png"  # Uncomment if you have a logo
+        url: "https://trades.flexfoxfantasy.com",
+        # Uncomment if you have a logo
+        icon_url: "https://trades.flexfoxfantasy.com/assets/adamcon.5148778d.png"
       },
       title: "🔊  A Trade Has Been Submitted  🔊",
-      # url: "https://trades.flexfoxfantasy.com/trades/#{trade.id}",  # Uncomment for deep linking
+      # Uncomment for deep linking
+      url: "https://trades.flexfoxfantasy.com/trades/#{trade.id}",
       description: """
       Trade submitted between **#{format_participant_name(trade.creator, opts)}** & **#{format_recipients(trade.recipients, opts)}**
       """,
@@ -274,8 +276,9 @@ defmodule TradeMachine.Discord.EmbedTester do
           }
         ] ++ build_participant_fields(trade, opts),
       footer: %{
-        text: "Submit trades by 11:00PM ET"
-        # icon_url: "https://your-icon-url.com/clock.png"  # Optional
+        text: "Submit trades by 11:00PM ET",
+        # Optional
+        icon_url: "https://trades.flexfoxfantasy.com/assets/adamcon.5148778d.png"
       },
       timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
     }
@@ -302,22 +305,26 @@ defmodule TradeMachine.Discord.EmbedTester do
   defp format_participant_name(participant, opts) do
     name_style = Keyword.get(opts, :name_style, :team_names)
 
+    # Handle both structures: participant.owners and participant.team.owners
+    owners = Map.get(participant, :owners) || participant.team.owners
+    team_name = Map.get(participant, :name) || participant.team.name
+
     case name_style do
       :team_names ->
-        participant.team.name
+        team_name
 
       :owner_names ->
-        participant.team.owners
+        owners
         |> Enum.map(& &1.display_name)
         |> Enum.join(" & ")
 
       :csv_names ->
         # Find the first owner with a csvName (should only be one per team)
-        participant.team.owners
+        owners
         |> Enum.find_value(fn owner -> owner.csv_name end)
         |> case do
           # Fallback to team name
-          nil -> participant.team.name
+          nil -> team_name
           csv_name -> csv_name
         end
     end
