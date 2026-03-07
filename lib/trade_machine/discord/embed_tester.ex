@@ -93,8 +93,7 @@ defmodule TradeMachine.Discord.EmbedTester do
       fields: build_participant_fields(trade, opts),
       footer: %{
         text: "🔗 Submit trades on FlexFoxFantasy TradeMachine by 11:00PM ET"
-      },
-      timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+      }
     }
   end
 
@@ -116,8 +115,7 @@ defmodule TradeMachine.Discord.EmbedTester do
       fields: build_inline_fields(trade, opts),
       footer: %{
         text: "🔗 Submit trades on FlexFoxFantasy TradeMachine by 11:00PM ET"
-      },
-      timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+      }
     }
   end
 
