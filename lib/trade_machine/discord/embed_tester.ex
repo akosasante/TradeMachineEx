@@ -77,6 +77,41 @@ defmodule TradeMachine.Discord.EmbedTester do
   def test_format_5(opts \\ []),
     do: test_single("Option 5: Detailed", &build_detailed_embed/2, opts)
 
+  # Test different missing data strategies
+  def test_missing_data_strategies(opts \\ []) do
+    Logger.info("Testing missing data strategies...")
+
+    base_opts =
+      Keyword.merge(opts, channel_id: Keyword.get(opts, :channel_id, @default_channel_id))
+
+    # Test with :show_unknown (default)
+    test_single(
+      "Missing Data: Show 'Unknown'",
+      &build_compact_embed/2,
+      Keyword.put(base_opts, :missing_data_strategy, :show_unknown)
+    )
+
+    :timer.sleep(2000)
+
+    # Test with :skip_missing
+    test_single(
+      "Missing Data: Skip Missing Fields",
+      &build_compact_embed/2,
+      Keyword.put(base_opts, :missing_data_strategy, :skip_missing)
+    )
+
+    :timer.sleep(2000)
+
+    # Test with :show_undefined
+    test_single(
+      "Missing Data: Show 'undefined'",
+      &build_compact_embed/2,
+      Keyword.put(base_opts, :missing_data_strategy, :show_undefined)
+    )
+
+    Logger.info("Missing data strategy tests complete!")
+  end
+
   # ============================================================================
   # Option 1: Compact Embed (Most Slack-like)
   # ============================================================================
@@ -343,6 +378,54 @@ defmodule TradeMachine.Discord.EmbedTester do
     end
   end
 
+  defp format_minor_player(item, opts) do
+    strategy = Keyword.get(opts, :missing_data_strategy, :show_unknown)
+
+    position = format_field(item.position, strategy)
+    league_level = format_field(item.league_level, strategy)
+    team = format_field(item.team, strategy)
+
+    case strategy do
+      :skip_missing ->
+        # Build string with only non-nil fields
+        parts =
+          [position, league_level && "#{league_level} Minors", team]
+          |> Enum.reject(&is_nil/1)
+
+        if Enum.empty?(parts) do
+          "• **#{item.name}**"
+        else
+          "• **#{item.name}** (#{Enum.join(parts, " - ")})"
+        end
+
+      _ ->
+        # Show all fields with fallback values
+        "• **#{item.name}** (#{position} - #{league_level} Minors - #{team})"
+    end
+  end
+
+  defp format_field(value, strategy) do
+    cond do
+      # If value exists and is not "undefined" string, use it
+      value not in [nil, "undefined"] ->
+        value
+
+      # Handle missing data based on strategy
+      strategy == :show_unknown ->
+        "Unknown"
+
+      strategy == :skip_missing ->
+        nil
+
+      strategy == :show_undefined ->
+        "undefined"
+
+      # Default fallback
+      true ->
+        "Unknown"
+    end
+  end
+
   defp format_recipients(recipients, opts) do
     Enum.map_join(recipients, " & ", &format_participant_name(&1, opts))
   end
@@ -380,11 +463,8 @@ defmodule TradeMachine.Discord.EmbedTester do
       minors
       |> Enum.map(fn item ->
         case item.type do
-          :player when is_nil(item.position) ->
-            "• **#{item.name}** (undefined - undefined Minors - undefined)"
-
           :player ->
-            "• **#{item.name}** (#{item.position} - #{item.league_level} Minors - #{item.team})"
+            format_minor_player(item, opts)
 
           :pick ->
             owner_name = format_pick_owner_name(trade, item.original_owner, opts)
@@ -419,11 +499,10 @@ defmodule TradeMachine.Discord.EmbedTester do
         :player when item.league == "Majors" ->
           "#{emoji} **#{item.name}** (#{item.position} - Majors - #{item.team})"
 
-        :player when is_nil(item.position) ->
-          "#{emoji} **#{item.name}** (undefined - undefined Minors - undefined)"
-
         :player ->
-          "#{emoji} **#{item.name}** (#{item.position} - #{item.league_level} Minors - #{item.team})"
+          formatted = format_minor_player(item, opts)
+          # Replace the bullet with emoji
+          String.replace_prefix(formatted, "•", emoji)
 
         :pick ->
           owner_name = format_pick_owner_name(trade, item.original_owner, opts)
