@@ -560,7 +560,10 @@ defmodule TradeMachine.Discord.EmbedTester do
         %{
           name: "Team James",
           team: %{name: "Team James"},
-          owners: [%{display_name: "James", discord_user_id: nil, csv_name: "James"}]
+          owners: [
+            %{display_name: "James", discord_user_id: nil, csv_name: "James"},
+            %{display_name: "Sarah", discord_user_id: nil, csv_name: nil}
+          ]
         }
       ],
       participants: [
@@ -626,7 +629,10 @@ defmodule TradeMachine.Discord.EmbedTester do
         %{
           team: %{
             name: "Team James",
-            owners: [%{display_name: "James", discord_user_id: nil, csv_name: "James"}]
+            owners: [
+              %{display_name: "James", discord_user_id: nil, csv_name: "James"},
+              %{display_name: "Sarah", discord_user_id: nil, csv_name: nil}
+            ]
           },
           received_items: [
             %{
