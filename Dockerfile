@@ -28,6 +28,7 @@ COPY assets/ ./assets/
 COPY priv/ ./priv/
 COPY config/ ./config/
 COPY lib/ ./lib/
+COPY rel/ ./rel/
 
 # Build assets and compile application
 RUN mix assets.deploy && \
