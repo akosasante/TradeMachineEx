@@ -113,6 +113,7 @@ defmodule TradeMachine.Discord.EmbedTester do
   end
 
   # Test different player info display options
+  @spec test_player_info_display() :: :ok
   def test_player_info_display(opts \\ []) do
     Logger.info("Testing player info display options...")
 
@@ -145,6 +146,47 @@ defmodule TradeMachine.Discord.EmbedTester do
     )
 
     Logger.info("Player info display tests complete!")
+  end
+
+  # Test Option 2 with recommended settings
+  def test_option_2_variations(opts \\ []) do
+    Logger.info("Testing Option 2 variations with CSV names...")
+
+    base_opts =
+      Keyword.merge(opts,
+        channel_id: Keyword.get(opts, :channel_id, @default_channel_id),
+        name_style: :csv_names
+      )
+
+    # Test 1: Minors name only (recommended based on feedback)
+    test_single(
+      "Option 2: CSV Names + Minors Name Only",
+      &build_inline_embed/2,
+      Keyword.put(base_opts, :player_info_display, :minors_name_only)
+    )
+
+    :timer.sleep(2000)
+
+    # Test 2: All players name only
+    test_single(
+      "Option 2: CSV Names + Name Only (All Player Levels)",
+      &build_inline_embed/2,
+      Keyword.put(base_opts, :player_info_display, :name_only)
+    )
+
+    :timer.sleep(2000)
+
+    # Test 3: 2-team trade with skip_missing
+    test_single(
+      "Option 2: CSV Names + 2-Team Trade + Skip Missing Data",
+      &build_inline_embed/2,
+      Keyword.merge(base_opts,
+        missing_data_strategy: :skip_missing,
+        use_two_team_trade: true
+      )
+    )
+
+    Logger.info("Option 2 variation tests complete!")
   end
 
   # ============================================================================
@@ -823,6 +865,99 @@ defmodule TradeMachine.Discord.EmbedTester do
     }
   end
 
+  defp build_two_team_sample_trade do
+    # Simplified 2-team trade for testing
+    %{
+      id: "test-trade-2team-id",
+      creator: %{
+        name: "The Mad King",
+        team: %{name: "The Mad King"},
+        owners: [
+          %{display_name: "Ryan Neeson", discord_user_id: "667047645914857503", csv_name: "Ryan"}
+        ]
+      },
+      recipients: [
+        %{
+          name: "Birchmount Boyz",
+          team: %{name: "Birchmount Boyz"},
+          owners: [
+            %{display_name: "Mikey", discord_user_id: "99582359824769024", csv_name: "Mikey"}
+          ]
+        }
+      ],
+      participants: [
+        %{
+          team: %{
+            name: "The Mad King",
+            owners: [
+              %{
+                display_name: "Ryan Neeson",
+                discord_user_id: "667047645914857503",
+                csv_name: "Ryan"
+              }
+            ]
+          },
+          received_items: [
+            %{
+              type: :player,
+              name: "George Kirby",
+              position: "SP",
+              league: "Majors",
+              team: "SEA"
+            },
+            %{
+              type: :player,
+              name: "Patrick Forbes",
+              position: nil,
+              league: "Minors",
+              league_level: "undefined",
+              team: nil
+            },
+            %{
+              type: :pick,
+              original_owner: "Birchmount Boyz",
+              round: "2nd",
+              league: "Major League",
+              season: 2026
+            }
+          ]
+        },
+        %{
+          team: %{
+            name: "Birchmount Boyz",
+            owners: [
+              %{display_name: "Mikey", discord_user_id: "99582359824769024", csv_name: "Mikey"}
+            ]
+          },
+          received_items: [
+            %{
+              type: :player,
+              name: "Ketel Marte",
+              position: "2B",
+              league: "Majors",
+              team: "ARI"
+            },
+            %{
+              type: :player,
+              name: "Zachary Root",
+              position: nil,
+              league: "Minors",
+              league_level: "undefined",
+              team: nil
+            },
+            %{
+              type: :pick,
+              original_owner: "The Mad King",
+              round: "1st",
+              league: "Low Minors",
+              season: 2026
+            }
+          ]
+        }
+      ]
+    }
+  end
+
   # ============================================================================
   # Test Helpers
   # ============================================================================
@@ -848,7 +983,13 @@ defmodule TradeMachine.Discord.EmbedTester do
   end
 
   defp test_single(name, builder_fn, opts) do
-    trade = build_sample_trade()
+    trade =
+      if Keyword.get(opts, :use_two_team_trade, false) do
+        build_two_team_sample_trade()
+      else
+        build_sample_trade()
+      end
+
     embed_or_embeds = builder_fn.(trade, opts)
     test_format(name, embed_or_embeds, opts)
   end
