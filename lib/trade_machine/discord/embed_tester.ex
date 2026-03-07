@@ -310,6 +310,7 @@ defmodule TradeMachine.Discord.EmbedTester do
   end
 
   defp find_participant_and_format(trade, team_name, formatter) do
+    # Check both creator/recipients (which have owners directly) and participants (which have team.owners)
     all_participants = [trade.creator | trade.recipients]
 
     all_participants
@@ -321,16 +322,23 @@ defmodule TradeMachine.Discord.EmbedTester do
   end
 
   defp format_owner_display_names(participant) do
-    participant.team.owners
+    # Handle both structures: participant.owners and participant.team.owners
+    owners = Map.get(participant, :owners) || participant.team.owners
+
+    owners
     |> Enum.map(& &1.display_name)
     |> Enum.join(" & ")
   end
 
   defp format_csv_name(participant) do
-    participant.team.owners
+    # Handle both structures: participant.owners and participant.team.owners
+    owners = Map.get(participant, :owners) || participant.team.owners
+    team_name = Map.get(participant, :name) || participant.team.name
+
+    owners
     |> Enum.find_value(fn owner -> owner.csv_name end)
     |> case do
-      nil -> participant.team.name
+      nil -> team_name
       csv_name -> csv_name
     end
   end
