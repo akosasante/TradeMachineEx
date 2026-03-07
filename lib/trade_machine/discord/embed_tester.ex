@@ -415,7 +415,7 @@ defmodule TradeMachine.Discord.EmbedTester do
     # Simplified: 24 hours from now
     # In production, use your actual uphold time calculation
     DateTime.utc_now()
-    |> DateTime.add(86400, :second)
+    |> DateTime.add(86_400, :second)
     |> DateTime.to_unix()
   end
 
