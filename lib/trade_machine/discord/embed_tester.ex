@@ -112,6 +112,41 @@ defmodule TradeMachine.Discord.EmbedTester do
     Logger.info("Missing data strategy tests complete!")
   end
 
+  # Test different player info display options
+  def test_player_info_display(opts \\ []) do
+    Logger.info("Testing player info display options...")
+
+    base_opts =
+      Keyword.merge(opts, channel_id: Keyword.get(opts, :channel_id, @default_channel_id))
+
+    # Test with :show_all (default - shows all info for majors and minors)
+    test_single(
+      "Player Info: Show All (Majors + Minors)",
+      &build_inline_embed/2,
+      Keyword.put(base_opts, :player_info_display, :show_all)
+    )
+
+    :timer.sleep(2000)
+
+    # Test with :minors_name_only (show info for majors, name only for minors)
+    test_single(
+      "Player Info: Minors Name Only",
+      &build_inline_embed/2,
+      Keyword.put(base_opts, :player_info_display, :minors_name_only)
+    )
+
+    :timer.sleep(2000)
+
+    # Test with :name_only (name only for both majors and minors)
+    test_single(
+      "Player Info: Name Only (All Players)",
+      &build_inline_embed/2,
+      Keyword.put(base_opts, :player_info_display, :name_only)
+    )
+
+    Logger.info("Player info display tests complete!")
+  end
+
   # ============================================================================
   # Option 1: Compact Embed (Most Slack-like)
   # ============================================================================
@@ -379,29 +414,53 @@ defmodule TradeMachine.Discord.EmbedTester do
     end
   end
 
+  defp format_major_player(item, opts) do
+    player_info_display = Keyword.get(opts, :player_info_display, :show_all)
+
+    case player_info_display do
+      :name_only ->
+        "• **#{item.name}**"
+
+      _ ->
+        # :show_all or any other value
+        "• **#{item.name}** (#{item.position} - Majors - #{item.team})"
+    end
+  end
+
   defp format_minor_player(item, opts) do
+    player_info_display = Keyword.get(opts, :player_info_display, :show_all)
+
+    # Check if we should skip all info for minors
+    if player_info_display in [:name_only, :minors_name_only] do
+      "• **#{item.name}**"
+    else
+      format_minor_player_with_details(item, opts)
+    end
+  end
+
+  defp format_minor_player_with_details(item, opts) do
     strategy = Keyword.get(opts, :missing_data_strategy, :show_unknown)
 
     position = format_field(item.position, strategy, :position)
     league_level = format_field(item.league_level, strategy, :league_level)
     team = format_field(item.team, strategy, :team)
 
-    case strategy do
-      :skip_missing ->
-        # Build string with only non-nil fields
-        parts =
-          [position, league_level && "#{league_level} Minors", team]
-          |> Enum.reject(&is_nil/1)
+    if strategy == :skip_missing do
+      format_minor_with_available_fields(item.name, position, league_level, team)
+    else
+      "• **#{item.name}** (#{position} - #{league_level} Minors - #{team})"
+    end
+  end
 
-        if Enum.empty?(parts) do
-          "• **#{item.name}**"
-        else
-          "• **#{item.name}** (#{Enum.join(parts, " - ")})"
-        end
+  defp format_minor_with_available_fields(name, position, league_level, team) do
+    parts =
+      [position, league_level && "#{league_level} Minors", team]
+      |> Enum.reject(&is_nil/1)
 
-      _ ->
-        # Show all fields with fallback values
-        "• **#{item.name}** (#{position} - #{league_level} Minors - #{team})"
+    if Enum.empty?(parts) do
+      "• **#{name}**"
+    else
+      "• **#{name}** (#{Enum.join(parts, " - ")})"
     end
   end
 
@@ -458,7 +517,7 @@ defmodule TradeMachine.Discord.EmbedTester do
       |> Enum.map(fn item ->
         case item.type do
           :player ->
-            "• **#{item.name}** (#{item.position} - Majors - #{item.team})"
+            format_major_player(item, opts)
 
           :pick ->
             owner_name = format_pick_owner_name(trade, item.original_owner, opts)
@@ -506,7 +565,9 @@ defmodule TradeMachine.Discord.EmbedTester do
 
       case item.type do
         :player when item.league == "Majors" ->
-          "#{emoji} **#{item.name}** (#{item.position} - Majors - #{item.team})"
+          formatted = format_major_player(item, opts)
+          # Replace the bullet with emoji
+          String.replace_prefix(formatted, "•", emoji)
 
         :player ->
           formatted = format_minor_player(item, opts)
