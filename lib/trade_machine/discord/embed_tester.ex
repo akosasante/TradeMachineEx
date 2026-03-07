@@ -9,20 +9,20 @@ defmodule TradeMachine.Discord.EmbedTester do
 
       # Test all formats at once (uses team names by default)
       TradeMachine.Discord.EmbedTester.test_all_formats()
-      
+
       # Test with owner display names instead of team names
       TradeMachine.Discord.EmbedTester.test_all_formats(name_style: :owner_names)
-      
+
       # Test with CSV names instead of team names
       TradeMachine.Discord.EmbedTester.test_all_formats(name_style: :csv_names)
-      
+
       # Test individual format
       TradeMachine.Discord.EmbedTester.test_format_1()
       TradeMachine.Discord.EmbedTester.test_format_1(name_style: :owner_names)
-      
+
       # Test against a specific channel
       TradeMachine.Discord.EmbedTester.test_all_formats(channel_id: 123456789)
-      
+
   ## Name Style Options
 
   - `:team_names` (default) - "The Mad King" & "Birchmount Boyz"
@@ -439,11 +439,10 @@ defmodule TradeMachine.Discord.EmbedTester do
 
     # Find the next 11:00 PM Eastern that's at least 24 hours away from now
     uphold_time_eastern =
-      if DateTime.compare(next_11pm_eastern, minimum_uphold_time) == :gt do
-        next_11pm_eastern
-      else
-        # Need to go to the next day's 11pm
-        DateTime.add(next_11pm_eastern, 86_400, :second)
+      case DateTime.compare(next_11pm_eastern, minimum_uphold_time) do
+        :gt -> next_11pm_eastern
+        :eq -> next_11pm_eastern
+        :lt -> DateTime.add(next_11pm_eastern, 86_400, :second)
       end
 
     # Convert back to UTC for the timestamp
