@@ -413,11 +413,40 @@ defmodule TradeMachine.Discord.EmbedTester do
   end
 
   defp calculate_uphold_timestamp do
-    # Simplified: 24 hours from now
-    # In production, use your actual uphold time calculation
-    DateTime.utc_now()
-    |> DateTime.add(86_400, :second)
-    |> DateTime.to_unix()
+    # Trades are upheld at 11:00 PM Eastern, with minimum 24 hours from submission
+    # Example: Trade submitted March 6 at 11:10 PM ET -> upheld March 8 at 11:00 PM ET
+    #          Trade submitted March 6 at 10:55 PM ET -> upheld March 7 at 11:00 PM ET
+
+    now = DateTime.utc_now()
+    eastern_tz = "America/New_York"
+
+    # Convert to Eastern Time
+    now_eastern = DateTime.shift_zone!(now, eastern_tz)
+
+    # Get today at 11:00 PM Eastern
+    today_11pm = %{now_eastern | hour: 23, minute: 0, second: 0, microsecond: {0, 6}}
+
+    # Calculate 24 hours from now
+    minimum_uphold_time = DateTime.add(now_eastern, 86_400, :second)
+
+    # Find the next 11:00 PM that's at least 24 hours away
+    uphold_time =
+      if DateTime.compare(today_11pm, minimum_uphold_time) == :gt do
+        # Today's 11pm is more than 24 hours away
+        today_11pm
+      else
+        # Need to go to tomorrow's 11pm (or later)
+        tomorrow_11pm = DateTime.add(today_11pm, 86_400, :second)
+
+        if DateTime.compare(tomorrow_11pm, minimum_uphold_time) == :gt do
+          tomorrow_11pm
+        else
+          # Need day after tomorrow
+          DateTime.add(tomorrow_11pm, 86_400, :second)
+        end
+      end
+
+    DateTime.to_unix(uphold_time)
   end
 
   defp get_team_color(team) do
