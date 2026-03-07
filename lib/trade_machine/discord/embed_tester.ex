@@ -389,7 +389,8 @@ defmodule TradeMachine.Discord.EmbedTester do
 
   defp format_date do
     now = DateTime.utc_now()
-    Calendar.strftime(now, "%a %b %-d %Y")
+    timestamp = DateTime.to_unix(now)
+    "<t:#{timestamp}:F>"
   end
 
   defp format_mentions(owners) do
