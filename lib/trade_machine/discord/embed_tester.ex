@@ -126,7 +126,7 @@ defmodule TradeMachine.Discord.EmbedTester do
     Enum.map(trade.participants, fn participant ->
       %{
         name: "#{format_participant_name(participant, opts)} receives:",
-        value: format_received_items(trade, participant),
+        value: format_received_items(trade, participant, opts),
         inline: inline
       }
     end)
@@ -152,7 +152,7 @@ defmodule TradeMachine.Discord.EmbedTester do
       Enum.map(trade.participants, fn participant ->
         %{
           title: "#{format_participant_name(participant, opts)} receives:",
-          description: format_received_items(trade, participant),
+          description: format_received_items(trade, participant, opts),
           color: get_team_color(participant.team)
         }
       end)
@@ -208,7 +208,7 @@ defmodule TradeMachine.Discord.EmbedTester do
     Enum.map(trade.participants, fn participant ->
       %{
         name: "🎁 #{format_participant_name(participant, opts)} receives:",
-        value: format_received_items_with_emoji(trade, participant),
+        value: format_received_items_with_emoji(trade, participant, opts),
         inline: false
       }
     end)
@@ -260,7 +260,7 @@ defmodule TradeMachine.Discord.EmbedTester do
     Enum.map(trade.participants, fn participant ->
       %{
         name: "#{format_participant_name(participant, opts)} receives:",
-        value: format_received_items(trade, participant),
+        value: format_received_items(trade, participant, opts),
         inline: false
       }
     end)
@@ -294,6 +294,47 @@ defmodule TradeMachine.Discord.EmbedTester do
     end
   end
 
+  defp format_pick_owner_name(trade, team_name, opts) do
+    name_style = Keyword.get(opts, :name_style, :team_names)
+
+    case name_style do
+      :team_names ->
+        team_name
+
+      :owner_names ->
+        find_participant_and_format(trade, team_name, &format_owner_display_names/1)
+
+      :csv_names ->
+        find_participant_and_format(trade, team_name, &format_csv_name/1)
+    end
+  end
+
+  defp find_participant_and_format(trade, team_name, formatter) do
+    all_participants = [trade.creator | trade.recipients]
+
+    all_participants
+    |> Enum.find(fn p -> p.team.name == team_name end)
+    |> case do
+      nil -> team_name
+      participant -> formatter.(participant)
+    end
+  end
+
+  defp format_owner_display_names(participant) do
+    participant.team.owners
+    |> Enum.map(& &1.display_name)
+    |> Enum.join(" & ")
+  end
+
+  defp format_csv_name(participant) do
+    participant.team.owners
+    |> Enum.find_value(fn owner -> owner.csv_name end)
+    |> case do
+      nil -> participant.team.name
+      csv_name -> csv_name
+    end
+  end
+
   defp format_recipients(recipients, opts) do
     Enum.map_join(recipients, " & ", &format_participant_name(&1, opts))
   end
@@ -302,7 +343,7 @@ defmodule TradeMachine.Discord.EmbedTester do
   # Helper Functions - Item Formatting
   # ============================================================================
 
-  defp format_received_items(_trade, participant) do
+  defp format_received_items(trade, participant, opts \\ []) do
     items = participant.received_items
 
     # Separate majors and minors
@@ -320,7 +361,8 @@ defmodule TradeMachine.Discord.EmbedTester do
             "• **#{item.name}** (#{item.position} - Majors - #{item.team})"
 
           :pick ->
-            "• **#{item.original_owner}'s** #{item.round} round #{item.league} pick"
+            owner_name = format_pick_owner_name(trade, item.original_owner, opts)
+            "• **#{owner_name}'s** #{item.round} round #{item.league} pick"
         end
       end)
       |> Enum.join("\n")
@@ -337,22 +379,23 @@ defmodule TradeMachine.Discord.EmbedTester do
             "• **#{item.name}** (#{item.position} - #{item.league_level} Minors - #{item.team})"
 
           :pick ->
-            "• **#{item.original_owner}'s** #{item.round} round #{item.league} pick"
+            owner_name = format_pick_owner_name(trade, item.original_owner, opts)
+            "• **#{owner_name}'s** #{item.round} round #{item.league} pick"
         end
       end)
       |> Enum.join("\n")
 
-    # Combine with spacing
+    # Combine with spacing (single newline, not double)
     [majors_text, minors_text]
     |> Enum.reject(&(&1 == ""))
-    |> Enum.join("\n\n")
+    |> Enum.join("\n")
     |> case do
       "" -> "_No items_"
       text -> text
     end
   end
 
-  defp format_received_items_with_emoji(_trade, participant) do
+  defp format_received_items_with_emoji(trade, participant, opts \\ []) do
     items = participant.received_items
 
     items
@@ -375,7 +418,8 @@ defmodule TradeMachine.Discord.EmbedTester do
           "#{emoji} **#{item.name}** (#{item.position} - #{item.league_level} Minors - #{item.team})"
 
         :pick ->
-          "#{emoji} **#{item.original_owner}'s** #{item.round} round #{item.league} pick"
+          owner_name = format_pick_owner_name(trade, item.original_owner, opts)
+          "#{emoji} **#{owner_name}'s** #{item.round} round #{item.league} pick"
       end
     end)
     |> Enum.join("\n")
