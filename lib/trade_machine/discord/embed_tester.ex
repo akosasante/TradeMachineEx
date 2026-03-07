@@ -51,6 +51,14 @@ defmodule TradeMachine.Discord.EmbedTester do
     test_format("Option 2: Condensed (All in description)", build_inline_embed(trade, opts), opts)
     :timer.sleep(2000)
 
+    test_format(
+      "Option 2B: Inline Fields (Side-by-side)",
+      build_inline_fields_embed(trade, opts),
+      opts
+    )
+
+    :timer.sleep(2000)
+
     test_format("Option 3: Multiple Embeds (One per team)", build_multi_embed(trade, opts), opts)
     :timer.sleep(2000)
 
@@ -67,6 +75,9 @@ defmodule TradeMachine.Discord.EmbedTester do
 
   def test_format_2(opts \\ []),
     do: test_single("Option 2: Condensed", &build_inline_embed/2, opts)
+
+  def test_format_2b(opts \\ []),
+    do: test_single("Option 2B: Inline Fields", &build_inline_fields_embed/2, opts)
 
   def test_format_3(opts \\ []),
     do: test_single("Option 3: Multiple Embeds", &build_multi_embed/2, opts)
@@ -236,6 +247,40 @@ defmodule TradeMachine.Discord.EmbedTester do
         text: "🔗 Submit trades on FlexFoxFantasy TradeMachine by 11:00PM ET"
       }
     }
+  end
+
+  # ============================================================================
+  # Option 2B: Inline Fields (Side-by-side for 2-team, stacked for 3+)
+  # ============================================================================
+
+  defp build_inline_fields_embed(trade, opts) do
+    %{
+      title: "🔊  A Trade Has Been Submitted  🔊",
+      description: """
+      Trade submitted between **#{format_participant_name(trade.creator, opts)}** & **#{format_recipients(trade.recipients, opts)}**
+
+      **#{format_date()}** | Requested by #{format_mentions(trade.creator.owners)}
+      Trading with: #{format_mentions(trade.recipients |> Enum.flat_map(& &1.owners))}
+      Uphold time: <t:#{calculate_uphold_timestamp()}:F>
+      """,
+      color: 0x3498DB,
+      fields: build_inline_fields(trade, opts),
+      footer: %{
+        text: "🔗 Submit trades on FlexFoxFantasy TradeMachine by 11:00PM ET"
+      }
+    }
+  end
+
+  defp build_inline_fields(trade, opts) do
+    # Always set inline: true - Discord will handle layout automatically
+    # 2 fields = side-by-side, 3+ fields = stacked vertically
+    Enum.map(trade.participants, fn participant ->
+      %{
+        name: "#{format_participant_name(participant, opts)} receives:",
+        value: format_received_items(trade, participant, opts),
+        inline: true
+      }
+    end)
   end
 
   # ============================================================================
