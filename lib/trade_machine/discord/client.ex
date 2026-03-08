@@ -37,7 +37,7 @@ defmodule TradeMachine.Discord.Client do
   def send_embed(channel_id, embed) do
     Logger.info("Sending trade announcement to Discord channel #{channel_id}")
 
-    case Nostrum.Api.Message.create(channel_id, embeds: [embed]) do
+    case Nostrum.Api.Message.create(channel_id, content: "", embeds: [embed]) do
       {:ok, message} ->
         Logger.info("Trade announcement sent successfully (message_id: #{message.id})")
         {:ok, message}
