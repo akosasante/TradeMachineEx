@@ -100,3 +100,4 @@ jobs:
         with:
           lcov-file: ./cover/lcov.info
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          filter-changed-files: true
