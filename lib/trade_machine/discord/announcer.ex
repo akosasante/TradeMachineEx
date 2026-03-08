@@ -79,22 +79,29 @@ defmodule TradeMachine.Discord.Announcer do
   defp select_repo(:staging), do: TradeMachine.Repo.Staging
 
   defp fetch_trade(trade_id, repo) do
-    trade =
-      repo.get(Trade, trade_id)
-      |> repo.preload(
-        participants: [team: :current_owners],
-        traded_items: [:sender, :recipient],
-        creator: [team: :current_owners],
-        recipients: [team: :current_owners]
-      )
+    case Ecto.UUID.cast(trade_id) do
+      {:ok, _uuid} ->
+        trade =
+          repo.get(Trade, trade_id)
+          |> repo.preload(
+            participants: [team: :current_owners],
+            traded_items: [:sender, :recipient],
+            creator: [team: :current_owners],
+            recipients: [team: :current_owners]
+          )
 
-    case trade do
-      nil ->
-        Logger.error("Trade not found: #{trade_id}")
-        {:error, :trade_not_found}
+        case trade do
+          nil ->
+            Logger.error("Trade not found: #{trade_id}")
+            {:error, :trade_not_found}
 
-      trade ->
-        {:ok, trade}
+          trade ->
+            {:ok, trade}
+        end
+
+      :error ->
+        Logger.error("Invalid trade ID (not a valid UUID): #{trade_id}")
+        {:error, :invalid_trade_id}
     end
   end
 
