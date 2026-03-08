@@ -81,6 +81,7 @@ defmodule TradeMachine.ESPN.Search do
       ],
       receive_timeout: 15_000
     )
+    |> Req.merge(Application.get_env(:trade_machine, :espn_search_req_options, []))
   end
 
   @spec extract_mlb_players(map()) :: [search_result()]
