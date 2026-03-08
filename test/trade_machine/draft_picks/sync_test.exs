@@ -296,6 +296,18 @@ defmodule TradeMachine.DraftPicks.SyncTest do
     end
   end
 
+  describe "sync_from_sheet/2 - error handling" do
+    test "returns {:error, exception} when resolve_season raises (all thresholds in future)" do
+      Application.put_env(:trade_machine, :draft_picks_season_thresholds, [
+        {~D[9999-01-01], 9999}
+      ])
+
+      result = Sync.sync_from_sheet([], @repo)
+
+      assert {:error, %RuntimeError{}} = result
+    end
+  end
+
   # ---------------------------------------------------------------------------
   # resolve_season/0
   # ---------------------------------------------------------------------------

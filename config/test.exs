@@ -75,5 +75,9 @@ config :trade_machine, :sheet_fetcher_req_options,
   plug: {Req.Test, TradeMachine.MinorLeagues.SheetFetcher},
   retry: false
 
+config :trade_machine, :draft_picks_sheet_fetcher_req_options,
+  plug: {Req.Test, TradeMachine.DraftPicks.SheetFetcher},
+  retry: false
+
 # ESPN season year for tests
 config :trade_machine, :espn_season_year, 2025
