@@ -144,7 +144,8 @@ if config_env() != :test do
       minors_sync: String.to_integer(System.get_env("OBAN_MINORS_SYNC_CONCURRENCY") || "1"),
       draft_sync: String.to_integer(System.get_env("OBAN_DRAFT_SYNC_CONCURRENCY") || "1"),
       emails: 2,
-      espn_sync: 1
+      espn_sync: 1,
+      discord: 1
     ],
     prefix: prod_schema
 
@@ -157,7 +158,8 @@ if config_env() != :test do
       Oban.Plugins.Lifeline
     ],
     queues: [
-      emails: 2
+      emails: 2,
+      discord: 1
     ],
     prefix: staging_schema
 end

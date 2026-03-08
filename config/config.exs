@@ -79,7 +79,7 @@ config :trade_machine, Oban,
        {"32 7 * * *", TradeMachine.Jobs.EspnMlbPlayersSync}
      ]}
   ],
-  queues: [minors_sync: 1, draft_sync: 1, emails: 2, espn_sync: 1]
+  queues: [minors_sync: 1, draft_sync: 1, emails: 2, espn_sync: 1, discord: 1]
 
 # Emailing
 config :swoosh,
