@@ -85,6 +85,16 @@ defmodule TradeMachine.SyncLockTest do
     end
   end
 
+  describe "handle_info - unknown DOWN message" do
+    test "ignores :DOWN for an unrecognized monitor ref" do
+      sync_lock_pid = Process.whereis(TradeMachine.SyncLock)
+      fake_ref = make_ref()
+      send(sync_lock_pid, {:DOWN, fake_ref, :process, self(), :normal})
+      Process.sleep(20)
+      assert %{} = SyncLock.status()
+    end
+  end
+
   describe "auto-release on process death" do
     test "releases lock when the holder process exits" do
       task =

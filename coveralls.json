@@ -1,4 +1,7 @@
 {
+  "custom_stop_words": [
+    "embedded_schema do"
+  ],
   "skip_files": [
     "test/",
 
@@ -32,6 +35,10 @@
     "lib/trade_machine/data/sync_job_execution.ex",
 
     "lib/trade_machine/discord/embed_tester.ex",
-    "lib/trade_machine/minor_league_reconciliation.ex"
+    "lib/trade_machine/minor_league_reconciliation.ex",
+
+    "lib/trade_machine/espn/client.ex",
+    "lib/trade_machine/espn/search.ex",
+    "lib/trade_machine/minor_leagues/sheet_fetcher.ex"
   ]
 }

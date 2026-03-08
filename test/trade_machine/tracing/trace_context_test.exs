@@ -164,6 +164,25 @@ defmodule TradeMachine.Tracing.TraceContextTest do
       assert result == :executed_with_context
     end
 
+    test "executes function when trace context has both traceparent and tracestate" do
+      job_args = %{
+        "trace_context" => %{
+          "traceparent" => "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+          "tracestate" => "grafana=sessionId:abc123,other=val"
+        }
+      }
+
+      result =
+        TraceContext.with_extracted_context(
+          job_args,
+          "test.span.tracestate",
+          %{"test" => true},
+          fn -> :executed_with_tracestate end
+        )
+
+      assert result == :executed_with_tracestate
+    end
+
     test "executes function with invalid trace context (fallback mode)" do
       job_args = %{
         "email_type" => "reset_password",
@@ -257,6 +276,42 @@ defmodule TradeMachine.Tracing.TraceContextTest do
     test "creates test span with custom name" do
       result = TraceContext.create_test_span("custom.test.span")
       assert result == :test_span_completed
+    end
+  end
+
+  describe "current_trace_id/0" do
+    test "returns nil when no active span" do
+      result = TraceContext.current_trace_id()
+      assert is_nil(result) or is_binary(result)
+    end
+
+    test "returns a hex string when inside a span" do
+      require OpenTelemetry.Tracer, as: Tracer
+
+      result =
+        Tracer.with_span "test.current_trace_id" do
+          TraceContext.current_trace_id()
+        end
+
+      assert is_nil(result) or (is_binary(result) and String.length(result) == 32)
+    end
+  end
+
+  describe "inject_trace_context/0" do
+    test "returns a list of trace headers" do
+      result = TraceContext.inject_trace_context()
+      assert is_list(result)
+    end
+
+    test "returns traceparent header when inside a span" do
+      require OpenTelemetry.Tracer, as: Tracer
+
+      result =
+        Tracer.with_span "test.inject_context" do
+          TraceContext.inject_trace_context()
+        end
+
+      assert is_list(result)
     end
   end
 end

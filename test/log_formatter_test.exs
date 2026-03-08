@@ -145,8 +145,24 @@ defmodule LogFormatterTest do
       assert result =~ ":99"
     end
 
+    test "includes user_id in dev format" do
+      result = LogFormatter.format(:info, "msg", @timestamp, user_id: "user-456")
+      assert result =~ "user_id=user-456"
+    end
+
+    test "includes pid in dev format" do
+      result = LogFormatter.format(:info, "msg", @timestamp, pid: self())
+      assert result =~ "pid="
+    end
+
     test "handles non-list metadata in dev mode" do
       result = LogFormatter.format(:info, "msg", @timestamp, nil)
+      assert result =~ "[info]"
+      assert result =~ "msg"
+    end
+
+    test "falls through to catch-all for known key with non-matching value type" do
+      result = LogFormatter.format(:info, "msg", @timestamp, mfa: "not-a-tuple")
       assert result =~ "[info]"
       assert result =~ "msg"
     end
@@ -154,8 +170,8 @@ defmodule LogFormatterTest do
 
   describe "format/4 rescue fallback" do
     test "falls back to simple format when formatting raises" do
-      bad_timestamp = {{2026, 3, 7}, {14, 30, 45, 123}}
-      result = LogFormatter.format(:error, "crash msg", bad_timestamp, %{not_a: "list"})
+      result =
+        LogFormatter.format(:error, "crash msg", @timestamp, [{:user_id, <<0xFF, 0xFE>>}])
 
       assert is_binary(result)
       assert result =~ "crash msg"

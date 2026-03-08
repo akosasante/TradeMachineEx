@@ -307,6 +307,45 @@ defmodule TradeMachine.PlayersTest do
   end
 
   # -------------------------------------------------------------------
+  # get_syncable_players/1
+  # -------------------------------------------------------------------
+  describe "get_syncable_players/1" do
+    test "returns major league players" do
+      repo = TradeMachine.Repo.Production
+      insert_player!(repo, %{name: "Major Guy", league: :major, player_data_id: nil})
+      insert_player!(repo, %{name: "Minor Guy", league: :minor, player_data_id: nil})
+
+      players = Players.get_syncable_players(repo)
+      names = Enum.map(players, & &1.name)
+
+      assert "Major Guy" in names
+      refute "Minor Guy" in names
+    end
+
+    test "returns minor leaguers who have a player_data_id" do
+      repo = TradeMachine.Repo.Production
+      insert_player!(repo, %{name: "Promoted Minor", league: :minor, player_data_id: 54_321})
+      insert_player!(repo, %{name: "Unknown Minor", league: :minor, player_data_id: nil})
+
+      players = Players.get_syncable_players(repo)
+      names = Enum.map(players, & &1.name)
+
+      assert "Promoted Minor" in names
+      refute "Unknown Minor" in names
+    end
+
+    test "returns empty list when no syncable players exist" do
+      repo = TradeMachine.Repo.Production
+      insert_player!(repo, %{name: "Unsynced Minor", league: :minor, player_data_id: nil})
+
+      players = Players.get_syncable_players(repo)
+      names = Enum.map(players, & &1.name)
+
+      refute "Unsynced Minor" in names
+    end
+  end
+
+  # -------------------------------------------------------------------
   # Meta merging
   # -------------------------------------------------------------------
   describe "sync_espn_player_data/3 - meta merging" do

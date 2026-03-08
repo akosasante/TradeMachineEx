@@ -6,7 +6,7 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
 
   alias TradeMachine.Data.User
   alias TradeMachine.Jobs.EmailWorker
-  alias TradeMachine.Tracing.TraceContext
+  alias TradeMachine.Mailer
 
   setup do
     # Enable Ecto.Adapters.SQL.Sandbox for database isolation - checkout both repos
@@ -117,6 +117,51 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       refute_email_sent()
     end
 
+    test "handles user not found error for registration email" do
+      non_existent_user_id = Ecto.UUID.generate()
+
+      job_args = %{
+        email_type: "registration",
+        data: non_existent_user_id,
+        env: "production"
+      }
+
+      assert {:error, :user_not_found} = perform_job(EmailWorker, job_args)
+      refute_email_sent()
+    end
+
+    test "handles user not found error for test email" do
+      non_existent_user_id = Ecto.UUID.generate()
+
+      job_args = %{
+        email_type: "test",
+        data: non_existent_user_id,
+        env: "production"
+      }
+
+      assert {:error, :user_not_found} = perform_job(EmailWorker, job_args)
+      refute_email_sent()
+    end
+
+    test "uses staging repo when env is not production" do
+      user = insert_user()
+
+      job_args = %{
+        email_type: "reset_password",
+        data: user.id,
+        env: "staging"
+      }
+
+      # Staging repo is checked out in setup; user was inserted in production repo so
+      # the staging repo won't find them, returning user_not_found
+      assert {:error, :user_not_found} = perform_job(EmailWorker, job_args)
+    end
+
+    test "returns error for invalid job args missing required fields" do
+      job_args = %{bad_field: "value"}
+      assert {:error, :invalid_args} = perform_job(EmailWorker, job_args)
+    end
+
     test "logs error for unknown email type" do
       user = insert_user()
 
@@ -133,6 +178,13 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
         end)
 
       assert log_output =~ "Unknown email type: invalid_type"
+    end
+  end
+
+  describe "Mailer default repo" do
+    test "send_password_reset_email/2 uses default repo when no repo arg given" do
+      result = Mailer.send_password_reset_email(Ecto.UUID.generate(), "production")
+      assert result == {:error, :user_not_found}
     end
   end
 

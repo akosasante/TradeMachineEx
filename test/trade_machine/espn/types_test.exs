@@ -55,6 +55,28 @@ defmodule TradeMachine.ESPN.TypesTest do
     end
   end
 
+  describe "LeagueMember.changeset/2" do
+    test "returns valid changeset with all required fields" do
+      attrs = %{id: "owner1", display_name: "Jane Doe", first_name: "Jane", last_name: "Doe"}
+      changeset = LeagueMember.changeset(%LeagueMember{}, attrs)
+      assert changeset.valid?
+    end
+
+    test "returns invalid changeset when id is missing" do
+      attrs = %{display_name: "Jane Doe"}
+      changeset = LeagueMember.changeset(%LeagueMember{}, attrs)
+      refute changeset.valid?
+      assert :id in Keyword.keys(changeset.errors)
+    end
+
+    test "returns invalid changeset when display_name is missing" do
+      attrs = %{id: "owner1"}
+      changeset = LeagueMember.changeset(%LeagueMember{}, attrs)
+      refute changeset.valid?
+      assert :display_name in Keyword.keys(changeset.errors)
+    end
+  end
+
   describe "RecordStats.from_api/1" do
     test "returns nil for nil input" do
       assert RecordStats.from_api(nil) == nil
