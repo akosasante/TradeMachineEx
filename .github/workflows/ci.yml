@@ -82,15 +82,22 @@ jobs:
       - name: Compile
         run: mix compile
 
-      - name: Run tests
-        run: mix test
+      - name: Run tests with coverage
+        run: mix coveralls.lcov
         env:
           DATABASE_HOST: localhost
           DATABASE_USER: trader_test
           DATABASE_PASSWORD: test_password
           DATABASE_NAME: trade_machine_test
-          # Both repos should connect to the same test database in CI
           PROD_DATABASE_PORT: 5432
           STAGING_DATABASE_PORT: 5432
           DATABASE_SCHEMA: test
           SCHEMA: test
+
+      - name: Report coverage on PR
+        uses: romeovs/lcov-reporter-action@v0.4.0
+        if: github.event_name == 'pull_request'
+        with:
+          lcov-file: ./cover/lcov.info
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          filter-changed-files: true
