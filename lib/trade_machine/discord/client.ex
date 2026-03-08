@@ -37,6 +37,8 @@ defmodule TradeMachine.Discord.Client do
   def send_embed(channel_id, embed) do
     Logger.info("Sending trade announcement to Discord channel #{channel_id}")
 
+    # content: "" is required for Discord to resolve <@userId> mentions in the
+    # embed description; without a content field present, mentions render as raw "<@id>" text.
     case Nostrum.Api.Message.create(channel_id, content: "", embeds: [embed]) do
       {:ok, message} ->
         Logger.info("Trade announcement sent successfully (message_id: #{message.id})")
