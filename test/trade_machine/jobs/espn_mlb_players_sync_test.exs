@@ -2,6 +2,7 @@ defmodule TradeMachine.Jobs.EspnMlbPlayersSyncTest do
   use ExUnit.Case, async: false
   use Oban.Testing, repo: TradeMachine.Repo.Production, prefix: "test"
 
+  alias TradeMachine.ESPN.Client
   alias TradeMachine.Jobs.EspnMlbPlayersSync
   alias TradeMachine.SyncLock
 
@@ -48,5 +49,66 @@ defmodule TradeMachine.Jobs.EspnMlbPlayersSyncTest do
     after
       SyncLock.release(:mlb_players_sync)
     end
+  end
+
+  # ---------------------------------------------------------------------------
+  # perform/1 — actual sync paths (with Req.Test stubs)
+  # ---------------------------------------------------------------------------
+
+  defp espn_player(id, full_name, opts \\ []) do
+    pro_team_id = Keyword.get(opts, :pro_team_id, 1)
+
+    %{
+      "id" => id,
+      "onTeamId" => 0,
+      "status" => "FREEAGENT",
+      "player" => %{
+        "id" => id,
+        "fullName" => full_name,
+        "firstName" => full_name |> String.split() |> List.first(),
+        "lastName" => full_name |> String.split() |> List.last(),
+        "proTeamId" => pro_team_id,
+        "defaultPositionId" => 6,
+        "eligibleSlots" => [6],
+        "active" => true
+      }
+    }
+  end
+
+  test "perform returns :ok when ESPN API returns an empty player set" do
+    # Use an empty player list to avoid both Production and Staging repos
+    # trying to insert the same rows into the same test schema, which would
+    # cause a row-lock deadlock between the two sandbox transactions.
+    Req.Test.stub(Client, fn conn ->
+      conn
+      |> Plug.Conn.put_resp_header("x-fantasy-filter-player-count", "0")
+      |> Req.Test.json(%{"players" => []})
+    end)
+
+    result = EspnMlbPlayersSync.perform(%Oban.Job{id: 10, args: %{}})
+
+    assert result == :ok
+  end
+
+  test "perform returns {:error, reason} when ESPN API returns non-200" do
+    Req.Test.stub(Client, fn conn ->
+      conn
+      |> Plug.Conn.put_resp_content_type("application/json")
+      |> Plug.Conn.resp(503, ~s({"error": "service unavailable"}))
+    end)
+
+    result = EspnMlbPlayersSync.perform(%Oban.Job{id: 11, args: %{}})
+
+    assert {:error, {:http_error, 503, _}} = result
+  end
+
+  test "perform returns {:error, reason} on network failure" do
+    Req.Test.stub(Client, fn conn ->
+      Req.Test.transport_error(conn, :timeout)
+    end)
+
+    result = EspnMlbPlayersSync.perform(%Oban.Job{id: 12, args: %{}})
+
+    assert {:error, %Req.TransportError{}} = result
   end
 end

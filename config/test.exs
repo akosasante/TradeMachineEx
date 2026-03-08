@@ -61,3 +61,19 @@ config :trade_machine, Oban.Staging,
 
 # Emailing
 config :trade_machine, TradeMachine.Mailer, adapter: Swoosh.Adapters.Test
+
+# HTTP test stubs via Req.Test (retry disabled to keep tests fast)
+config :trade_machine, :espn_req_options,
+  plug: {Req.Test, TradeMachine.ESPN.Client},
+  retry: false
+
+config :trade_machine, :espn_search_req_options,
+  plug: {Req.Test, TradeMachine.ESPN.Search},
+  retry: false
+
+config :trade_machine, :sheet_fetcher_req_options,
+  plug: {Req.Test, TradeMachine.MinorLeagues.SheetFetcher},
+  retry: false
+
+# ESPN season year for tests
+config :trade_machine, :espn_season_year, 2025

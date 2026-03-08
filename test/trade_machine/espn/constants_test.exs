@@ -33,6 +33,11 @@ defmodule TradeMachine.ESPN.ConstantsTest do
     test "returns nil for unknown id" do
       assert Constants.pro_team(999) == nil
     end
+
+    test "returns nil for non-integer input" do
+      assert Constants.pro_team(nil) == nil
+      assert Constants.pro_team("10") == nil
+    end
   end
 
   describe "position/1" do

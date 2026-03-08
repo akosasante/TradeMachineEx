@@ -13,6 +13,14 @@ defmodule TradeMachine.MixProject do
       aliases: aliases(),
       dialyzer: [ignore_warnings: ".dialyzer.ignore-warnings.exs"],
       deps: deps(),
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test,
+        "coveralls.lcov": :test
+      ],
       releases: [
         trade_machine: [
           cookie: System.get_env("RELEASE_COOKIE", "dev_cookie_please_change_in_production")
@@ -74,7 +82,8 @@ defmodule TradeMachine.MixProject do
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
       {:typed_ecto_schema, "~> 0.4.0", runtime: false},
-      {:tzdata, "~> 1.1"}
+      {:tzdata, "~> 1.1"},
+      {:excoveralls, "~> 0.18", only: :test}
     ]
   end
 
