@@ -156,10 +156,11 @@ defmodule TradeMachine.Discord.Formatter do
   Formats the minor league level as a display string.
   Returns "Minors" for nil/unknown levels.
   """
-  @spec format_minor_level(:high | :low | nil) :: String.t()
-  def format_minor_level(:high), do: "High Minors"
-  def format_minor_level(:low), do: "Low Minors"
+  @spec format_minor_level(String.t() | atom() | nil) :: String.t()
+  def format_minor_level(level) when level in [:high, "High", "HM"], do: "High Minors"
+  def format_minor_level(level) when level in [:low, "Low", "LM"], do: "Low Minors"
   def format_minor_level(nil), do: "Minors"
+  def format_minor_level(_other), do: "Minors"
 
   # Builds a parenthetical suffix from available (non-nil) parts.
   # Returns empty string if no parts are available.
