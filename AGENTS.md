@@ -314,8 +314,8 @@ Syncs minor league player ownership from a public Google Sheet to both databases
 
 Syncs draft pick ownership from a public Google Sheet to both databases.\
 **Env vars:** `DRAFT_PICKS_SHEET_ID`, `DRAFT_PICKS_SHEET_GID` (default `"142978697"`)\
-**Season config:** `draft_picks_season_thresholds` in `config/config.exs` — a descending list of `{~D[yyyy-mm-dd], year}` pairs. Update each year once the MLB season start date is confirmed. Raises `RuntimeError` if today precedes all thresholds.\
-**Expected counts:** 200 majors + 40 HM + 100 LM = 340 per repo when all picks are active. Fewer is normal after drafts (cleared picks are skipped).\
+**Season config:** `draft_picks_season_thresholds` in `config/config.exs` — a descending list of `{~D[yyyy-mm-dd], year}` pairs representing the **minor league season**. Major picks use `minor_season + 1`. Update each year once the MLB season start date is confirmed. Raises `RuntimeError` if today precedes all thresholds.\
+**Expected counts:** 200 majors + 20 HM + 80 LM = 300 per repo when all picks are active (10 major + 1 HM + 4 LM per team × 20 teams). Fewer is normal after drafts (cleared picks are skipped).\
 **Module structure:** `DraftPicks.SheetFetcher` (fetch), `DraftPicks.Parser` (parse), `DraftPicks.Sync` (upsert)\
 **Concurrency guard:** `SyncLock` (`:draft_picks_sync`) prevents overlapping runs\
 **Unique constraint:** Only one job allowed in `available/scheduled/executing/retryable` states at a time

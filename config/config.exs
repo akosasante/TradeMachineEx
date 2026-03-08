@@ -15,7 +15,10 @@ config :trade_machine,
   ## no migration management. Prisma (TypeScript) handles all schema changes
   ecto_repos: [TradeMachine.Repo.Production, TradeMachine.Repo.Staging]
 
-# Draft picks season thresholds.
+# Draft picks season thresholds — these represent the MINOR LEAGUE season.
+# Major league picks use (minor_season + 1) because the MLB draft is held in
+# the spring of the following year.
+#
 # Sorted descending: the first entry whose date is <= today's UTC date is used.
 # If today precedes all thresholds, the job raises a RuntimeError.
 # Update this list each year once the MLB season start date is confirmed.

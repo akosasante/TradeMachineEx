@@ -15,8 +15,8 @@ defmodule TradeMachine.DraftPicks.Parser do
       [5] (ignored)
       [6] (ignored)
 
-  Within each group there are 17 pick rows: 10 major league (rows 0–9),
-  2 high-minor (rows 10–11), and 5 low-minor (rows 12–16).
+  Within each group there are 15 pick rows: 10 major league (rows 0–9),
+  1 high-minor (row 10), and 4 low-minor (rows 11–14).
 
   ## State machine
 
@@ -27,7 +27,7 @@ defmodule TradeMachine.DraftPicks.Parser do
       :scanning   — looking for an owner header row
       :saw_owners — captured owner names; waiting for the "Round" header
                     OR the first pick row (groups 2–4)
-      :in_picks   — reading pick rows (index 0..16), then back to :scanning
+      :in_picks   — reading pick rows (index 0..14), then back to :scanning
 
   ## Cleared picks
 
@@ -39,7 +39,7 @@ defmodule TradeMachine.DraftPicks.Parser do
   @columns_per_owner 7
   @owners_per_group 5
   @total_columns @columns_per_owner * @owners_per_group
-  @picks_per_group 17
+  @picks_per_group 15
 
   @type parsed_pick :: %{
           type: :majors | :high | :low,
@@ -53,7 +53,11 @@ defmodule TradeMachine.DraftPicks.Parser do
   Parses a list of CSV rows (list of lists) into draft pick maps.
 
   Only non-cleared picks are returned. A pick is cleared when its Round
-  cell does not parse as a positive decimal or its OVR value is ≤ 0.
+  cell does not parse as a positive number or its OVR value is ≤ 0.
+
+  HM and LM round labels ("HM1", "LM1", "LM3", "LM4", "LM5") are parsed
+  by stripping the non-numeric prefix and converting the remaining digits
+  to a `Decimal` (e.g. "HM1" → 1, "LM3" → 3).
 
   Returns a list of `t:parsed_pick/0` maps.
   """
@@ -147,7 +151,7 @@ defmodule TradeMachine.DraftPicks.Parser do
       orig_owner = chunk |> Enum.at(1, "") |> String.trim()
       ovr_str = chunk |> Enum.at(3, "") |> String.trim()
 
-      with {round, _} <- Decimal.parse(round_str),
+      with {:ok, round} <- parse_round(round_str),
            :gt <- Decimal.compare(round, Decimal.new(0)),
            {ovr, _} <- Integer.parse(ovr_str),
            true <- ovr > 0,
@@ -167,11 +171,26 @@ defmodule TradeMachine.DraftPicks.Parser do
     end)
   end
 
-  # Row index within the group (0-indexed)
+  # Row index within the group (0-indexed):
+  # rows 0–9 → 10 major league picks
+  # row 10   → 1 high-minor pick (round label "HM1")
+  # rows 11–14 → 4 low-minor picks (round labels "LM1", "LM3", "LM4", "LM5")
   defp pick_type(i) when i in 0..9, do: :majors
-  defp pick_type(i) when i in 10..11, do: :high
-  defp pick_type(i) when i in 12..16, do: :low
+  defp pick_type(10), do: :high
+  defp pick_type(i) when i in 11..14, do: :low
   defp pick_type(_), do: :unknown
+
+  # Parses a round string to a positive Decimal.
+  # Handles plain numbers ("1", "2.0") as well as prefixed HM/LM labels
+  # ("HM1" → 1, "LM3" → 3) by stripping any non-numeric prefix.
+  defp parse_round(str) do
+    normalized = String.replace(str, ~r/[^0-9.]/, "")
+
+    case Decimal.parse(normalized) do
+      {decimal, ""} -> {:ok, decimal}
+      _ -> :error
+    end
+  end
 
   defp pad_row(row, expected) when length(row) >= expected, do: row
   defp pad_row(row, expected), do: row ++ List.duplicate("", expected - length(row))

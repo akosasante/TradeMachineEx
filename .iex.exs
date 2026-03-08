@@ -742,8 +742,8 @@ defmodule DraftPicksSync do
   @owners_per_group 5
   @total_columns @columns_per_owner * @owners_per_group
   # 30 columns total
-  @picks_per_group 17
-  # 10 ML + 2 HM + 5 LM
+  @picks_per_group 15
+  # 10 ML + 1 HM + 4 LM
 
   @doc "Fetch raw CSV rows from the draft picks sheet tab."
   def fetch(sheet_id \\ @sheet_id, gid \\ @gid) do
@@ -806,7 +806,8 @@ defmodule DraftPicksSync do
   @doc """
   Validate parsed picks against expected totals.
 
-  Expected: 200 :majors + 40 :high + 100 :low = 340 total
+  Expected: 200 :majors + 20 :high + 80 :low = 300 total
+  (10 major + 1 HM + 4 LM per team × 20 teams)
   """
   def validate(picks \\ nil) do
     picks = picks || parse()
@@ -817,18 +818,18 @@ defmodule DraftPicksSync do
     low = Map.get(by_type, :low, [])
 
     majors_ok = length(majors) == 200
-    high_ok = length(high) == 40
-    low_ok = length(low) == 100
-    total_ok = length(picks) == 340
+    high_ok = length(high) == 20
+    low_ok = length(low) == 80
+    total_ok = length(picks) == 300
 
     IO.puts("""
     ── Draft Picks Parse Validation ──
 
     Counts by type:
       :majors  #{length(majors)} (expected 200)  #{if majors_ok, do: "✓", else: "✗ MISMATCH"}
-      :high    #{length(high)} (expected 40)   #{if high_ok, do: "✓", else: "✗ MISMATCH"}
-      :low     #{length(low)} (expected 100)  #{if low_ok, do: "✓", else: "✗ MISMATCH"}
-      TOTAL    #{length(picks)} (expected 340) #{if total_ok, do: "✓", else: "✗ MISMATCH"}
+      :high    #{length(high)} (expected 20)   #{if high_ok, do: "✓", else: "✗ MISMATCH"}
+      :low     #{length(low)} (expected 80)   #{if low_ok, do: "✓", else: "✗ MISMATCH"}
+      TOTAL    #{length(picks)} (expected 300) #{if total_ok, do: "✓", else: "✗ MISMATCH"}
 
     Distinct current owners: #{picks |> Enum.map(& &1.current_owner_csv) |> Enum.uniq() |> length()}
     Distinct original owners: #{picks |> Enum.map(& &1.original_owner_csv) |> Enum.uniq() |> length()}
@@ -846,7 +847,7 @@ defmodule DraftPicksSync do
         hm = length(Map.get(by_t, :high, []))
         lm = length(Map.get(by_t, :low, []))
         total = ml + hm + lm
-        flag = if total == 17, do: "✓", else: "✗ (expected 17)"
+        flag = if total == 15, do: "✓", else: "✗ (expected 15)"
 
         IO.puts(
           "  #{String.pad_trailing(owner, 15)} ML=#{ml} HM=#{hm} LM=#{lm}  total=#{total}  #{flag}"
@@ -946,9 +947,9 @@ defmodule DraftPicksSync do
     IO.puts("""
     Draft Pick DB State (#{inspect(repo)}):
       :majors  #{Map.get(counts, :majors, 0)} (expected 200)
-      :high    #{Map.get(counts, :high, 0)} (expected 40)
-      :low     #{Map.get(counts, :low, 0)} (expected 100)
-      TOTAL    #{total} (expected 340)
+      :high    #{Map.get(counts, :high, 0)} (expected 20)
+      :low     #{Map.get(counts, :low, 0)} (expected 80)
+      TOTAL    #{total} (expected 300)
     """)
 
     counts
@@ -1103,7 +1104,7 @@ defmodule DraftPicksSync do
       orig_owner = chunk |> Enum.at(1, "") |> String.trim()
       ovr_str = chunk |> Enum.at(3, "") |> String.trim()
 
-      with {round, _} <- Decimal.parse(round_str),
+      with {:ok, round} <- parse_round(round_str),
            :gt <- Decimal.compare(round, Decimal.new(0)),
            {ovr, _} <- Integer.parse(ovr_str),
            true <- ovr > 0,
@@ -1123,11 +1124,24 @@ defmodule DraftPicksSync do
     end)
   end
 
-  # row index within the group (0-indexed)
+  # row index within the group (0-indexed):
+  # 0–9 → 10 major league picks
+  # 10  → 1 HM pick ("HM1")
+  # 11–14 → 4 LM picks ("LM1", "LM3", "LM4", "LM5")
   defp pick_type(i) when i in 0..9, do: :majors
-  defp pick_type(i) when i in 10..11, do: :high
-  defp pick_type(i) when i in 12..16, do: :low
+  defp pick_type(10), do: :high
+  defp pick_type(i) when i in 11..14, do: :low
   defp pick_type(_), do: :unknown
+
+  # Strips non-numeric prefix ("HM", "LM") before parsing as Decimal.
+  defp parse_round(str) do
+    normalized = String.replace(str, ~r/[^0-9.]/, "")
+
+    case Decimal.parse(normalized) do
+      {decimal, ""} -> {:ok, decimal}
+      _ -> :error
+    end
+  end
 
   defp pad_row(row, expected) when length(row) >= expected, do: row
   defp pad_row(row, expected), do: row ++ List.duplicate("", expected - length(row))

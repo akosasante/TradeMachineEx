@@ -143,13 +143,13 @@ Syncs draft pick ownership from a public Google Sheet to both databases.
 **What it does:**
 1. Resolves the current season from the `draft_picks_season_thresholds` compile-time config (raises `RuntimeError` if config is outdated)
 2. Fetches the Google Sheet as a CSV (`DraftPicks.SheetFetcher`)
-3. Parses the multi-team layout (`DraftPicks.Parser`) — 7 columns per owner block, 5 owners per group, 4 groups, 17 picks per group
+3. Parses the multi-team layout (`DraftPicks.Parser`) — 7 columns per owner block, 5 owners per group, 4 groups, 15 picks per group (10 major + 1 HM + 4 LM)
 4. For each non-cleared pick, resolves `original_owner_csv` and `current_owner_csv` to team IDs via `user.csvName`
 5. Upserts each pick into the `draft_pick` table (keyed on `type + season + round + originalOwnerId`), updating `currentOwnerId` and `pick_number` on conflict
 
-**Expected counts (when all picks active):** 200 majors + 40 HM + 100 LM = 340 total per repo. Cleared picks (OVR ≤ 0 or blank round) are skipped — this is normal after drafts.
+**Expected counts (when all picks active):** 200 majors + 20 HM + 80 LM = 300 total per repo. Cleared picks (OVR ≤ 0 or blank round) are skipped — this is normal after drafts.
 
-**Season calculation:** Configured in `config/config.exs` as `draft_picks_season_thresholds` — a descending list of `{~D[yyyy-mm-dd], year}` pairs. The first entry whose date is on or before today is used. Update this list each year once the MLB season start date is confirmed.
+**Season calculation:** Configured in `config/config.exs` as `draft_picks_season_thresholds` — a descending list of `{~D[yyyy-mm-dd], year}` pairs representing the **minor league season**. The first entry whose date is on or before today is used. Major league picks use `minor_season + 1` (their draft is held in spring of the following year). Update this list each year once the MLB season start date is confirmed.
 
 **Reads from:** `TradeMachine.Repo.Production` and `TradeMachine.Repo.Staging`\
 **Writes to:** `TradeMachine.Repo.Production` and `TradeMachine.Repo.Staging` (`draft_pick` table)\

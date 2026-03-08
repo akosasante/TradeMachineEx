@@ -10,6 +10,11 @@ defmodule TradeMachine.DraftPicks.SyncTest do
 
   @repo TradeMachine.Repo.Production
 
+  # The test setup configures resolve_season/0 to return 2025 (the minor league
+  # season). Major league picks therefore use 2026 (minor + 1).
+  @minor_season 2025
+  @major_season @minor_season + 1
+
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(@repo)
     TestHelper.set_search_path_for_sandbox(@repo)
@@ -26,7 +31,7 @@ defmodule TradeMachine.DraftPicks.SyncTest do
     original_thresholds = Application.get_env(:trade_machine, :draft_picks_season_thresholds)
 
     Application.put_env(:trade_machine, :draft_picks_season_thresholds, [
-      {~D[2000-01-01], 2025}
+      {~D[2000-01-01], @minor_season}
     ])
 
     on_exit(fn ->
@@ -71,7 +76,7 @@ defmodule TradeMachine.DraftPicks.SyncTest do
     Map.merge(defaults, attrs)
   end
 
-  defp find_pick(repo, type, round, orig_team_id, season \\ 2025) do
+  defp find_pick(repo, type, round, orig_team_id, season) do
     DraftPick
     |> where(
       [p],
@@ -88,23 +93,41 @@ defmodule TradeMachine.DraftPicks.SyncTest do
   # ---------------------------------------------------------------------------
 
   describe "sync_from_sheet/2 - inserting new picks" do
-    test "inserts a new pick that doesn't exist yet", %{team_a: team_a} do
+    test "inserts a new major league pick with season = minor_season + 1", %{team_a: team_a} do
       picks = [parsed_pick()]
       {:ok, stats} = Sync.sync_from_sheet(picks, @repo)
 
       assert stats.upserted == 1
       assert stats.skipped_no_owner == 0
 
-      pick = find_pick(@repo, :majors, Decimal.new("1.0"), team_a.id)
+      pick = find_pick(@repo, :majors, Decimal.new("1.0"), team_a.id, @major_season)
       assert pick != nil
-      assert pick.season == 2025
+      assert pick.season == @major_season
       assert pick.pick_number == 5
       assert pick.currentOwnerId == team_a.id
       assert pick.originalOwnerId == team_a.id
       assert pick.last_synced_at != nil
     end
 
-    test "inserts picks of all three types", %{team_a: team_a} do
+    test "inserts high-minor and low-minor picks with season = minor_season", %{team_a: team_a} do
+      picks = [
+        parsed_pick(%{type: :high, round: Decimal.new("1.0"), pick_number: 2}),
+        parsed_pick(%{type: :low, round: Decimal.new("1.0"), pick_number: 3})
+      ]
+
+      {:ok, stats} = Sync.sync_from_sheet(picks, @repo)
+      assert stats.upserted == 2
+
+      hm = find_pick(@repo, :high, Decimal.new("1.0"), team_a.id, @minor_season)
+      assert hm != nil
+      assert hm.season == @minor_season
+
+      lm = find_pick(@repo, :low, Decimal.new("1.0"), team_a.id, @minor_season)
+      assert lm != nil
+      assert lm.season == @minor_season
+    end
+
+    test "inserts picks of all three types with correct seasons", %{team_a: team_a} do
       picks = [
         parsed_pick(%{type: :majors, round: Decimal.new("1.0"), pick_number: 1}),
         parsed_pick(%{type: :high, round: Decimal.new("1.0"), pick_number: 2}),
@@ -114,9 +137,9 @@ defmodule TradeMachine.DraftPicks.SyncTest do
       {:ok, stats} = Sync.sync_from_sheet(picks, @repo)
       assert stats.upserted == 3
 
-      assert find_pick(@repo, :majors, Decimal.new("1.0"), team_a.id) != nil
-      assert find_pick(@repo, :high, Decimal.new("1.0"), team_a.id) != nil
-      assert find_pick(@repo, :low, Decimal.new("1.0"), team_a.id) != nil
+      assert find_pick(@repo, :majors, Decimal.new("1.0"), team_a.id, @major_season) != nil
+      assert find_pick(@repo, :high, Decimal.new("1.0"), team_a.id, @minor_season) != nil
+      assert find_pick(@repo, :low, Decimal.new("1.0"), team_a.id, @minor_season) != nil
     end
 
     test "inserts picks for multiple teams", %{team_a: team_a, team_b: team_b} do
@@ -128,8 +151,8 @@ defmodule TradeMachine.DraftPicks.SyncTest do
       {:ok, stats} = Sync.sync_from_sheet(picks, @repo)
       assert stats.upserted == 2
 
-      assert find_pick(@repo, :majors, Decimal.new("1.0"), team_a.id) != nil
-      assert find_pick(@repo, :majors, Decimal.new("1.0"), team_b.id) != nil
+      assert find_pick(@repo, :majors, Decimal.new("1.0"), team_a.id, @major_season) != nil
+      assert find_pick(@repo, :majors, Decimal.new("1.0"), team_b.id, @major_season) != nil
     end
   end
 
@@ -138,13 +161,13 @@ defmodule TradeMachine.DraftPicks.SyncTest do
       team_a: team_a,
       team_b: team_b
     } do
-      # Seed the DB: Alpha holds her own pick
+      # Seed the DB: Alpha holds her own major league pick (season = @major_season)
       %DraftPick{}
       |> Ecto.Changeset.change(%{
         id: Ecto.UUID.generate(),
         type: :majors,
         round: Decimal.new("1.0"),
-        season: 2025,
+        season: @major_season,
         pick_number: 5,
         currentOwnerId: team_a.id,
         originalOwnerId: team_a.id,
@@ -164,7 +187,7 @@ defmodule TradeMachine.DraftPicks.SyncTest do
       {:ok, stats} = Sync.sync_from_sheet(picks, @repo)
       assert stats.upserted == 1
 
-      pick = find_pick(@repo, :majors, Decimal.new("1.0"), team_a.id)
+      pick = find_pick(@repo, :majors, Decimal.new("1.0"), team_a.id, @major_season)
       assert pick.currentOwnerId == team_b.id
       assert pick.originalOwnerId == team_a.id
     end
@@ -175,7 +198,7 @@ defmodule TradeMachine.DraftPicks.SyncTest do
         id: Ecto.UUID.generate(),
         type: :majors,
         round: Decimal.new("2.0"),
-        season: 2025,
+        season: @major_season,
         pick_number: 99,
         currentOwnerId: team_a.id,
         originalOwnerId: team_a.id,
@@ -186,7 +209,7 @@ defmodule TradeMachine.DraftPicks.SyncTest do
       picks = [parsed_pick(%{round: Decimal.new("2.0"), pick_number: 42})]
       {:ok, _stats} = Sync.sync_from_sheet(picks, @repo)
 
-      pick = find_pick(@repo, :majors, Decimal.new("2.0"), team_a.id)
+      pick = find_pick(@repo, :majors, Decimal.new("2.0"), team_a.id, @major_season)
       assert pick.pick_number == 42
     end
 
@@ -198,7 +221,7 @@ defmodule TradeMachine.DraftPicks.SyncTest do
         id: Ecto.UUID.generate(),
         type: :majors,
         round: Decimal.new("1.0"),
-        season: 2025,
+        season: @major_season,
         pick_number: 5,
         currentOwnerId: team_a.id,
         originalOwnerId: team_a.id,
@@ -209,8 +232,30 @@ defmodule TradeMachine.DraftPicks.SyncTest do
       picks = [parsed_pick()]
       {:ok, _stats} = Sync.sync_from_sheet(picks, @repo)
 
-      pick = find_pick(@repo, :majors, Decimal.new("1.0"), team_a.id)
+      pick = find_pick(@repo, :majors, Decimal.new("1.0"), team_a.id, @major_season)
       assert DateTime.compare(pick.last_synced_at, old_time) == :gt
+    end
+
+    test "updates an existing minor league pick using the minor season", %{team_a: team_a} do
+      %DraftPick{}
+      |> Ecto.Changeset.change(%{
+        id: Ecto.UUID.generate(),
+        type: :high,
+        round: Decimal.new("1.0"),
+        season: @minor_season,
+        pick_number: 77,
+        currentOwnerId: team_a.id,
+        originalOwnerId: team_a.id,
+        last_synced_at: ~U[2025-01-01 00:00:00.000000Z]
+      })
+      |> @repo.insert!()
+
+      picks = [parsed_pick(%{type: :high, round: Decimal.new("1.0"), pick_number: 88})]
+      {:ok, stats} = Sync.sync_from_sheet(picks, @repo)
+      assert stats.upserted == 1
+
+      pick = find_pick(@repo, :high, Decimal.new("1.0"), team_a.id, @minor_season)
+      assert pick.pick_number == 88
     end
   end
 
@@ -256,7 +301,7 @@ defmodule TradeMachine.DraftPicks.SyncTest do
   # ---------------------------------------------------------------------------
 
   describe "resolve_season/0" do
-    test "returns the season for today's matching threshold" do
+    test "returns the minor league season for today's matching threshold" do
       Application.put_env(:trade_machine, :draft_picks_season_thresholds, [
         {~D[2027-04-01], 2027},
         {~D[2026-03-25], 2026},

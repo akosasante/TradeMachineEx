@@ -11,10 +11,11 @@ defmodule TradeMachine.DraftPicks.Sync do
   3. On conflict (the pick already exists), updates `currentOwnerId`,
      `pick_number`, and `last_synced_at` to reflect the latest sheet state.
 
-  The season is resolved at call time from the `draft_picks_season_thresholds`
-  compile-time config. If today precedes all configured thresholds the function
-  raises a `RuntimeError` so stale config is immediately visible rather than
-  silently producing wrong data.
+  The minor league season is resolved at call time from the
+  `draft_picks_season_thresholds` config. Major league picks use
+  `minor_season + 1` (their draft is always the following year). If today
+  precedes all configured thresholds the function raises a `RuntimeError` so
+  stale config is immediately visible rather than silently producing wrong data.
 
   There is **no stale-clearing step**: cleared picks on the sheet (OVR ≤ 0)
   are simply absent from the parsed list and stay in the DB with their last
@@ -45,7 +46,7 @@ defmodule TradeMachine.DraftPicks.Sync do
   @spec sync_from_sheet([parsed_pick()], Ecto.Repo.t()) ::
           {:ok, sync_stats()} | {:error, term()}
   def sync_from_sheet(parsed_picks, repo) when is_list(parsed_picks) do
-    season = resolve_season()
+    minor_season = resolve_season()
     owner_map = build_owner_map(repo)
     now = DateTime.utc_now()
 
@@ -53,6 +54,7 @@ defmodule TradeMachine.DraftPicks.Sync do
       Enum.reduce(parsed_picks, {0, 0}, fn pick, {upserted, skipped} ->
         case resolve_owners(pick, owner_map) do
           {:ok, orig_team_id, curr_team_id} ->
+            season = season_for_pick(pick.type, minor_season)
             upsert_pick(pick, season, orig_team_id, curr_team_id, now, repo)
             {upserted + 1, skipped}
 
@@ -72,7 +74,8 @@ defmodule TradeMachine.DraftPicks.Sync do
 
     Logger.info("Draft picks sync completed",
       repo: inspect(repo),
-      season: season,
+      minor_season: minor_season,
+      major_season: minor_season + 1,
       upserted: upserted,
       skipped_no_owner: skipped
     )
@@ -89,10 +92,14 @@ defmodule TradeMachine.DraftPicks.Sync do
   # ---------------------------------------------------------------------------
 
   @doc """
-  Resolves the current draft season from `draft_picks_season_thresholds` config.
+  Resolves the **minor league season** from `draft_picks_season_thresholds` config.
 
   Iterates the thresholds (descending by date) and returns the season for the
   first threshold whose date is on or before today's UTC date.
+
+  Minor league picks (`:high`, `:low`) use this value directly. Major league
+  picks use `minor_season + 1` via `season_for_pick/2` — the MLB draft is
+  always held the following year.
 
   Raises `RuntimeError` if today precedes all configured thresholds — this
   forces a code update rather than silently using stale season data.
@@ -115,6 +122,12 @@ defmodule TradeMachine.DraftPicks.Sync do
               "Update :draft_picks_season_thresholds in config/config.exs."
     end
   end
+
+  # Major league picks belong to the draft happening in the spring of the
+  # following year; minor league picks belong to the draft in the fall of the
+  # current MLB season.
+  defp season_for_pick(:majors, minor_season), do: minor_season + 1
+  defp season_for_pick(_type, minor_season), do: minor_season
 
   # ---------------------------------------------------------------------------
   # Owner resolution
