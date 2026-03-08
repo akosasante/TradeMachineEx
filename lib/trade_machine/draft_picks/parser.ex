@@ -77,41 +77,44 @@ defmodule TradeMachine.DraftPicks.Parser do
     first_cell = padded |> List.first("") |> String.trim()
 
     case acc.state do
-      :scanning ->
-        cond do
-          skip_row?(first_cell) ->
-            acc
-
-          first_cell == "Round" ->
-            acc
-
-          true ->
-            %{acc | state: :saw_owners, current_owners: extract_owners(chunks), pick_row_index: 0}
-        end
-
-      :saw_owners ->
-        cond do
-          first_cell == "Round" ->
-            %{acc | state: :in_picks}
-
-          skip_row?(first_cell) ->
-            acc
-
-          true ->
-            # Groups 2–4 have no "Round" header row; the first row after the
-            # owner header is already a pick row.
-            picks = extract_picks(chunks, acc.current_owners, 0)
-            new_index = 1
-            new_state = if new_index >= @picks_per_group, do: :scanning, else: :in_picks
-            %{acc | state: new_state, picks: acc.picks ++ picks, pick_row_index: new_index}
-        end
-
-      :in_picks ->
-        picks = extract_picks(chunks, acc.current_owners, acc.pick_row_index)
-        new_index = acc.pick_row_index + 1
-        new_state = if new_index >= @picks_per_group, do: :scanning, else: :in_picks
-        %{acc | picks: acc.picks ++ picks, pick_row_index: new_index, state: new_state}
+      :scanning -> handle_scanning(acc, chunks, first_cell)
+      :saw_owners -> handle_saw_owners(acc, chunks, first_cell)
+      :in_picks -> handle_in_picks(acc, chunks)
     end
+  end
+
+  defp handle_scanning(acc, chunks, first_cell) do
+    if skip_row?(first_cell) or first_cell == "Round" do
+      acc
+    else
+      %{acc | state: :saw_owners, current_owners: extract_owners(chunks), pick_row_index: 0}
+    end
+  end
+
+  defp handle_saw_owners(acc, chunks, first_cell) do
+    cond do
+      first_cell == "Round" ->
+        %{acc | state: :in_picks}
+
+      skip_row?(first_cell) ->
+        acc
+
+      true ->
+        # Groups 2–4 have no "Round" header row; the first row after the
+        # owner header is already a pick row.
+        advance_picks(acc, chunks, 0)
+    end
+  end
+
+  defp handle_in_picks(acc, chunks) do
+    advance_picks(acc, chunks, acc.pick_row_index)
+  end
+
+  defp advance_picks(acc, chunks, pick_row_index) do
+    picks = extract_picks(chunks, acc.current_owners, pick_row_index)
+    new_index = pick_row_index + 1
+    new_state = if new_index >= @picks_per_group, do: :scanning, else: :in_picks
+    %{acc | state: new_state, picks: acc.picks ++ picks, pick_row_index: new_index}
   end
 
   # ---------------------------------------------------------------------------
