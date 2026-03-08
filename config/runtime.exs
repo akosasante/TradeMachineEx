@@ -57,13 +57,20 @@ config :trade_machine, TradeMachineWeb.Endpoint,
       do: System.fetch_env!("SECRET_KEY_BASE"),
       else: "eSr80uBsxpy9nSvPKgFaLtPz+SMFDXa54wB4+IKMEcGUtFmVeaHpFYkpHXhX5GlN"
     ),
-  server: true
+  server: config_env() != :test
 
 # Minor league sheet configuration (public CSV export via Req)
 if config_env() != :test do
   config :trade_machine,
     minor_league_sheet_id: System.fetch_env!("MINOR_LEAGUE_SHEET_ID"),
     minor_league_sheet_gid: System.get_env("MINOR_LEAGUE_SHEET_GID") || "806978055"
+end
+
+# Draft picks sheet configuration (public CSV export via Req)
+if config_env() != :test do
+  config :trade_machine,
+    draft_picks_sheet_id: System.fetch_env!("DRAFT_PICKS_SHEET_ID"),
+    draft_picks_sheet_gid: System.get_env("DRAFT_PICKS_SHEET_GID") || "142978697"
 end
 
 # Logger configuration for structured logging in containers
@@ -125,7 +132,8 @@ if config_env() != :test do
          crontab: [
            {"0 2 * * *", TradeMachine.Jobs.MinorsSync},
            {"22 7 * * *", TradeMachine.Jobs.EspnTeamSync},
-           {"32 7 * * *", TradeMachine.Jobs.EspnMlbPlayersSync}
+           {"32 7 * * *", TradeMachine.Jobs.EspnMlbPlayersSync},
+           {"0 3 * * *", TradeMachine.Jobs.DraftPicksSync}
          ]}
       ]
     else

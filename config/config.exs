@@ -15,6 +15,21 @@ config :trade_machine,
   ## no migration management. Prisma (TypeScript) handles all schema changes
   ecto_repos: [TradeMachine.Repo.Production, TradeMachine.Repo.Staging]
 
+# Draft picks season thresholds — these represent the MINOR LEAGUE season.
+# Major league picks use (minor_season + 1) because the MLB draft is held in
+# the spring of the following year.
+#
+# Sorted descending: the first entry whose date is <= today's UTC date is used.
+# If today precedes all thresholds, the job raises a RuntimeError.
+# Update this list each year once the minor league draft concludes (typically
+# late fall) and the commissioner resets the pick sheet for the new cycle.
+config :trade_machine,
+  draft_picks_season_thresholds: [
+    {~D[2027-03-01], 2027},
+    {~D[2026-03-01], 2026},
+    {~D[2025-03-01], 2025}
+  ]
+
 # Configures the endpoint
 config :trade_machine,
        TradeMachineWeb.Endpoint,
@@ -76,7 +91,8 @@ config :trade_machine, Oban,
      crontab: [
        {"*/5 * * * *", TradeMachine.Jobs.MinorsSync},
        {"22 7 * * *", TradeMachine.Jobs.EspnTeamSync},
-       {"32 7 * * *", TradeMachine.Jobs.EspnMlbPlayersSync}
+       {"32 7 * * *", TradeMachine.Jobs.EspnMlbPlayersSync},
+       {"0 3 * * *", TradeMachine.Jobs.DraftPicksSync}
      ]}
   ],
   queues: [minors_sync: 1, draft_sync: 1, emails: 2, espn_sync: 1, discord: 1]

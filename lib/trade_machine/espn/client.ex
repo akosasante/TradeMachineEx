@@ -304,7 +304,7 @@ defmodule TradeMachine.ESPN.Client do
          sleep_ms,
          server_total,
          retry_count,
-         base_backoff_ms \\ @base_backoff_ms
+         base_backoff_ms
        ) do
     filter = %{
       players: %{
@@ -392,7 +392,7 @@ defmodule TradeMachine.ESPN.Client do
     end
   end
 
-  defp rate_limit_backoff(retry_count, base_backoff_ms \\ @base_backoff_ms) do
+  defp rate_limit_backoff(retry_count, base_backoff_ms) do
     trunc(:math.pow(3, retry_count) * base_backoff_ms)
   end
 
