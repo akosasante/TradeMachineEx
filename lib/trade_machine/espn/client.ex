@@ -392,6 +392,7 @@ defmodule TradeMachine.ESPN.Client do
     end
   end
 
+  # base_backoff_ms defaults to @base_backoff_ms at all call sites
   defp rate_limit_backoff(retry_count, base_backoff_ms) do
     trunc(:math.pow(3, retry_count) * base_backoff_ms)
   end

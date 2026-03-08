@@ -79,11 +79,19 @@ defmodule TradeMachine.Mailer do
         |> then(&Swoosh.Email.html_body(email, &1))
       end
 
-      defp do_deliver(email = %Swoosh.Email{}),
-        do: email |> process_html |> TradeMachine.Mailer.deliver()
+      defp do_deliver(email = %Swoosh.Email{}, frontend_environment) do
+        email
+        |> Swoosh.Email.put_provider_option(:tags, [frontend_environment])
+        |> process_html()
+        |> TradeMachine.Mailer.deliver()
+      end
 
-      defp do_deliver!(email = %Swoosh.Email{}),
-        do: email |> process_html |> TradeMachine.Mailer.deliver!()
+      defp do_deliver!(email = %Swoosh.Email{}, frontend_environment) do
+        email
+        |> Swoosh.Email.put_provider_option(:tags, [frontend_environment])
+        |> process_html()
+        |> TradeMachine.Mailer.deliver!()
+      end
 
       defp from_email do
         Application.get_env(:trade_machine, unquote(__MODULE__))[:from_email]

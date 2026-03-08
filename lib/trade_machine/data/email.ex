@@ -6,15 +6,16 @@ defmodule TradeMachine.Data.Email do
   @primary_key {:message_id, :string, autogenerate: false}
 
   typed_schema "email" do
-    field :status, :string, null: false
+    field(:status, :string, null: false)
 
-    belongs_to :trade, Trade
+    belongs_to(:trade, Trade)
 
     timestamps()
   end
 
   def changeset(struct \\ %__MODULE__{}, params \\ %{}) do
     struct
-    |> cast(params, [])
+    |> cast(params, [:status])
+    |> validate_required([:status])
   end
 end

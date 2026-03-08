@@ -6,13 +6,13 @@ defmodule TradeMachine.Mailer.RegistrationEmail do
   @spec send(User.t(), String.t()) :: {:ok, any()} | {:error, any()}
   def send(user = %User{}, frontend_environment) do
     generate_email(user, frontend_environment)
-    |> do_deliver()
+    |> do_deliver(frontend_environment)
   end
 
   @spec send!(User.t(), String.t()) :: Swoosh.Email.t()
   def send!(user = %User{}, frontend_environment) do
     generate_email(user, frontend_environment)
-    |> do_deliver!()
+    |> do_deliver!(frontend_environment)
   end
 
   @spec generate_email(User.t(), String.t()) :: Swoosh.Email.t()
