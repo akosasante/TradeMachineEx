@@ -1,0 +1,7 @@
+{
+  "skip_files": [
+    "test/",
+    "lib/trade_machine_web/telemetry.ex",
+    "lib/trade_machine_web/gettext.ex"
+  ]
+}
