@@ -57,7 +57,7 @@ config :trade_machine, TradeMachineWeb.Endpoint,
       do: System.fetch_env!("SECRET_KEY_BASE"),
       else: "eSr80uBsxpy9nSvPKgFaLtPz+SMFDXa54wB4+IKMEcGUtFmVeaHpFYkpHXhX5GlN"
     ),
-  server: true
+  server: config_env() != :test
 
 # Minor league sheet configuration (public CSV export via Req)
 if config_env() != :test do
