@@ -69,3 +69,6 @@ TradeMachineServer*.erlang.cookie
 # for now let's not commit cursor hooks and stuff
 .cursor/
 .claude
+
+# Ignore iex history for local dev
+.erlang_history/ 

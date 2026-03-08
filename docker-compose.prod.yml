@@ -79,6 +79,7 @@ services:
       - OTEL_TRACES_SAMPLER=${OTEL_TRACES_SAMPLER:-}
       - OTEL_TRACES_SAMPLER_ARG=${OTEL_TRACES_SAMPLER_ARG:-}
 
+    restart: unless-stopped
     stop_grace_period: 30s
 
 
