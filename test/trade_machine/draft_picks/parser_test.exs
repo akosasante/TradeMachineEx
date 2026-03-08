@@ -455,5 +455,49 @@ defmodule TradeMachine.DraftPicks.ParserTest do
     test "ignores Draft Picks header rows" do
       assert Parser.parse([@draft_picks_header]) == []
     end
+
+    test "skip rows between owner header and first pick row are ignored in saw_owners state" do
+      # Groups 2–4 in the sheet have no "Round" header before picks. When the
+      # parser is in :saw_owners state (just saw the owner header) and encounters
+      # a skip row (blank, GREY, etc.) before the first pick, it should ignore the
+      # skip row and stay in :saw_owners, then process the picks when they appear.
+      owner_row = build_owner_header_row(["Alice", "Bob", "Carol", "Dave", "Eve"])
+      grey_row = ["GREY | separator"] ++ List.duplicate("", 34)
+
+      first_pick_row =
+        build_pick_row([
+          {"1", "Alice", 10, "Alice"},
+          {"1", "Bob", 11, "Bob"},
+          {"1", "Carol", 12, "Carol"},
+          {"1", "Dave", 13, "Dave"},
+          {"1", "Eve", 14, "Eve"}
+        ])
+
+      remaining_rows =
+        for i <- 2..15 do
+          label =
+            cond do
+              i <= 10 -> "#{i}"
+              i == 11 -> "HM1"
+              true -> "LM#{i - 10}"
+            end
+
+          build_pick_row([
+            {label, "Alice", i * 10, "Alice"},
+            {label, "Bob", i * 10 + 1, "Bob"},
+            {label, "Carol", i * 10 + 2, "Carol"},
+            {label, "Dave", i * 10 + 3, "Dave"},
+            {label, "Eve", i * 10 + 4, "Eve"}
+          ])
+        end
+
+      # Group 2 pattern: no "Round" header, but with a grey separator before picks
+      rows = [owner_row, grey_row, first_pick_row] ++ remaining_rows
+      picks = Parser.parse(rows)
+
+      # All 75 picks should still be parsed correctly despite the interleaved grey row
+      assert length(picks) == 75
+      assert Enum.all?(picks, &(&1.type in [:majors, :high, :low]))
+    end
   end
 end

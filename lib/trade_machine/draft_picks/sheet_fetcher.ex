@@ -28,7 +28,13 @@ defmodule TradeMachine.DraftPicks.SheetFetcher do
 
     Logger.info("Fetching draft picks sheet", sheet_id: sheet_id, gid: gid)
 
-    case Req.get(url, redirect_log_level: false) do
+    req =
+      Req.new(url: url, redirect_log_level: false)
+      |> Req.merge(
+        Application.get_env(:trade_machine, :draft_picks_sheet_fetcher_req_options, [])
+      )
+
+    case Req.get(req) do
       {:ok, %{status: 200, body: rows}} when is_list(rows) ->
         Logger.info("Fetched draft picks sheet", row_count: length(rows))
         {:ok, rows}
