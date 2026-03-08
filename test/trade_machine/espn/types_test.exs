@@ -216,7 +216,7 @@ defmodule TradeMachine.ESPN.TypesTest do
   describe "PlayerInfo.from_api/1" do
     test "parses all player info fields" do
       data = %{
-        "id" => 12345,
+        "id" => 12_345,
         "firstName" => "Mike",
         "lastName" => "Trout",
         "fullName" => "Mike Trout",
@@ -232,7 +232,7 @@ defmodule TradeMachine.ESPN.TypesTest do
 
       result = PlayerInfo.from_api(data)
 
-      assert result.id == 12345
+      assert result.id == 12_345
       assert result.full_name == "Mike Trout"
       assert result.pro_team_id == 3
       assert result.eligible_slots == [5, 12, 16]
@@ -257,7 +257,7 @@ defmodule TradeMachine.ESPN.TypesTest do
         "onTeamId" => 5,
         "status" => "ONTEAM",
         "player" => %{
-          "id" => 12345,
+          "id" => 12_345,
           "fullName" => "Mike Trout"
         }
       }
@@ -267,7 +267,7 @@ defmodule TradeMachine.ESPN.TypesTest do
       assert result.id == 100
       assert result.on_team_id == 5
       assert result.status == "ONTEAM"
-      assert result.player.id == 12345
+      assert result.player.id == 12_345
       assert result.player.full_name == "Mike Trout"
     end
 
@@ -284,19 +284,19 @@ defmodule TradeMachine.ESPN.TypesTest do
     test "parses roster entry with nested pool entry" do
       data = %{
         "lineupSlotId" => 0,
-        "playerId" => 12345,
+        "playerId" => 12_345,
         "playerPoolEntry" => %{
-          "id" => 12345,
+          "id" => 12_345,
           "onTeamId" => 1,
           "status" => "ONTEAM",
-          "player" => %{"id" => 12345, "fullName" => "Test Player"}
+          "player" => %{"id" => 12_345, "fullName" => "Test Player"}
         }
       }
 
       result = RosterEntry.from_api(data)
 
       assert result.lineup_slot_id == 0
-      assert result.player_id == 12345
+      assert result.player_id == 12_345
       assert result.player_pool_entry.on_team_id == 1
     end
 
