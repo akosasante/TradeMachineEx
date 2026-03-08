@@ -15,7 +15,7 @@ defmodule TradeMachine.Data.HydratedMinor do
 
     field(:minor_team, :string)
     field(:owner_team, :map)
-    field(:minor_league_level, Ecto.Enum, values: [high: "High", low: "Low"])
+    field(:minor_league_level, :string)
     field(:position, :string)
   end
 
