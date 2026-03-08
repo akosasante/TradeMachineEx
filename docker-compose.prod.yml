@@ -41,6 +41,10 @@ services:
       - MINOR_LEAGUE_SHEET_ID=${MINOR_LEAGUE_SHEET_ID}
       - MINOR_LEAGUE_SHEET_GID=${MINOR_LEAGUE_SHEET_GID:-}
 
+      # Draft picks sheet (public CSV export)
+      - DRAFT_PICKS_SHEET_ID=${DRAFT_PICKS_SHEET_ID}
+      - DRAFT_PICKS_SHEET_GID=${DRAFT_PICKS_SHEET_GID:-}
+
       # Job processing configuration
       - ENABLE_CRON=${ENABLE_CRON:-false}
       - OBAN_MINORS_SYNC_CONCURRENCY=${OBAN_MINORS_SYNC_CONCURRENCY:-1}
