@@ -85,6 +85,13 @@ defmodule TradeMachine.Mailer do
       defp do_deliver!(email = %Swoosh.Email{}),
         do: email |> process_html |> TradeMachine.Mailer.deliver!()
 
+      defp do_deliver_with_env(email = %Swoosh.Email{}, frontend_environment) do
+        email
+        |> Swoosh.Email.put_provider_option(:tags, [frontend_environment])
+        |> process_html()
+        |> TradeMachine.Mailer.deliver()
+      end
+
       defp from_email do
         Application.get_env(:trade_machine, unquote(__MODULE__))[:from_email]
       end

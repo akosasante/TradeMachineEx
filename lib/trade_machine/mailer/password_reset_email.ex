@@ -6,7 +6,7 @@ defmodule TradeMachine.Mailer.PasswordResetEmail do
   @spec send(User.t(), String.t()) :: {:ok, any()} | {:error, any()}
   def send(user = %User{}, frontend_environment) do
     generate_email(user, frontend_environment)
-    |> do_deliver()
+    |> do_deliver_with_env(frontend_environment)
   end
 
   @spec send!(User.t(), String.t()) :: Swoosh.Email.t()
