@@ -66,6 +66,13 @@ if config_env() != :test do
     minor_league_sheet_gid: System.get_env("MINOR_LEAGUE_SHEET_GID") || "806978055"
 end
 
+# Draft picks sheet configuration (public CSV export via Req)
+if config_env() != :test do
+  config :trade_machine,
+    draft_picks_sheet_id: System.fetch_env!("DRAFT_PICKS_SHEET_ID"),
+    draft_picks_sheet_gid: System.get_env("DRAFT_PICKS_SHEET_GID") || "142978697"
+end
+
 # Logger configuration for structured logging in containers
 if config_env() == :prod do
   # Configure structured JSON logging for better parsing by Loki

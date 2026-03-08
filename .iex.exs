@@ -700,6 +700,444 @@ end
 
 IO.puts("✅ MinorLeagueSync helpers loaded. Type MinorLeagueSync. to see available functions.\n")
 
+defmodule DraftPicksSync do
+  @moduledoc """
+  IEx helpers for prototyping and testing the draft picks sheet sync.
+
+  The parsing logic here is a prototype — it will live in
+  `TradeMachine.DraftPicks.{Parser,Sync}` once the job is built. Use this
+  module to validate the CSV structure and owner resolution before
+  implementing the real modules.
+
+  ## Quick start
+
+      # Fetch raw CSV rows and inspect the structure
+      {:ok, rows} = DraftPicksSync.fetch()
+      DraftPicksSync.inspect_rows(rows, 0, 25)  # rows 0-24 (group 1)
+      DraftPicksSync.inspect_rows(rows, 25, 20) # rows 25-44 (group 2)
+
+      # Parse into pick maps and validate expected counts
+      picks = DraftPicksSync.parse()
+      DraftPicksSync.validate(picks)
+
+      # Preview all picks for a specific owner
+      DraftPicksSync.preview_owner(picks, "Flex")
+
+      # Verify CSV names resolve to team IDs in the DB
+      DraftPicksSync.check_owners()
+
+      # Check what the current season would be calculated as
+      DraftPicksSync.currt_season()
+
+      # Check the current DB state of draft_pick table
+      DraftPicksSync.db_state()
+
+      # Sync history (once the job module exists)
+      DraftPicksSync.sync_history()
+  """
+
+  @sheet_id "1jxtRmrwK6dbMQTS-PDn8l6hDHG0AlPYVtcVyxngG34U"
+  @gid "142978697"
+  @columns_per_owner 7
+  @owners_per_group 5
+  @total_columns @columns_per_owner * @owners_per_group
+  # 30 columns total
+  @picks_per_group 17
+  # 10 ML + 2 HM + 5 LM
+
+  @doc "Fetch raw CSV rows from the draft picks sheet tab."
+  def fetch(sheet_id \\ @sheet_id, gid \\ @gid) do
+    url = "https://docs.google.com/spreadsheets/d/#{sheet_id}/export?format=csv&gid=#{gid}"
+
+    case Req.get(url, redirect_log_level: false) do
+      {:ok, %{status: 200, body: rows}} when is_list(rows) ->
+        IO.puts("Fetched #{length(rows)} rows.")
+        {:ok, rows}
+
+      {:ok, %{status: 200, body: body}} when is_binary(body) ->
+        IO.puts("Warning: CSV auto-decode did not trigger; got binary body.")
+        IO.puts(String.slice(body, 0, 300))
+        {:error, :unexpected_binary_body}
+
+      {:ok, %{status: status}} ->
+        IO.puts("HTTP #{status}")
+        {:error, {:http_status, status}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Inspect raw CSV rows within a range to understand the sheet structure.
+
+  Shows the first 3 values of each owner chunk (Round, OrigOwner, OVR)
+  separated by │. Useful for verifying group boundaries and cleared picks.
+  """
+  def inspect_rows(rows \\ nil, from \\ 0, count \\ 20) do
+    rows = rows || elem(fetch(), 1)
+
+    rows
+    |> Enum.slice(from, count)
+    |> Enum.with_index(from)
+    |> Enum.each(fn {row, i} ->
+      padded = pad_row(row, @total_columns)
+      chunks = Enum.chunk_every(padded, @columns_per_owner)
+
+      formatted =
+        Enum.map_join(chunks, "  │  ", fn chunk ->
+          "[#{chunk |> Enum.take(3) |> Enum.join(", ")}]"
+        end)
+
+      IO.puts("  Row #{String.pad_leading(to_string(i), 3)}: #{formatted}")
+    end)
+
+    :ok
+  end
+
+  @doc "Fetch and parse all picks into structured maps."
+  def parse do
+    {:ok, rows} = fetch()
+    do_parse(rows)
+  end
+
+  def parse(rows), do: do_parse(rows)
+
+  @doc """
+  Validate parsed picks against expected totals.
+
+  Expected: 200 :majors + 40 :high + 100 :low = 340 total
+  """
+  def validate(picks \\ nil) do
+    picks = picks || parse()
+
+    by_type = Enum.group_by(picks, & &1.type)
+    majors = Map.get(by_type, :majors, [])
+    high = Map.get(by_type, :high, [])
+    low = Map.get(by_type, :low, [])
+
+    majors_ok = length(majors) == 200
+    high_ok = length(high) == 40
+    low_ok = length(low) == 100
+    total_ok = length(picks) == 340
+
+    IO.puts("""
+    ── Draft Picks Parse Validation ──
+
+    Counts by type:
+      :majors  #{length(majors)} (expected 200)  #{if majors_ok, do: "✓", else: "✗ MISMATCH"}
+      :high    #{length(high)} (expected 40)   #{if high_ok, do: "✓", else: "✗ MISMATCH"}
+      :low     #{length(low)} (expected 100)  #{if low_ok, do: "✓", else: "✗ MISMATCH"}
+      TOTAL    #{length(picks)} (expected 340) #{if total_ok, do: "✓", else: "✗ MISMATCH"}
+
+    Distinct current owners: #{picks |> Enum.map(& &1.current_owner_csv) |> Enum.uniq() |> length()}
+    Distinct original owners: #{picks |> Enum.map(& &1.original_owner_csv) |> Enum.uniq() |> length()}
+    """)
+
+    unless total_ok do
+      IO.puts("Per-owner breakdown (current owner):")
+
+      picks
+      |> Enum.group_by(& &1.current_owner_csv)
+      |> Enum.sort_by(fn {owner, _} -> owner end)
+      |> Enum.each(fn {owner, owner_picks} ->
+        by_t = Enum.group_by(owner_picks, & &1.type)
+        ml = length(Map.get(by_t, :majors, []))
+        hm = length(Map.get(by_t, :high, []))
+        lm = length(Map.get(by_t, :low, []))
+        total = ml + hm + lm
+        flag = if total == 17, do: "✓", else: "✗ (expected 17)"
+
+        IO.puts(
+          "  #{String.pad_trailing(owner, 15)} ML=#{ml} HM=#{hm} LM=#{lm}  total=#{total}  #{flag}"
+        )
+      end)
+    end
+
+    picks
+  end
+
+  @doc "Preview all picks for a specific owner CSV name."
+  def preview_owner(picks \\ nil, owner_name) do
+    picks = picks || parse()
+    owner_picks = Enum.filter(picks, &(&1.current_owner_csv == owner_name))
+    by_type = Enum.group_by(owner_picks, & &1.type)
+
+    IO.puts("Picks currently owned by \"#{owner_name}\" (#{length(owner_picks)} total):\n")
+
+    [:majors, :high, :low]
+    |> Enum.each(fn type ->
+      type_picks = Map.get(by_type, type, [])
+
+      if type_picks != [] do
+        IO.puts("  #{type} (#{length(type_picks)}):")
+
+        Enum.each(type_picks, fn p ->
+          traded =
+            if p.current_owner_csv != p.original_owner_csv,
+              do: "  ← traded from #{p.original_owner_csv}",
+              else: ""
+
+          IO.puts(
+            "    round=#{p.round}  ovr=#{p.pick_number}  orig=#{p.original_owner_csv}#{traded}"
+          )
+        end)
+      end
+    end)
+
+    owner_picks
+  end
+
+  @doc """
+  Check that all CSV owner names in the sheet resolve to team IDs in the DB.
+
+  Checks both current_owner_csv and original_owner_csv fields.
+  """
+  def check_owners(env \\ :prod) do
+    repo = repo_for(env)
+    picks = parse()
+
+    owner_map =
+      TradeMachine.Data.User
+      |> where([u], not is_nil(u.csv_name) and not is_nil(u.teamId))
+      |> select([u], {u.csv_name, u.teamId})
+      |> repo.all()
+      |> Map.new()
+
+    all_csv_names =
+      (Enum.map(picks, & &1.current_owner_csv) ++ Enum.map(picks, & &1.original_owner_csv))
+      |> Enum.uniq()
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.sort()
+
+    IO.puts("Owner CSV name → team ID resolution (#{inspect(repo)}):\n")
+
+    Enum.each(all_csv_names, fn name ->
+      case Map.get(owner_map, name) do
+        nil -> IO.puts("  ✗  #{name}")
+        team_id -> IO.puts("  ✓  #{String.pad_trailing(name, 15)} → #{team_id}")
+      end
+    end)
+
+    unmatched = Enum.reject(all_csv_names, &Map.has_key?(owner_map, &1))
+
+    if unmatched != [] do
+      IO.puts("\n⚠ #{length(unmatched)} name(s) NOT resolved: #{inspect(unmatched)}")
+    else
+      IO.puts("\n✓ All #{length(all_csv_names)} names resolved successfully.")
+    end
+
+    owner_map
+  end
+
+  @doc "Show current DB state of the draft_pick table."
+  def db_state(env \\ :prod) do
+    repo = repo_for(env)
+
+    counts =
+      TradeMachine.Data.DraftPick
+      |> group_by([d], d.type)
+      |> select([d], {d.type, count(d.id)})
+      |> repo.all()
+      |> Map.new()
+
+    total = Enum.sum(Map.values(counts))
+
+    IO.puts("""
+    Draft Pick DB State (#{inspect(repo)}):
+      :majors  #{Map.get(counts, :majors, 0)} (expected 200)
+      :high    #{Map.get(counts, :high, 0)} (expected 40)
+      :low     #{Map.get(counts, :low, 0)} (expected 100)
+      TOTAL    #{total} (expected 340)
+    """)
+
+    counts
+  end
+
+  @doc """
+  Show what the current draft season would be calculated as.
+
+  Season = current year if today >= March 25, else prior year.
+  Can be overridden with DRAFT_PICKS_SEASON env var.
+  """
+  def current_season do
+    override = System.get_env("DRAFT_PICKS_SEASON")
+
+    season =
+      if override do
+        String.to_integer(override)
+      else
+        today = Date.utc_today()
+
+        if today.month > 3 or (today.month == 3 and today.day >= 25),
+          do: today.year,
+          else: today.year - 1
+      end
+
+    source = if override, do: "DRAFT_PICKS_SEASON override", else: "calculated"
+    IO.puts("Current draft season: #{season}  (#{source}, today=#{Date.utc_today()})")
+    season
+  end
+
+  @doc "Show recent sync history for draft_picks_sync."
+  def sync_history(limit \\ 10) do
+    repo = TradeMachine.Repo.Production
+
+    history =
+      TradeMachine.Data.SyncJobExecution
+      |> where([s], s.job_type == :draft_picks_sync)
+      |> order_by([s], desc: s.started_at)
+      |> limit(^limit)
+      |> repo.all()
+
+    IO.puts("Last #{min(length(history), limit)} draft_picks_sync executions:\n")
+
+    Enum.each(history, fn s ->
+      duration =
+        if s.completed_at && s.started_at,
+          do: DateTime.diff(s.completed_at, s.started_at, :second),
+          else: "-"
+
+      IO.puts(
+        "  #{s.status} | #{Calendar.strftime(s.started_at, "%Y-%m-%d %H:%M:%S")} | " <>
+          "duration=#{duration}s | processed=#{s.records_processed || "-"} " <>
+          "updated=#{s.records_updated || "-"} skipped=#{s.records_skipped || "-"}"
+      )
+    end)
+
+    history
+  end
+
+  # ---------------------------------------------------------------------------
+  # Prototype parsing logic (will live in TradeMachine.DraftPicks.Parser)
+  # ---------------------------------------------------------------------------
+  #
+  # State machine:
+  #   :scanning    → looking for a group owner header row
+  #   :saw_owners  → captured owner names, waiting for the "Round" column header
+  #   :in_picks    → reading pick rows (0..16), then back to :scanning
+  #
+  # Why a state machine?  Cleared picks have the team name in the Round column
+  # (e.g. "Flex | 0 | Newton | -8 | ..."), which looks like an owner header
+  # row if we try to classify rows without context. By tracking state, we know
+  # that once we're in :in_picks any non-numeric Round column is just a
+  # cleared pick (skipped via the Decimal.parse guard).
+
+  defp do_parse(rows) do
+    rows
+    |> Enum.reduce(
+      %{state: :scanning, current_owners: [], pick_row_index: 0, picks: []},
+      fn row, acc ->
+        padded = pad_row(row, @total_columns)
+        chunks = Enum.chunk_every(padded, @columns_per_owner)
+        first_cell = padded |> List.first("") |> String.trim()
+
+        case acc.state do
+          :scanning ->
+            cond do
+              skip_row?(first_cell) ->
+                acc
+
+              first_cell == "Round" ->
+                acc
+
+              true ->
+                %{
+                  acc
+                  | state: :saw_owners,
+                    current_owners: extract_owners(chunks),
+                    pick_row_index: 0
+                }
+            end
+
+          :saw_owners ->
+            cond do
+              first_cell == "Round" ->
+                %{acc | state: :in_picks}
+
+              skip_row?(first_cell) ->
+                acc
+
+              true ->
+                # Groups 2-4: pick rows appear directly without a "Round" header row
+                picks = extract_picks(chunks, acc.current_owners, 0)
+                new_index = 1
+                new_state = if new_index >= @picks_per_group, do: :scanning, else: :in_picks
+                %{acc | state: new_state, picks: acc.picks ++ picks, pick_row_index: new_index}
+            end
+
+          :in_picks ->
+            picks = extract_picks(chunks, acc.current_owners, acc.pick_row_index)
+            new_index = acc.pick_row_index + 1
+            new_state = if new_index >= @picks_per_group, do: :scanning, else: :in_picks
+            %{acc | picks: acc.picks ++ picks, pick_row_index: new_index, state: new_state}
+        end
+      end
+    )
+    |> Map.get(:picks)
+  end
+
+  defp skip_row?(cell) do
+    cell == "" or
+      cell == "Draft Picks" or
+      String.starts_with?(cell, "GREY") or
+      String.starts_with?(cell, "BLUE") or
+      String.starts_with?(cell, "RED")
+  end
+
+  defp extract_owners(chunks) do
+    chunks
+    |> Enum.take(@owners_per_group)
+    |> Enum.map(fn chunk -> chunk |> List.first("") |> String.trim() end)
+  end
+
+  defp extract_picks(chunks, current_owners, pick_row_index) do
+    type = pick_type(pick_row_index)
+
+    chunks
+    |> Enum.take(@owners_per_group)
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {chunk, owner_idx} ->
+      current_owner = Enum.at(current_owners, owner_idx, "")
+      round_str = chunk |> Enum.at(0, "") |> String.trim()
+      orig_owner = chunk |> Enum.at(1, "") |> String.trim()
+      ovr_str = chunk |> Enum.at(3, "") |> String.trim()
+
+      with {round, _} <- Decimal.parse(round_str),
+           :gt <- Decimal.compare(round, Decimal.new(0)),
+           {ovr, _} <- Integer.parse(ovr_str),
+           true <- ovr > 0,
+           false <- orig_owner == "" do
+        [
+          %{
+            type: type,
+            round: round,
+            original_owner_csv: orig_owner,
+            current_owner_csv: current_owner,
+            pick_number: ovr
+          }
+        ]
+      else
+        _ -> []
+      end
+    end)
+  end
+
+  # row index within the group (0-indexed)
+  defp pick_type(i) when i in 0..9, do: :majors
+  defp pick_type(i) when i in 10..11, do: :high
+  defp pick_type(i) when i in 12..16, do: :low
+  defp pick_type(_), do: :unknown
+
+  defp pad_row(row, expected) when length(row) >= expected, do: row
+  defp pad_row(row, expected), do: row ++ List.duplicate("", expected - length(row))
+
+  defp repo_for(:staging), do: TradeMachine.Repo.Staging
+  defp repo_for(_), do: TradeMachine.Repo.Production
+end
+
+IO.puts("✅ DraftPicksSync helpers loaded. Type DraftPicksSync. to see available functions.\n")
+
 # defmodule StartupModule do
 #  require Kernel.SpecialForms
 #
