@@ -500,6 +500,12 @@ defmodule TradeMachine.MinorLeagues.ParserTest do
       assert result == []
     end
 
+    test "accepts binary CSV string input" do
+      csv = ""
+      result = Parser.parse(csv)
+      assert result == []
+    end
+
     test "handles rows shorter than expected by padding" do
       short_header = Enum.take(@header_row, 18)
       short_player = Enum.take(@player_row_hm, 18)

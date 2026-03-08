@@ -6,26 +6,13 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
 
   alias TradeMachine.Data.User
   alias TradeMachine.Jobs.EmailWorker
-  alias TradeMachine.Tracing.TraceContext
+  alias TradeMachine.Mailer
 
   setup do
-    # Enable Ecto.Adapters.SQL.Sandbox for database isolation - checkout both repos
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Production)
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Staging)
-
-    # Set search_path to test schema for sandbox connections
     TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Production)
     TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Staging)
-
-    # IMPORTANT: For async tests, we need to allow both repos to share the same sandbox
-    # This allows Staging repo to see data inserted by Production repo
-    Ecto.Adapters.SQL.Sandbox.mode(TradeMachine.Repo.Production, {:shared, self()})
-    Ecto.Adapters.SQL.Sandbox.mode(TradeMachine.Repo.Staging, {:shared, self()})
-
-    # Allow cross-repo visibility by sharing the sandbox between repos
-    Ecto.Adapters.SQL.Sandbox.allow(TradeMachine.Repo.Production, self(), self())
-    Ecto.Adapters.SQL.Sandbox.allow(TradeMachine.Repo.Staging, self(), self())
-
     :ok
   end
 
@@ -117,6 +104,51 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       refute_email_sent()
     end
 
+    test "handles user not found error for registration email" do
+      non_existent_user_id = Ecto.UUID.generate()
+
+      job_args = %{
+        email_type: "registration",
+        data: non_existent_user_id,
+        env: "production"
+      }
+
+      assert {:error, :user_not_found} = perform_job(EmailWorker, job_args)
+      refute_email_sent()
+    end
+
+    test "handles user not found error for test email" do
+      non_existent_user_id = Ecto.UUID.generate()
+
+      job_args = %{
+        email_type: "test",
+        data: non_existent_user_id,
+        env: "production"
+      }
+
+      assert {:error, :user_not_found} = perform_job(EmailWorker, job_args)
+      refute_email_sent()
+    end
+
+    test "uses staging repo when env is not production" do
+      user = insert_user()
+
+      job_args = %{
+        email_type: "reset_password",
+        data: user.id,
+        env: "staging"
+      }
+
+      # Staging repo is checked out in setup; user was inserted in production repo so
+      # the staging repo won't find them, returning user_not_found
+      assert {:error, :user_not_found} = perform_job(EmailWorker, job_args)
+    end
+
+    test "returns error for invalid job args missing required fields" do
+      job_args = %{bad_field: "value"}
+      assert {:error, :invalid_args} = perform_job(EmailWorker, job_args)
+    end
+
     test "logs error for unknown email type" do
       user = insert_user()
 
@@ -133,6 +165,13 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
         end)
 
       assert log_output =~ "Unknown email type: invalid_type"
+    end
+  end
+
+  describe "Mailer default repo" do
+    test "send_password_reset_email/2 uses default repo when no repo arg given" do
+      result = Mailer.send_password_reset_email(Ecto.UUID.generate(), "production")
+      assert result == {:error, :user_not_found}
     end
   end
 
@@ -312,9 +351,10 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
         }
       }
 
-      # Capture logs to verify trace context logging
+      # Capture logs at :info level — test env is configured at :warn so we must
+      # override the level here to catch Logger.info calls inside TraceContext
       log_output =
-        ExUnit.CaptureLog.capture_log(fn ->
+        ExUnit.CaptureLog.capture_log([level: :info], fn ->
           perform_job(EmailWorker, job_args)
         end)
 

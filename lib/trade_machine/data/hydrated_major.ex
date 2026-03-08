@@ -4,7 +4,7 @@ defmodule TradeMachine.Data.HydratedMajor do
   alias TradeMachine.Data.Types.EligiblePositions
 
   typed_schema "hydrated_majors" do
-    field :name, :string, null: false
+    field(:name, :string, null: false)
 
     field(
       :league,
@@ -15,11 +15,10 @@ defmodule TradeMachine.Data.HydratedMajor do
       null: false
     )
 
-    # TODO: check inclusion at changeset cast
-    field :mlb_team, :string
-    field :owner_team, :map
-    field :eligible_positions, EligiblePositions.type()
-    field :main_position, :string
+    field(:mlb_team, :string)
+    field(:owner_team, :map)
+    field(:eligible_positions, EligiblePositions.type())
+    field(:main_position, :string)
   end
 
   def changeset(struct \\ %__MODULE__{}, params \\ %{}) do

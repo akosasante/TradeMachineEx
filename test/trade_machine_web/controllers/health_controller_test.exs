@@ -1,5 +1,5 @@
 defmodule TradeMachineWeb.HealthControllerTest do
-  use TradeMachineWeb.ConnCase, async: true
+  use TradeMachineWeb.ConnCase, async: false
 
   describe "GET /health" do
     test "returns 200 when database is reachable", %{conn: conn} do

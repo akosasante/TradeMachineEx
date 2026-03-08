@@ -69,6 +69,7 @@ defmodule TradeMachine.ESPN.Client do
         headers: [{"cookie", "espn_s2=#{espn_cookie}; SWID=#{swid};"}],
         receive_timeout: 30_000
       )
+      |> Req.merge(Application.get_env(:trade_machine, :espn_req_options, []))
 
     %__MODULE__{
       req: req,
@@ -251,6 +252,9 @@ defmodule TradeMachine.ESPN.Client do
     end
   end
 
+  @max_retries_per_page 3
+  @base_backoff_ms 10_000
+
   @doc """
   Fetches all MLB players with pagination.
 
@@ -273,10 +277,11 @@ defmodule TradeMachine.ESPN.Client do
           {:ok, list(TradeMachine.ESPN.Types.PlayerPoolEntry.t())} | {:error, term()}
   def get_all_players(client = %__MODULE__{}, opts \\ []) do
     limit = opts[:limit] || 100
-    sleep_ms = opts[:sleep_ms] || 5000
+    sleep_ms = opts[:sleep_ms] || 5_000
     raw = opts[:raw] || false
+    base_backoff_ms = Keyword.get(opts, :base_backoff_ms, @base_backoff_ms)
 
-    case fetch_players_paginated(client, [], 0, limit, sleep_ms, nil, 0) do
+    case fetch_players_paginated(client, [], 0, limit, sleep_ms, nil, 0, base_backoff_ms) do
       {:ok, players} ->
         result =
           if raw,
@@ -290,9 +295,6 @@ defmodule TradeMachine.ESPN.Client do
     end
   end
 
-  @max_retries_per_page 3
-  @base_backoff_ms 10_000
-
   # Private helper for paginated player fetching
   defp fetch_players_paginated(
          client,
@@ -301,7 +303,8 @@ defmodule TradeMachine.ESPN.Client do
          limit,
          sleep_ms,
          server_total,
-         retry_count
+         retry_count,
+         base_backoff_ms \\ @base_backoff_ms
        ) do
     filter = %{
       players: %{
@@ -344,14 +347,15 @@ defmodule TradeMachine.ESPN.Client do
             limit,
             sleep_ms,
             server_total,
-            0
+            0,
+            base_backoff_ms
           )
         else
           {:ok, new_acc}
         end
 
       {:ok, %{status: 429}} when retry_count < @max_retries_per_page ->
-        backoff = rate_limit_backoff(retry_count)
+        backoff = rate_limit_backoff(retry_count, base_backoff_ms)
 
         Logger.warning(
           "ESPN API rate limited (429) at offset #{offset}, " <>
@@ -367,7 +371,8 @@ defmodule TradeMachine.ESPN.Client do
           limit,
           sleep_ms,
           server_total,
-          retry_count + 1
+          retry_count + 1,
+          base_backoff_ms
         )
 
       {:ok, %{status: 429, body: body}} ->
@@ -387,8 +392,8 @@ defmodule TradeMachine.ESPN.Client do
     end
   end
 
-  defp rate_limit_backoff(retry_count) do
-    trunc(:math.pow(3, retry_count) * @base_backoff_ms)
+  defp rate_limit_backoff(retry_count, base_backoff_ms \\ @base_backoff_ms) do
+    trunc(:math.pow(3, retry_count) * base_backoff_ms)
   end
 
   # Private helper to construct base URL based on year

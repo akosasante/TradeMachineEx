@@ -1,0 +1,40 @@
+{
+  "custom_stop_words": [
+    "embedded_schema do"
+  ],
+  "skip_files": [
+    "test/",
+
+    "lib/trade_machine/application.ex",
+    "lib/trade_machine/release.ex",
+    "lib/trade_machine/release_task.ex",
+    "lib/trade_machine/repo.ex",
+    "lib/trade_machine/repo/production.ex",
+    "lib/trade_machine/repo/staging.ex",
+    "lib/trade_machine/prom_ex.ex",
+    "lib/trade_machine/data/schema.ex",
+    "lib/trade_machine/mailer/email_view.ex",
+    "lib/trade_machine/mailer/layout_view.ex",
+
+    "lib/trade_machine_web.ex",
+    "lib/trade_machine_web/endpoint.ex",
+    "lib/trade_machine_web/router.ex",
+    "lib/trade_machine_web/telemetry.ex",
+    "lib/trade_machine_web/gettext.ex",
+    "lib/trade_machine_web/views/",
+    "lib/trade_machine_web/channels/user_socket.ex",
+    "lib/trade_machine_web/controllers/page_controller.ex",
+    "lib/trade_machine_web/controllers/page_html.ex",
+
+    "lib/trade_machine/data/settings.ex",
+    "lib/trade_machine/data/email.ex",
+    "lib/trade_machine/data/hydrated_trade.ex",
+    "lib/trade_machine/data/hydrated_major.ex",
+    "lib/trade_machine/data/hydrated_minor.ex",
+    "lib/trade_machine/data/hydrated_pick.ex",
+    "lib/trade_machine/data/sync_job_execution.ex",
+
+    "lib/trade_machine/discord/embed_tester.ex",
+    "lib/trade_machine/minor_league_reconciliation.ex"
+  ]
+}
