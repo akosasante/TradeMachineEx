@@ -9,23 +9,10 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
   alias TradeMachine.Mailer
 
   setup do
-    # Enable Ecto.Adapters.SQL.Sandbox for database isolation - checkout both repos
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Production)
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Staging)
-
-    # Set search_path to test schema for sandbox connections
     TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Production)
     TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Staging)
-
-    # IMPORTANT: For async tests, we need to allow both repos to share the same sandbox
-    # This allows Staging repo to see data inserted by Production repo
-    Ecto.Adapters.SQL.Sandbox.mode(TradeMachine.Repo.Production, {:shared, self()})
-    Ecto.Adapters.SQL.Sandbox.mode(TradeMachine.Repo.Staging, {:shared, self()})
-
-    # Allow cross-repo visibility by sharing the sandbox between repos
-    Ecto.Adapters.SQL.Sandbox.allow(TradeMachine.Repo.Production, self(), self())
-    Ecto.Adapters.SQL.Sandbox.allow(TradeMachine.Repo.Staging, self(), self())
-
     :ok
   end
 
@@ -364,9 +351,10 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
         }
       }
 
-      # Capture logs to verify trace context logging
+      # Capture logs at :info level — test env is configured at :warn so we must
+      # override the level here to catch Logger.info calls inside TraceContext
       log_output =
-        ExUnit.CaptureLog.capture_log(fn ->
+        ExUnit.CaptureLog.capture_log([level: :info], fn ->
           perform_job(EmailWorker, job_args)
         end)
 
