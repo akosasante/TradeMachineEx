@@ -16,5 +16,6 @@ defmodule TradeMachine.Data.Email do
   def changeset(struct \\ %__MODULE__{}, params \\ %{}) do
     struct
     |> cast(params, [:status])
+    |> validate_required([:status])
   end
 end

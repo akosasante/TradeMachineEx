@@ -37,8 +37,10 @@ defmodule TradeMachine.Jobs.EmailWebhookWorker do
           event: event
         })
 
+        changeset = Email.changeset(%Email{message_id: message_id}, %{"status" => event})
+
         case repo.insert(
-               %Email{message_id: message_id, status: event},
+               changeset,
                on_conflict: {:replace, [:status, :updated_at]},
                conflict_target: [:message_id]
              ) do

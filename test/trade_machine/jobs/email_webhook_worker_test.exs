@@ -141,4 +141,16 @@ defmodule TradeMachine.Jobs.EmailWebhookWorkerTest do
                Repo.Production.get(Email, message_id)
     end
   end
+
+  describe "perform/1 — error handling" do
+    test "returns error tuple and logs when the upsert fails" do
+      # A nil status violates the DB not-null constraint, triggering the error branch
+      assert {:error, %Ecto.Changeset{}} =
+               perform_job(EmailWebhookWorker, %{
+                 "message_id" => "error-case-#{System.unique_integer()}",
+                 "event" => nil,
+                 "env" => "production"
+               })
+    end
+  end
 end
