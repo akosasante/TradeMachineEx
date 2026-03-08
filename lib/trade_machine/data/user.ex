@@ -13,17 +13,18 @@ defmodule TradeMachine.Data.User do
     field(:display_name, :string, null: false)
     field(:email, :string, null: false)
     field(:status, Ecto.Enum, values: [active: "1", inactive: "2"], null: false)
-    field :slack_username, :string
-    field :csv_name, :string
+    field(:slack_username, :string)
+    field(:discord_user_id, :string)
+    field(:csv_name, :string)
     field(:role, Ecto.Enum, values: [admin: "1", owner: "2", commissioner: "3"], null: false)
-    field :espn_member, :map, load_in_query: false
-    field :last_logged_in, :naive_datetime
-    field :password, :string, redact: true, load_in_query: false
-    field :password_reset_expires_on, :naive_datetime, load_in_query: false
-    field :password_reset_token, :string, load_in_query: false
+    field(:espn_member, :map, load_in_query: false)
+    field(:last_logged_in, :naive_datetime)
+    field(:password, :string, redact: true, load_in_query: false)
+    field(:password_reset_expires_on, :naive_datetime, load_in_query: false)
+    field(:password_reset_token, :string, load_in_query: false)
 
-    belongs_to :current_team, Team, source: :teamId, foreign_key: :teamId
-    has_many :declined_trades, Trade, foreign_key: :declinedById
+    belongs_to(:current_team, Team, source: :teamId, foreign_key: :teamId)
+    has_many(:declined_trades, Trade, foreign_key: :declinedById)
 
     timestamps()
   end
