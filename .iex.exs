@@ -932,27 +932,66 @@ defmodule DraftPicksSync do
   end
 
   @doc "Show current DB state of the draft_pick table."
-  def db_state(env \\ :prod) do
+  def db_state(env \\ :prod, opts \\ []) do
     repo = repo_for(env)
+    major_season = Keyword.get(opts, :major_season)
+    minor_season = Keyword.get(opts, :minor_season)
+
+    base_query = TradeMachine.Data.DraftPick
 
     counts =
-      TradeMachine.Data.DraftPick
-      |> group_by([d], d.type)
-      |> select([d], {d.type, count(d.id)})
+      base_query
+      |> group_by([d], [d.type, d.season])
+      |> select([d], {d.type, d.season, count(d.id)})
       |> repo.all()
-      |> Map.new()
 
-    total = Enum.sum(Map.values(counts))
+    majors_counts = for {t, s, c} <- counts, t == :majors, do: {s, c}
+    minor_counts = for {t, s, c} <- counts, t != :majors, do: {t, s, c}
+
+    filter_season = fn rows, season ->
+      if season, do: Enum.filter(rows, fn {_, s, _} -> s == season end), else: rows
+    end
+
+    majors_filtered =
+      if major_season,
+        do: Enum.filter(majors_counts, fn {s, _} -> s == major_season end),
+        else: majors_counts
+
+    minor_filtered = filter_season.(minor_counts, minor_season)
+
+    majors_total = majors_filtered |> Enum.map(&elem(&1, 1)) |> Enum.sum()
+
+    high_total =
+      minor_filtered
+      |> Enum.filter(fn {t, _, _} -> t == :high end)
+      |> Enum.map(&elem(&1, 2))
+      |> Enum.sum()
+
+    low_total =
+      minor_filtered
+      |> Enum.filter(fn {t, _, _} -> t == :low end)
+      |> Enum.map(&elem(&1, 2))
+      |> Enum.sum()
+
+    total = majors_total + high_total + low_total
+
+    season_label = fn s -> if s, do: "season #{s}", else: "all seasons" end
 
     IO.puts("""
     Draft Pick DB State (#{inspect(repo)}):
-      :majors  #{Map.get(counts, :majors, 0)} (expected 200)
-      :high    #{Map.get(counts, :high, 0)} (expected 20)
-      :low     #{Map.get(counts, :low, 0)} (expected 80)
-      TOTAL    #{total} (expected 300)
+      Major picks (#{season_label.(major_season)}): #{majors_total} (expected 200)
+      High minor  (#{season_label.(minor_season)}): #{high_total} (expected 20)
+      Low minor   (#{season_label.(minor_season)}): #{low_total} (expected 80)
+      TOTAL: #{total} (expected 300)
+
+    All seasons in DB:
+    #{Enum.map_join(Enum.group_by(counts, fn {t, _, _} -> t end), "\n", fn {type, rows} ->
+      seasons_str = rows |> Enum.sort_by(fn {_, s, _} -> s end) |> Enum.map_join(", ", fn {_, s, c} -> "#{s}=#{c}" end)
+      "  #{type}: #{seasons_str}"
+    end)}
     """)
 
-    counts
+    %{majors: majors_total, high: high_total, low: low_total}
   end
 
   @doc """

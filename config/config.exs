@@ -21,12 +21,13 @@ config :trade_machine,
 #
 # Sorted descending: the first entry whose date is <= today's UTC date is used.
 # If today precedes all thresholds, the job raises a RuntimeError.
-# Update this list each year once the MLB season start date is confirmed.
+# Update this list each year once the minor league draft concludes (typically
+# late fall) and the commissioner resets the pick sheet for the new cycle.
 config :trade_machine,
   draft_picks_season_thresholds: [
-    {~D[2027-04-01], 2027},
-    {~D[2026-03-25], 2026},
-    {~D[2025-03-27], 2025}
+    {~D[2027-03-01], 2027},
+    {~D[2026-03-01], 2026},
+    {~D[2025-03-01], 2025}
   ]
 
 # Configures the endpoint
