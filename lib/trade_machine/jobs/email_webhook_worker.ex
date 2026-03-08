@@ -4,6 +4,7 @@ defmodule TradeMachine.Jobs.EmailWebhookWorker do
   require Logger
 
   alias TradeMachine.Data.Email
+  alias TradeMachine.Tracing.TraceContext
 
   @impl Oban.Worker
   def perform(%Oban.Job{id: job_id, args: %{"message_id" => message_id, "event" => event} = args}) do
@@ -17,24 +18,59 @@ defmodule TradeMachine.Jobs.EmailWebhookWorker do
       env: env
     )
 
-    case repo.insert(
-           %Email{message_id: message_id, status: event},
-           on_conflict: {:replace, [:status, :updated_at]},
-           conflict_target: [:message_id]
-         ) do
-      {:ok, _} ->
-        Logger.info("Email status updated", message_id: message_id, event: event)
-        :ok
-
-      {:error, reason} ->
-        Logger.error("Failed to update email status",
+    TraceContext.with_extracted_context(
+      args,
+      "trademachine.elixir.email_webhook_worker.execute",
+      %{
+        "oban.job_id" => job_id,
+        "oban.queue" => "emails",
+        "oban.worker" => "TradeMachine.Jobs.EmailWebhookWorker",
+        "email.message_id" => message_id,
+        "email.event" => event,
+        "email.env" => env,
+        "service.name" => "trademachine-elixir",
+        "component" => "email_webhook_worker"
+      },
+      fn ->
+        TraceContext.add_span_event("email_webhook.upsert.start", %{
           message_id: message_id,
-          event: event,
-          error: inspect(reason)
-        )
+          event: event
+        })
 
-        {:error, reason}
-    end
+        case repo.insert(
+               %Email{message_id: message_id, status: event},
+               on_conflict: {:replace, [:status, :updated_at]},
+               conflict_target: [:message_id]
+             ) do
+          {:ok, _} ->
+            TraceContext.add_span_event("email_webhook.upsert.success", %{
+              message_id: message_id,
+              event: event
+            })
+
+            Logger.info("Email status updated", message_id: message_id, event: event)
+            :ok
+
+          {:error, reason} ->
+            TraceContext.record_exception(%RuntimeError{
+              message: "Email webhook upsert failed: #{inspect(reason)}"
+            })
+
+            TraceContext.add_span_event("email_webhook.upsert.error", %{
+              message_id: message_id,
+              error: inspect(reason)
+            })
+
+            Logger.error("Failed to update email status",
+              message_id: message_id,
+              event: event,
+              error: inspect(reason)
+            )
+
+            {:error, reason}
+        end
+      end
+    )
   end
 
   # Elixir-sent emails include "env" derived from Brevo tags set at send time.
