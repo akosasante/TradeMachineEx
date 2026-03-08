@@ -30,7 +30,6 @@ defmodule TradeMachine.Discord.EmbedTester do
   - `:csv_names` - Uses the csvName field from User table (one per team)
   """
 
-  alias Nostrum.Api
   require Logger
 
   # Default test channel ID - override with channel_id: option
@@ -589,7 +588,7 @@ defmodule TradeMachine.Discord.EmbedTester do
   # Helper Functions - Item Formatting
   # ============================================================================
 
-  defp format_received_items(trade, participant, opts \\ []) do
+  defp format_received_items(trade, participant, opts) do
     items = participant.received_items
 
     # Separate majors and minors
@@ -638,7 +637,7 @@ defmodule TradeMachine.Discord.EmbedTester do
     end
   end
 
-  defp format_received_items_with_emoji(trade, participant, opts \\ []) do
+  defp format_received_items_with_emoji(trade, participant, opts) do
     items = participant.received_items
 
     items
@@ -1013,7 +1012,7 @@ defmodule TradeMachine.Discord.EmbedTester do
 
     Logger.info("Sending: #{name}")
 
-    case Api.create_message(channel_id,
+    case Nostrum.Api.Message.create(channel_id,
            content: "**#{name}**",
            embeds: embeds
          ) do
