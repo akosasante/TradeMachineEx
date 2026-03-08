@@ -11,12 +11,6 @@ defmodule TradeMachine.Jobs.DiscordWorkerTest do
     TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Production)
     TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Staging)
 
-    Ecto.Adapters.SQL.Sandbox.mode(TradeMachine.Repo.Production, {:shared, self()})
-    Ecto.Adapters.SQL.Sandbox.mode(TradeMachine.Repo.Staging, {:shared, self()})
-
-    Ecto.Adapters.SQL.Sandbox.allow(TradeMachine.Repo.Production, self(), self())
-    Ecto.Adapters.SQL.Sandbox.allow(TradeMachine.Repo.Staging, self(), self())
-
     :ok
   end
 
