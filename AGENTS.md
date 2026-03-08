@@ -54,10 +54,20 @@ TradeMachineEx operates as a microservice that connects to **shared infrastructu
 
 **Directory Structure**:
 - `lib/trade_machine/data/` - Ecto schemas and data models
+- `lib/trade_machine/discord/` - Discord integration (trade announcements)
 - `lib/trade_machine/jobs/` - Background job processors
 - `lib/trade_machine/mailer/` - Email templates and delivery
 - `lib/trade_machine/minor_leagues/` - Minor league sheet sync (fetch, parse, sync)
 - `lib/trade_machine_web/` - Phoenix web layer
+
+### Discord Trade Announcements
+- **Library**: Nostrum for Discord API integration
+- **Module Structure**: `announcer.ex` (public API), `formatter.ex` (pure formatting), `embed_builder.ex` (embed construction), `client.ex` (API wrapper)
+- **Format**: Condensed embed (Option 2) with CSV names, `[Level - MLB Team - Position]` suffix
+- **Uphold Time**: 11 PM Eastern, minimum 24 hours from trade submission
+- **Usage**: `TradeMachine.Discord.Announcer.announce_trade("trade-id", :production)`
+- **Testing**: `TradeMachine.Discord.EmbedTester` for format experiments with sample data
+- **See**: `DISCORD_IMPLEMENTATION.md` for full documentation
 
 ### Email System
 - **Provider**: Brevo (SendInBlue) via Swoosh adapter

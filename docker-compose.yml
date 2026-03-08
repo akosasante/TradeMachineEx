@@ -48,6 +48,8 @@ services:
       - ESPN_LEAGUE_ID=${ESPN_LEAGUE_ID}
       # Discord
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - DISCORD_CHANNEL_ID_PRODUCTION=${DISCORD_CHANNEL_ID_PRODUCTION}
+      - DISCORD_CHANNEL_ID_STAGING=${DISCORD_CHANNEL_ID_STAGING}
     volumes:
       # Mount source code for development
       - .:/app
