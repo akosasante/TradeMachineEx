@@ -281,10 +281,11 @@ Cron is enabled in production when `DATABASE_SCHEMA=staging` or `ENABLE_CRON=tru
 | Job | Module | Cron (production) | Queue | Max Attempts |
 |---|---|---|---|---|
 | Minor League Sync | `TradeMachine.Jobs.MinorsSync` | `0 2 * * *` (2:00 AM) | `minors_sync` | 5 |
+| Draft Picks Sync | `TradeMachine.Jobs.DraftPicksSync` | `0 3 * * *` (3:00 AM) | `draft_sync` | 3 |
 | ESPN Team Sync | `TradeMachine.Jobs.EspnTeamSync` | `22 7 * * *` (7:22 AM) | `espn_sync` | 3 |
 | ESPN MLB Players Sync | `TradeMachine.Jobs.EspnMlbPlayersSync` | `32 7 * * *` (7:32 AM) | `espn_sync` | 3 |
 
-> **Dev note:** In `dev.exs`, MinorsSync runs every 2 minutes (`*/2 * * * *`) for easy testing. In `config.exs` (the base config), it runs every 5 minutes and all three jobs are scheduled.
+> **Dev note:** In `dev.exs`, MinorsSync runs every 2 minutes and DraftPicksSync every 5 minutes for easy testing. In `config.exs` (the base config), all four jobs are scheduled.
 
 ---
 
@@ -305,6 +306,18 @@ Enqueued by the TypeScript server (`TradeMachineServer`) via direct Prisma inser
 Syncs minor league player ownership from a public Google Sheet to both databases.\
 **Env vars:** `MINOR_LEAGUE_SHEET_ID`, `MINOR_LEAGUE_SHEET_GID` (default `"806978055"`)\
 **Concurrency guard:** `SyncLock` (`:minors_sync`) prevents overlapping runs\
+**Unique constraint:** Only one job allowed in `available/scheduled/executing/retryable` states at a time
+
+---
+
+#### `DraftPicksSync` — `lib/trade_machine/jobs/draft_picks_sync.ex`
+
+Syncs draft pick ownership from a public Google Sheet to both databases.\
+**Env vars:** `DRAFT_PICKS_SHEET_ID`, `DRAFT_PICKS_SHEET_GID` (default `"142978697"`)\
+**Season config:** `draft_picks_season_thresholds` in `config/config.exs` — a descending list of `{~D[yyyy-mm-dd], year}` pairs. Update each year once the MLB season start date is confirmed. Raises `RuntimeError` if today precedes all thresholds.\
+**Expected counts:** 200 majors + 40 HM + 100 LM = 340 per repo when all picks are active. Fewer is normal after drafts (cleared picks are skipped).\
+**Module structure:** `DraftPicks.SheetFetcher` (fetch), `DraftPicks.Parser` (parse), `DraftPicks.Sync` (upsert)\
+**Concurrency guard:** `SyncLock` (`:draft_picks_sync`) prevents overlapping runs\
 **Unique constraint:** Only one job allowed in `available/scheduled/executing/retryable` states at a time
 
 ---

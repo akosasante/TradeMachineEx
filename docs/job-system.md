@@ -18,6 +18,7 @@ flowchart TB
     subgraph ex [TradeMachineEx - Elixir]
         subgraph obanProd [Oban.Production]
             MinorsSync["MinorsSync"]
+            DraftPicksSync["DraftPicksSync"]
             EspnTeamSync["EspnTeamSync"]
             EspnMlbPlayersSync["EspnMlbPlayersSync"]
             EmailWorkerProd["EmailWorker"]
@@ -38,6 +39,7 @@ flowchart TB
     end
 
     GoogleSheets -->|CSV fetch| MinorsSync
+    GoogleSheets -->|CSV fetch| DraftPicksSync
     EspnApi -->|REST API| EspnTeamSync
     EspnApi -->|REST API| EspnMlbPlayersSync
 
@@ -47,6 +49,8 @@ flowchart TB
 
     MinorsSync --> ProdSchema
     MinorsSync --> StagingSchema
+    DraftPicksSync --> ProdSchema
+    DraftPicksSync --> StagingSchema
     EspnTeamSync --> ProdSchema
     EspnTeamSync --> StagingSchema
     EspnMlbPlayersSync --> ProdSchema
@@ -59,11 +63,14 @@ flowchart TB
 
     MinorsSync -.-> SyncLock
     MinorsSync -.-> SyncTracking
+    DraftPicksSync -.-> SyncLock
+    DraftPicksSync -.-> SyncTracking
     EspnMlbPlayersSync -.-> SyncLock
     EspnMlbPlayersSync -.-> SyncTracking
     EspnTeamSync -.-> SyncTracking
 
     MinorsSync -.-> TraceContext
+    DraftPicksSync -.-> TraceContext
     EspnTeamSync -.-> TraceContext
     EspnMlbPlayersSync -.-> TraceContext
     EmailWorkerProd -.-> TraceContext
@@ -79,6 +86,7 @@ gantt
 
     section Sync Jobs
     MinorsSync           :02:00, 15m
+    DraftPicksSync       :03:00, 5m
     EspnTeamSync         :07:22, 5m
     EspnMlbPlayersSync   :07:32, 15m
 ```
@@ -86,10 +94,11 @@ gantt
 | Job | Cron (production) | Queue | Max Attempts |
 |---|---|---|---|
 | Minor League Sync | `0 2 * * *` (2:00 AM) | `minors_sync` | 5 |
+| Draft Picks Sync | `0 3 * * *` (3:00 AM) | `draft_sync` | 3 |
 | ESPN Team Sync | `22 7 * * *` (7:22 AM) | `espn_sync` | 3 |
 | ESPN MLB Players Sync | `32 7 * * *` (7:32 AM) | `espn_sync` | 3 |
 
-In `dev.exs`, MinorsSync runs every 2 minutes (`*/2 * * * *`) for easy testing.
+In `dev.exs`, MinorsSync runs every 2 minutes and DraftPicksSync every 5 minutes for easy testing.
 
 ---
 
@@ -123,6 +132,30 @@ Syncs minor league player ownership from a public Google Sheet to both databases
 **External deps:** Google Sheets CSV export (via `Req`)
 **Env vars:** `MINOR_LEAGUE_SHEET_ID`, `MINOR_LEAGUE_SHEET_GID` (default `"806978055"`)
 **Concurrency guard:** `SyncLock` (`:minors_sync`) prevents overlapping runs
+**Unique constraint:** Only one job allowed in `available/scheduled/executing/retryable` states at a time
+
+---
+
+### `DraftPicksSync` — `lib/trade_machine/jobs/draft_picks_sync.ex`
+
+Syncs draft pick ownership from a public Google Sheet to both databases.
+
+**What it does:**
+1. Resolves the current season from the `draft_picks_season_thresholds` compile-time config (raises `RuntimeError` if config is outdated)
+2. Fetches the Google Sheet as a CSV (`DraftPicks.SheetFetcher`)
+3. Parses the multi-team layout (`DraftPicks.Parser`) — 7 columns per owner block, 5 owners per group, 4 groups, 17 picks per group
+4. For each non-cleared pick, resolves `original_owner_csv` and `current_owner_csv` to team IDs via `user.csvName`
+5. Upserts each pick into the `draft_pick` table (keyed on `type + season + round + originalOwnerId`), updating `currentOwnerId` and `pick_number` on conflict
+
+**Expected counts (when all picks active):** 200 majors + 40 HM + 100 LM = 340 total per repo. Cleared picks (OVR ≤ 0 or blank round) are skipped — this is normal after drafts.
+
+**Season calculation:** Configured in `config/config.exs` as `draft_picks_season_thresholds` — a descending list of `{~D[yyyy-mm-dd], year}` pairs. The first entry whose date is on or before today is used. Update this list each year once the MLB season start date is confirmed.
+
+**Reads from:** `TradeMachine.Repo.Production` and `TradeMachine.Repo.Staging`\
+**Writes to:** `TradeMachine.Repo.Production` and `TradeMachine.Repo.Staging` (`draft_pick` table)\
+**External deps:** Google Sheets CSV export (via `Req`)\
+**Env vars:** `DRAFT_PICKS_SHEET_ID`, `DRAFT_PICKS_SHEET_GID` (default `"142978697"`)\
+**Concurrency guard:** `SyncLock` (`:draft_picks_sync`) prevents overlapping runs\
 **Unique constraint:** Only one job allowed in `available/scheduled/executing/retryable` states at a time
 
 ---
