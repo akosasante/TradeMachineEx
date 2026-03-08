@@ -87,7 +87,8 @@ config :trade_machine, Oban,
      crontab: [
        {"*/5 * * * *", TradeMachine.Jobs.MinorsSync},
        {"22 7 * * *", TradeMachine.Jobs.EspnTeamSync},
-       {"32 7 * * *", TradeMachine.Jobs.EspnMlbPlayersSync}
+       {"32 7 * * *", TradeMachine.Jobs.EspnMlbPlayersSync},
+       {"0 3 * * *", TradeMachine.Jobs.DraftPicksSync}
      ]}
   ],
   queues: [minors_sync: 1, draft_sync: 1, emails: 2, espn_sync: 1, discord: 1]

@@ -132,7 +132,8 @@ if config_env() != :test do
          crontab: [
            {"0 2 * * *", TradeMachine.Jobs.MinorsSync},
            {"22 7 * * *", TradeMachine.Jobs.EspnTeamSync},
-           {"32 7 * * *", TradeMachine.Jobs.EspnMlbPlayersSync}
+           {"32 7 * * *", TradeMachine.Jobs.EspnMlbPlayersSync},
+           {"0 3 * * *", TradeMachine.Jobs.DraftPicksSync}
          ]}
       ]
     else
