@@ -18,6 +18,7 @@ TradeMachineEx is an Elixir Phoenix application that serves as the job processin
 ### Testing
 - **Run all tests**: `./test.sh`
 - **Run specific test file**: `./test.sh test/schema_validation_test.exs`
+- **Run tests with HTML coverage report**: `./test.sh --cover` (generates `cover/excoveralls.html`)
 - **Run tests in Docker**: `docker compose -f docker-compose.yml -f docker-compose.test.yml up --build`
 
 ### Code Quality
@@ -161,6 +162,98 @@ docker exec -it trade_machine_ex_app /app/bin/trade_machine eval "TradeMachine.R
 - Tests use `.env.test` environment sourced by `test.sh` script
 - Test database should be separate from development database
 - Use `./test.sh` script rather than `mix test` directly for proper environment setup
+
+---
+
+## Testing Patterns and Guidelines
+
+### Coverage Target
+
+- **Soft target**: Maintain at least **75% total coverage**. This is not a hard CI gate, but a guideline.
+- **Current baseline**: ~81% (as of March 2026)
+- **Before completing work on any PR or branch**: Run `./test.sh --cover` and check the `[TOTAL]` line. If your changes have reduced overall coverage — even if still above 75% — **inform the user** with the before/after percentage so they can decide whether to add more tests.
+- **New public interfaces** (functions, modules, Oban workers, HTTP clients) should always have test coverage.
+- `coveralls.json` lists files excluded from coverage metrics (infrastructure boilerplate, data-only schemas, dev-only tools). If a new file has no meaningful testable logic (e.g., a thin config wrapper), add it to `skip_files` rather than writing superficial tests purely to hit a number.
+
+### ExUnit Case Conventions
+
+- Use `ExUnit.Case, async: true` for pure unit tests (no DB, no shared process state).
+- Use `ExUnit.Case, async: false` for controller tests or any test that has caused flakiness when run concurrently — Phoenix `ConnCase`-style tests fall into this category due to connection pool contention.
+- For tests that need direct DB access (non-controller), check out `Ecto.Adapters.SQL.Sandbox` in `setup`:
+
+```elixir
+setup do
+  :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Production)
+  :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Staging)
+  TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Production)
+  TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Staging)
+  :ok
+end
+```
+
+- **Do not** call `Ecto.Adapters.SQL.Sandbox.mode(repo, {:shared, self()})` in setup — it exhausts the connection pool when many tests run concurrently and causes flaky failures in other test files.
+
+### HTTP Client Testing with Req.Test
+
+The project uses `Req.Test` (not Mox or ExVCR) to stub HTTP calls made via the `Req` library.
+
+**Pattern for wiring a new module to support Req.Test:**
+
+1. In the source module, merge application env options into the `Req` struct so the test plug can be injected:
+   ```elixir
+   req =
+     Req.new(base_url: url, ...)
+     |> Req.merge(Application.get_env(:trade_machine, :my_module_req_options, []))
+   ```
+
+2. In `config/test.exs`, register the plug and disable Req's retry middleware:
+   ```elixir
+   config :trade_machine, :my_module_req_options,
+     plug: {Req.Test, MyModule},
+     retry: false
+   ```
+
+3. In tests, stub with `Req.Test.stub/2` (any number of calls) or `Req.Test.expect/3` (exact call count):
+   ```elixir
+   Req.Test.stub(MyModule, fn conn ->
+     Req.Test.json(conn, %{"key" => "value"})
+   end)
+   ```
+
+**Key rules:**
+- Always add `retry: false` to test Req options. Without it, simulated transport errors trigger Req's retry middleware, adding multiple seconds of sleep per test.
+- Use `Req.Test.json/2` for JSON success responses. For non-200 status codes, set the status and body directly via `Plug.Conn`:
+  ```elixir
+  conn
+  |> Plug.Conn.put_resp_content_type("application/json")
+  |> Plug.Conn.resp(429, Jason.encode!(%{"error" => "rate limited"}))
+  ```
+  Do **not** mix `Req.Test.json/2` with a subsequent `Plug.Conn.resp/3` call — this raises `AlreadySentError`.
+- For async tests with `Req.Test.expect/3`, use `Req.Test.allow/3` to share the stub across spawned processes.
+
+See `test/trade_machine/espn/client_test.exs`, `test/trade_machine/espn/search_test.exs`, and `test/trade_machine/minor_leagues/sheet_fetcher_test.exs` for full working examples.
+
+### Oban Job Testing
+
+- Use `Oban.Testing` (`use Oban.Testing, repo: TradeMachine.Repo.Production`) for `assert_enqueued` and related helpers.
+- Test worker configuration (`queue`, `max_attempts`, `unique`) separately from `perform/1` business logic.
+- **Avoid row-lock deadlocks**: When a job syncs to both `Repo.Production` and `Repo.Staging`, both operations hit the same physical database (same test schema) inside sandbox transactions. If both repos try to upsert the same row, the second operation deadlocks waiting on the first's uncommitted lock. To avoid this, stub the external API to return an empty result set in happy-path tests, or scope DB-interaction tests to a single repo.
+
+### Email Testing
+
+- Import `Swoosh.TestAssertions` and use `assert_email_sent/1` to verify outgoing emails.
+- The test mailer adapter captures emails without sending them; no real SMTP calls are made in tests.
+
+### Code Quality Before Pushing
+
+Always run these before committing changes that touch source files:
+
+```bash
+mix credo
+mix format --check-formatted
+mix compile
+./test.sh --cover   # check [TOTAL] hasn't dropped significantly
+```
 
 ---
 
