@@ -1,6 +1,8 @@
 defmodule TradeMachine.Data.HydratedTrade do
   use TradeMachine.Schema
 
+  import Ecto.Query
+
   @primary_key false
 
   alias TradeMachine.Data.Types.TradedMajor
@@ -38,5 +40,14 @@ defmodule TradeMachine.Data.HydratedTrade do
   def changeset(struct \\ %__MODULE__{}, params \\ %{}) do
     struct
     |> cast(params, [])
+  end
+
+  @doc """
+  Fetches the hydrated trade row for a given trade_id.
+  Returns nil if not found.
+  """
+  @spec get_by_trade_id(String.t(), Ecto.Repo.t()) :: t() | nil
+  def get_by_trade_id(trade_id, repo) do
+    repo.one(from(h in __MODULE__, where: h.trade_id == ^trade_id))
   end
 end

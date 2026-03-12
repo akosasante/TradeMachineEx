@@ -1,0 +1,21 @@
+Trade Proposal — <%= @title_text %>
+
+<%= for team_section <- @items_by_team do %>
+<%= team_section.team %> would receive:
+<%= for item <- team_section.majors do %>  - <%= item %>
+<% end %><%= for item <- team_section.minors do %>  - <%= item %> (Minors)
+<% end %><%= for item <- team_section.picks do %>  - <%= item %>
+<% end %>
+--------------------------------------------------
+<% end %>
+
+To accept this trade, visit:
+<%= @accept_url %>
+
+To decline this trade, visit:
+<%= @decline_url %>
+
+Note: Clicking "Accept" is binding. Coordinate with your trade partner if you have any questions.
+
+Thanks,
+The TradeMachine Team

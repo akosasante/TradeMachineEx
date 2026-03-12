@@ -1,0 +1,117 @@
+<style>
+  .trade-title {
+    color: #374151;
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #a9c07c;
+    padding-bottom: 12px;
+  }
+  .team-section {
+    margin-bottom: 24px;
+  }
+  .team-heading {
+    color: #374151;
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+  .item-list {
+    list-style: disc;
+    padding-left: 20px;
+    margin: 0 0 12px 0;
+    color: #4b5563;
+  }
+  .item-list li {
+    margin-bottom: 4px;
+  }
+  .section-divider {
+    border: none;
+    border-top: 1px solid #e5e7eb;
+    margin: 16px 0;
+  }
+  .action-buttons {
+    text-align: center;
+    margin: 28px 0 12px 0;
+  }
+  .btn-accept {
+    display: inline-block;
+    padding: 14px 32px;
+    background-color: #16a34a;
+    color: white !important;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 15px;
+    margin: 6px 8px;
+  }
+  .btn-decline {
+    display: inline-block;
+    padding: 14px 32px;
+    background-color: #dc2626;
+    color: white !important;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 15px;
+    margin: 6px 8px;
+  }
+  .fallback-links {
+    margin-top: 16px;
+    color: #6b7280;
+    font-size: 13px;
+  }
+  .fallback-link {
+    word-break: break-all;
+    color: #4f46e5;
+    text-decoration: none;
+  }
+</style>
+
+<h2 class="trade-title"><%= @title_text %></h2>
+
+<%= for team_section <- @items_by_team do %>
+  <div class="team-section">
+    <h3 class="team-heading"><%= team_section.team %> would receive:</h3>
+
+    <%= if length(team_section.majors) > 0 do %>
+      <ul class="item-list">
+        <%= for item <- team_section.majors do %>
+          <li><%= item %></li>
+        <% end %>
+      </ul>
+    <% end %>
+
+    <%= if length(team_section.minors) > 0 do %>
+      <ul class="item-list">
+        <%= for item <- team_section.minors do %>
+          <li><%= item %> <em style="color:#6b7280;">(Minors)</em></li>
+        <% end %>
+      </ul>
+    <% end %>
+
+    <%= if length(team_section.picks) > 0 do %>
+      <ul class="item-list">
+        <%= for item <- team_section.picks do %>
+          <li><%= item %></li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+  <hr class="section-divider" />
+<% end %>
+
+<div class="action-buttons">
+  <a href={@accept_url} class="btn-accept">✅ Accept Trade</a>
+  <a href={@decline_url} class="btn-decline">❌ Decline Trade</a>
+</div>
+
+<div class="fallback-links">
+  <p>If the buttons don't work, copy and paste these links:</p>
+  <p>Accept: <a href={@accept_url} class="fallback-link"><%= @accept_url %></a></p>
+  <p>Decline: <a href={@decline_url} class="fallback-link"><%= @decline_url %></a></p>
+</div>
+
+<p style="color: #6b7280; font-size: 13px; margin-top: 20px;">
+  Clicking "Accept" is binding — coordinate with your trade partner before clicking if you have any questions.
+</p>
