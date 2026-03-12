@@ -23,6 +23,14 @@ defmodule TradeMachine.Mailer.TradeRequestEmail do
 
         {:error, :not_found}
     end
+  rescue
+    e ->
+      Logger.error("Database error sending trade request email",
+        trade_id: trade_id,
+        error: Exception.message(e)
+      )
+
+      {:error, {:db_error, Exception.message(e)}}
   end
 
   @spec generate_email(HydratedTrade.t(), User.t(), String.t(), String.t(), String.t()) ::
