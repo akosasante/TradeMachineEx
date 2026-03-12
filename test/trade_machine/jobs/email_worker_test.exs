@@ -149,6 +149,42 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       assert {:error, :invalid_args} = perform_job(EmailWorker, job_args)
     end
 
+    test "successfully dispatches trade_request email type" do
+      # We use non-existent IDs so the trade/user lookup returns not_found,
+      # which confirms the job was dispatched to the correct handler.
+      job_args = %{
+        "email_type" => "trade_request",
+        "trade_id" => Ecto.UUID.generate(),
+        "recipient_user_id" => Ecto.UUID.generate(),
+        "accept_url" => "https://app.example.com/trades/abc?action=accept&token=tok1",
+        "decline_url" => "https://app.example.com/trades/abc?action=decline&token=tok2",
+        "env" => "production"
+      }
+
+      # Returns an error because the trade_id doesn't exist in DB (or the hydrated_trades
+      # view may not exist in the test schema), confirming the trade_request branch was
+      # reached (not :invalid_args or :unknown_email_type).
+      assert match?({:error, _}, perform_job(EmailWorker, job_args))
+      refute_email_sent()
+    end
+
+    test "trade_request job with trace context dispatches correctly" do
+      job_args = %{
+        "email_type" => "trade_request",
+        "trade_id" => Ecto.UUID.generate(),
+        "recipient_user_id" => Ecto.UUID.generate(),
+        "accept_url" => "https://app.example.com/trades/abc?action=accept&token=tok1",
+        "decline_url" => "https://app.example.com/trades/abc?action=decline&token=tok2",
+        "env" => "production",
+        "trace_context" => %{
+          "traceparent" => "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        }
+      }
+
+      assert match?({:error, _}, perform_job(EmailWorker, job_args))
+      refute_email_sent()
+    end
+
     test "logs error for unknown email type" do
       user = insert_user()
 

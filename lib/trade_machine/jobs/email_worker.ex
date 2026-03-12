@@ -33,6 +33,49 @@ defmodule TradeMachine.Jobs.EmailWorker do
   end
 
   # Execute the actual email job logic within the trace context
+
+  # trade_request has a different args shape — no "data" field
+  defp execute_email_job(%{
+         "email_type" => "trade_request",
+         "trade_id" => trade_id,
+         "recipient_user_id" => recipient_user_id,
+         "accept_url" => accept_url,
+         "decline_url" => decline_url,
+         "env" => frontend_environment
+       }) do
+    repo = select_repo(frontend_environment)
+
+    Logger.info("Processing trade_request email job",
+      trade_id: trade_id,
+      recipient_user_id: recipient_user_id,
+      frontend_env: frontend_environment,
+      repo: inspect(repo)
+    )
+
+    TraceContext.add_span_attributes(%{
+      "email.type" => "trade_request",
+      "email.trade_id" => trade_id,
+      "email.recipient_id" => recipient_user_id,
+      "email.frontend_environment" => frontend_environment,
+      "email.repo" => inspect(repo)
+    })
+
+    handle_email_send(
+      "trade_request",
+      fn ->
+        Mailer.send_trade_request_email(
+          trade_id,
+          recipient_user_id,
+          accept_url,
+          decline_url,
+          frontend_environment,
+          repo
+        )
+      end,
+      trade_id
+    )
+  end
+
   defp execute_email_job(%{
          "email_type" => email_type,
          "data" => data,

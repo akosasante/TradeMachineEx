@@ -19,7 +19,7 @@ defmodule TradeMachine.Mailer do
         {:error, :user_not_found}
 
       user ->
-        TradeMachine.Mailer.PasswordResetEmail.send(user, frontend_environment)
+        TradeMachine.Mailer.PasswordResetEmail.send(user, frontend_environment, repo)
     end
   end
 
@@ -36,7 +36,7 @@ defmodule TradeMachine.Mailer do
         {:error, :user_not_found}
 
       user ->
-        TradeMachine.Mailer.RegistrationEmail.send(user, frontend_environment)
+        TradeMachine.Mailer.RegistrationEmail.send(user, frontend_environment, repo)
     end
   end
 
@@ -53,8 +53,33 @@ defmodule TradeMachine.Mailer do
         {:error, :user_not_found}
 
       user ->
-        TradeMachine.Mailer.TestEmail.send(user, frontend_environment)
+        TradeMachine.Mailer.TestEmail.send(user, frontend_environment, repo)
     end
+  end
+
+  def send_trade_request_email(
+        trade_id,
+        recipient_user_id,
+        accept_url,
+        decline_url,
+        frontend_environment,
+        repo \\ TradeMachine.Repo.Production
+      ) do
+    Logger.info("Sending trade request email",
+      trade_id: trade_id,
+      recipient_user_id: recipient_user_id,
+      frontend_env: frontend_environment,
+      repo: inspect(repo)
+    )
+
+    TradeMachine.Mailer.TradeRequestEmail.send(
+      trade_id,
+      recipient_user_id,
+      accept_url,
+      decline_url,
+      frontend_environment,
+      repo
+    )
   end
 
   defmacro __using__(_opts) do
@@ -65,10 +90,10 @@ defmodule TradeMachine.Mailer do
         view: TradeMachine.Mailer.EmailView,
         layout: {TradeMachine.Mailer.LayoutView, :email}
 
-      defp frontend_url(frontend_env = "production"),
+      defp frontend_url("production"),
         do: Application.get_env(:trade_machine, :frontend_url_production)
 
-      defp frontend_url(frontend_env = "development"),
+      defp frontend_url("development"),
         do: "http://localhost:3031"
 
       defp frontend_url(_), do: Application.get_env(:trade_machine, :frontend_url_staging)
@@ -79,11 +104,29 @@ defmodule TradeMachine.Mailer do
         |> then(&Swoosh.Email.html_body(email, &1))
       end
 
-      defp do_deliver(email = %Swoosh.Email{}, frontend_environment) do
-        email
-        |> Swoosh.Email.put_provider_option(:tags, [frontend_environment])
-        |> process_html()
-        |> TradeMachine.Mailer.deliver()
+      # Delivers an email, tags it with the frontend environment for Brevo webhook
+      # routing, and inserts an Email DB record with the provider message ID.
+      # trade_id is nil for non-trade emails (the DB column is nullable).
+      defp do_deliver(email = %Swoosh.Email{}, frontend_environment, repo, trade_id \\ nil) do
+        result =
+          email
+          |> Swoosh.Email.put_provider_option(:tags, [frontend_environment])
+          |> process_html()
+          |> TradeMachine.Mailer.deliver()
+
+        case result do
+          {:ok, %{id: message_id}} when is_binary(message_id) ->
+            repo.insert(%TradeMachine.Data.Email{
+              message_id: message_id,
+              status: "sent",
+              trade_id: trade_id
+            })
+
+          _ ->
+            :ok
+        end
+
+        result
       end
 
       defp do_deliver!(email = %Swoosh.Email{}, frontend_environment) do

@@ -3,10 +3,10 @@ defmodule TradeMachine.Mailer.PasswordResetEmail do
 
   alias TradeMachine.Data.User
 
-  @spec send(User.t(), String.t()) :: {:ok, any()} | {:error, any()}
-  def send(user = %User{}, frontend_environment) do
+  @spec send(User.t(), String.t(), Ecto.Repo.t()) :: {:ok, any()} | {:error, any()}
+  def send(user = %User{}, frontend_environment, repo \\ TradeMachine.Repo.Production) do
     generate_email(user, frontend_environment)
-    |> do_deliver(frontend_environment)
+    |> do_deliver(frontend_environment, repo)
   end
 
   @spec send!(User.t(), String.t()) :: Swoosh.Email.t()
