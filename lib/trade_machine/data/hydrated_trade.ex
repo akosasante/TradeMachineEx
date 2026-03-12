@@ -32,9 +32,9 @@ defmodule TradeMachine.Data.HydratedTrade do
     field :declined_reason, :string
     field :accepted_by, {:array, :string}, source: :acceptingUsers
     field :accepted_on_date, :naive_datetime
-    field :traded_majors, {:array, TradedMajor.type()}
-    field :traded_minors, {:array, TradedMinor.type()}
-    field :traded_picks, {:array, TradedPick.type()}
+    field :traded_majors, {:array, TradedMajor}
+    field :traded_minors, {:array, TradedMinor}
+    field :traded_picks, {:array, TradedPick}
   end
 
   def changeset(struct \\ %__MODULE__{}, params \\ %{}) do
