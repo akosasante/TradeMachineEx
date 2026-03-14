@@ -110,11 +110,22 @@ defmodule TradeMachine.Mailer.TradeRequestEmail do
         t -> t
       end
 
-    original_owner = pick.original_owner || pick.owned_by || pick.sender
+    # currentPickHolder and originalPickOwner come from hydrated_picks as
+    # json_build_object('id', t.id, 'name', t.name) — a map, not a plain string.
+    # team_name/1 extracts the name string from either form.
+    original_owner =
+      (pick.original_owner || pick.owned_by || pick.sender)
+      |> team_name()
+
     round_str = ordinal(pick.round)
 
     "#{original_owner}'s #{round_str} round #{type_str} pick from #{pick.sender}"
   end
+
+  defp team_name(%{"name" => name}) when is_binary(name), do: name
+  defp team_name(name) when is_binary(name), do: name
+  defp team_name(nil), do: "Unknown"
+  defp team_name(other), do: inspect(other)
 
   defp ordinal(n) when is_integer(n) do
     suffix =
