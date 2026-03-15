@@ -76,6 +76,92 @@ defmodule TradeMachine.Jobs.EmailWorker do
     )
   end
 
+  # trade_declined — sent to all non-declining participants after a trade is rejected
+  defp execute_email_job(
+         args = %{
+           "email_type" => "trade_declined",
+           "trade_id" => trade_id,
+           "recipient_user_id" => recipient_user_id,
+           "is_creator" => is_creator,
+           "env" => frontend_environment
+         }
+       ) do
+    repo = select_repo(frontend_environment)
+    decline_url = Map.get(args, "decline_url")
+
+    Logger.info("Processing trade_declined email job",
+      trade_id: trade_id,
+      recipient_user_id: recipient_user_id,
+      is_creator: is_creator,
+      frontend_env: frontend_environment,
+      repo: inspect(repo)
+    )
+
+    TraceContext.add_span_attributes(%{
+      "email.type" => "trade_declined",
+      "email.trade_id" => trade_id,
+      "email.recipient_id" => recipient_user_id,
+      "email.is_creator" => is_creator,
+      "email.frontend_environment" => frontend_environment,
+      "email.repo" => inspect(repo)
+    })
+
+    handle_email_send(
+      "trade_declined",
+      fn ->
+        Mailer.send_trade_declined_email(
+          trade_id,
+          recipient_user_id,
+          is_creator,
+          decline_url,
+          frontend_environment,
+          repo
+        )
+      end,
+      trade_id
+    )
+  end
+
+  # trade_submit — sent to the trade creator once all recipients have accepted, prompting them to finalize
+  defp execute_email_job(%{
+         "email_type" => "trade_submit",
+         "trade_id" => trade_id,
+         "recipient_user_id" => recipient_user_id,
+         "submit_url" => submit_url,
+         "env" => frontend_environment
+       }) do
+    repo = select_repo(frontend_environment)
+
+    Logger.info("Processing trade_submit email job",
+      trade_id: trade_id,
+      recipient_user_id: recipient_user_id,
+      frontend_env: frontend_environment,
+      repo: inspect(repo)
+    )
+
+    TraceContext.add_span_attributes(%{
+      "email.type" => "trade_submit",
+      "email.trade_id" => trade_id,
+      "email.recipient_id" => recipient_user_id,
+      "email.frontend_environment" => frontend_environment,
+      "email.repo" => inspect(repo)
+    })
+
+    handle_email_send(
+      "trade_submit",
+      fn ->
+        Mailer.send_trade_submission_email(
+          trade_id,
+          recipient_user_id,
+          submit_url,
+          frontend_environment,
+          repo
+        )
+      end,
+      trade_id
+    )
+  end
+
   defp execute_email_job(%{
          "email_type" => email_type,
          "data" => data,
