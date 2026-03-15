@@ -82,6 +82,55 @@ defmodule TradeMachine.Mailer do
     )
   end
 
+  def send_trade_declined_email(
+        trade_id,
+        recipient_user_id,
+        is_creator,
+        decline_url,
+        frontend_environment,
+        repo \\ TradeMachine.Repo.Production
+      ) do
+    Logger.info("Sending trade declined email",
+      trade_id: trade_id,
+      recipient_user_id: recipient_user_id,
+      is_creator: is_creator,
+      frontend_env: frontend_environment,
+      repo: inspect(repo)
+    )
+
+    TradeMachine.Mailer.TradeDeclinedEmail.send(
+      trade_id,
+      recipient_user_id,
+      is_creator,
+      decline_url,
+      frontend_environment,
+      repo
+    )
+  end
+
+  def send_trade_submission_email(
+        trade_id,
+        recipient_user_id,
+        submit_url,
+        frontend_environment,
+        repo \\ TradeMachine.Repo.Production
+      ) do
+    Logger.info("Sending trade submission email",
+      trade_id: trade_id,
+      recipient_user_id: recipient_user_id,
+      frontend_env: frontend_environment,
+      repo: inspect(repo)
+    )
+
+    TradeMachine.Mailer.TradeSubmitEmail.send(
+      trade_id,
+      recipient_user_id,
+      submit_url,
+      frontend_environment,
+      repo
+    )
+  end
+
   defmacro __using__(_opts) do
     quote do
       import Swoosh.Email

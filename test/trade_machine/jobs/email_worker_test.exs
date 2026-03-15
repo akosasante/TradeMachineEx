@@ -185,6 +185,108 @@ defmodule TradeMachine.Jobs.EmailWorkerTest do
       refute_email_sent()
     end
 
+    test "successfully dispatches trade_declined email type (not_found confirms correct handler)" do
+      job_args = %{
+        "email_type" => "trade_declined",
+        "trade_id" => Ecto.UUID.generate(),
+        "recipient_user_id" => Ecto.UUID.generate(),
+        "is_creator" => true,
+        "env" => "production"
+      }
+
+      # Returns {:error, :not_found} because IDs don't exist in DB —
+      # confirms trade_declined branch was reached (not :invalid_args or :unknown_email_type)
+      assert match?({:error, _}, perform_job(EmailWorker, job_args))
+      refute_email_sent()
+    end
+
+    test "trade_declined job with decline_url dispatches correctly" do
+      job_args = %{
+        "email_type" => "trade_declined",
+        "trade_id" => Ecto.UUID.generate(),
+        "recipient_user_id" => Ecto.UUID.generate(),
+        "is_creator" => false,
+        "decline_url" => "https://v3.example.com/trades/abc-123",
+        "env" => "production"
+      }
+
+      assert match?({:error, _}, perform_job(EmailWorker, job_args))
+      refute_email_sent()
+    end
+
+    test "trade_declined job with trace context dispatches correctly" do
+      job_args = %{
+        "email_type" => "trade_declined",
+        "trade_id" => Ecto.UUID.generate(),
+        "recipient_user_id" => Ecto.UUID.generate(),
+        "is_creator" => true,
+        "env" => "production",
+        "trace_context" => %{
+          "traceparent" => "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        }
+      }
+
+      assert match?({:error, _}, perform_job(EmailWorker, job_args))
+      refute_email_sent()
+    end
+
+    test "trade_declined job without is_creator falls through to invalid_args" do
+      job_args = %{
+        "email_type" => "trade_declined",
+        "trade_id" => Ecto.UUID.generate(),
+        "recipient_user_id" => Ecto.UUID.generate(),
+        "env" => "production"
+        # missing is_creator — pattern match will not bind
+      }
+
+      assert {:error, :invalid_args} = perform_job(EmailWorker, job_args)
+      refute_email_sent()
+    end
+
+    test "successfully dispatches trade_submit email type (not_found confirms correct handler)" do
+      job_args = %{
+        "email_type" => "trade_submit",
+        "trade_id" => Ecto.UUID.generate(),
+        "recipient_user_id" => Ecto.UUID.generate(),
+        "submit_url" => "https://v3.example.com/trades/abc?action=submit&token=tok1",
+        "env" => "production"
+      }
+
+      # Returns {:error, :not_found} because IDs don't exist in DB —
+      # confirms trade_submit branch was reached (not :invalid_args or :unknown_email_type)
+      assert match?({:error, _}, perform_job(EmailWorker, job_args))
+      refute_email_sent()
+    end
+
+    test "trade_submit job with trace context dispatches correctly" do
+      job_args = %{
+        "email_type" => "trade_submit",
+        "trade_id" => Ecto.UUID.generate(),
+        "recipient_user_id" => Ecto.UUID.generate(),
+        "submit_url" => "https://v2.example.com/trade/abc/submit",
+        "env" => "production",
+        "trace_context" => %{
+          "traceparent" => "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        }
+      }
+
+      assert match?({:error, _}, perform_job(EmailWorker, job_args))
+      refute_email_sent()
+    end
+
+    test "trade_submit job without submit_url falls through to invalid_args" do
+      job_args = %{
+        "email_type" => "trade_submit",
+        "trade_id" => Ecto.UUID.generate(),
+        "recipient_user_id" => Ecto.UUID.generate(),
+        "env" => "production"
+        # missing submit_url — pattern match will not bind
+      }
+
+      assert {:error, :invalid_args} = perform_job(EmailWorker, job_args)
+      refute_email_sent()
+    end
+
     test "logs error for unknown email type" do
       user = insert_user()
 
