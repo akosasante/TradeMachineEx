@@ -1,0 +1,16 @@
+<%= @title_text %>
+
+All parties have agreed to the terms. Click the link below to finalize and submit the trade.
+
+Trade Details
+-------------
+<%= for team_section <- @items_by_team do %>
+<%= team_section.team %> would receive:
+<%= for item <- team_section.majors do %>  - <%= item %>
+<% end %><%= for item <- team_section.minors do %>  - <%= item %> (Minors)
+<% end %><%= for item <- team_section.picks do %>  - <%= item %>
+<% end %>
+<% end %>
+Submit Trade: <%= @submit_url %>
+
+Clicking this link is final and will officially record the trade.
