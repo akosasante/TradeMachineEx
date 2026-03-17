@@ -9,19 +9,29 @@ defmodule TradeMachine.Jobs.EmailWorker do
   def perform(%Oban.Job{id: job_id, args: args}) do
     Logger.info("🚀 EmailWorker.perform called", job_id: job_id, args: args)
 
+    # Build base span attributes, adding user.id (OTel semantic convention) when present
+    # so this span can be found via Tempo TraceQL: { .user.id = "X" }
+    base_attributes = %{
+      "oban.job_id" => job_id,
+      "oban.queue" => "emails",
+      "oban.worker" => "TradeMachine.Jobs.EmailWorker",
+      "email.type" => Map.get(args, "email_type"),
+      "service.name" => "trademachine-elixir",
+      "component" => "email_worker"
+    }
+
+    span_attributes =
+      case Map.get(args, "user_id") do
+        nil -> base_attributes
+        user_id -> Map.put(base_attributes, "user.id", user_id)
+      end
+
     # Extract trace context and continue distributed trace
     result =
       TraceContext.with_extracted_context(
         args,
         "trademachine.elixir.email_worker.execute",
-        %{
-          "oban.job_id" => job_id,
-          "oban.queue" => "emails",
-          "oban.worker" => "TradeMachine.Jobs.EmailWorker",
-          "email.type" => Map.get(args, "email_type"),
-          "service.name" => "trademachine-elixir",
-          "component" => "email_worker"
-        },
+        span_attributes,
         fn ->
           Logger.info("📧 Inside TraceContext.with_extracted_context, executing email job")
           execute_email_job(args)
