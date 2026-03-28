@@ -312,24 +312,26 @@ defmodule TradeMachine.DraftPicks.SyncTest do
   # resolve_season/0
   # ---------------------------------------------------------------------------
 
-  describe "resolve_season/0" do
-    test "returns the minor league season for today's matching threshold" do
+  describe "resolve_season/1" do
+    test "returns the minor league season for the first threshold on or before the reference date" do
       Application.put_env(:trade_machine, :draft_picks_season_thresholds, [
         {~D[2027-04-01], 2027},
         {~D[2026-03-25], 2026},
         {~D[2000-01-01], 2025}
       ])
 
-      assert Sync.resolve_season() == 2025
+      # Fixed date: after 2000-01-01 but before 2026-03-25 so we expect the 2025 bucket
+      # (would fail on real "today" once calendar passes 2026-03-25).
+      assert Sync.resolve_season(~D[2026-03-20]) == 2025
     end
 
-    test "raises RuntimeError when today precedes all thresholds" do
+    test "raises RuntimeError when the reference date precedes all thresholds" do
       Application.put_env(:trade_machine, :draft_picks_season_thresholds, [
         {~D[9999-01-01], 9999}
       ])
 
       assert_raise RuntimeError, ~r/No matching draft season/, fn ->
-        Sync.resolve_season()
+        Sync.resolve_season(~D[2000-01-01])
       end
     end
   end

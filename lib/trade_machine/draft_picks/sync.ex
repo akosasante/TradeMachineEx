@@ -94,20 +94,24 @@ defmodule TradeMachine.DraftPicks.Sync do
   @doc """
   Resolves the **minor league season** from `draft_picks_season_thresholds` config.
 
-  Iterates the thresholds (descending by date) and returns the season for the
-  first threshold whose date is on or before today's UTC date.
+  Iterates the thresholds in **config list order** and returns the season for the
+  first threshold whose date is on or before the reference UTC date (defaults to
+  today). Keep thresholds sorted **descending by date** in `config.exs` so the
+  first match is the correct season for that calendar window.
 
   Minor league picks (`:high`, `:low`) use this value directly. Major league
   picks use `minor_season + 1` via `season_for_pick/2` — the MLB draft is
   always held the following year.
 
-  Raises `RuntimeError` if today precedes all configured thresholds — this
+  Pass an explicit `Date` in tests to avoid calendar-dependent assertions.
+
+  Raises `RuntimeError` if the reference date precedes all configured thresholds — this
   forces a code update rather than silently using stale season data.
   """
   @spec resolve_season() :: integer()
-  def resolve_season do
+  @spec resolve_season(Date.t()) :: integer()
+  def resolve_season(today \\ Date.utc_today()) when is_struct(today, Date) do
     thresholds = Application.fetch_env!(:trade_machine, :draft_picks_season_thresholds)
-    today = Date.utc_today()
 
     case Enum.find(thresholds, fn {threshold_date, _season} ->
            Date.compare(today, threshold_date) != :lt
@@ -118,7 +122,7 @@ defmodule TradeMachine.DraftPicks.Sync do
       nil ->
         raise RuntimeError,
           message:
-            "No matching draft season for today (#{today}). " <>
+            "No matching draft season for date (#{inspect(today)}). " <>
               "Update :draft_picks_season_thresholds in config/config.exs."
     end
   end
