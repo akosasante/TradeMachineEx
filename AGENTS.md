@@ -78,6 +78,11 @@ TradeMachineEx operates as a microservice that connects to **shared infrastructu
 - **Testing**: `TradeMachine.Discord.EmbedTester` for format experiments with sample data
 - **See**: `DISCORD_IMPLEMENTATION.md` for full documentation
 
+### Discord trade action DMs (Oban)
+- **Worker**: `TradeMachine.Jobs.DiscordWorker` also handles `trade_request_dm`, `trade_submit_dm`, and `trade_declined_dm` jobs (same `discord` queue as announcements).
+- **Content**: `action_dm.ex` builds embeds with action links; URLs are precomputed by TradeMachineServer (mirrors trade emails).
+- **Recipients**: Uses `user.discordUserId` from the database (no `DISCORD_CHANNEL_ID_*` involved). Staging QA: use test Discord IDs in the staging DB only.
+
 ### Discord slash commands (user-facing)
 - **Commands**: `/my-trades` (active trades), `/trade-history` (last 5 trades, optional status filter)
 - **Gateway**: `TradeMachine.Discord.Consumer` uses `use Nostrum.Consumer` (Nostrum **0.10.x**); started from `application.ex` only when `DISCORD_BOT_TOKEN` configures Nostrum

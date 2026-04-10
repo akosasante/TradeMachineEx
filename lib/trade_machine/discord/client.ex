@@ -3,7 +3,7 @@ defmodule TradeMachine.Discord.Client do
   Thin wrapper around the Discord API for sending messages.
 
   Handles channel ID selection based on environment and provides
-  a consistent interface for sending embeds to Discord channels.
+  a consistent interface for sending embeds to Discord channels and DMs.
   """
 
   require Logger
@@ -27,6 +27,42 @@ defmodule TradeMachine.Discord.Client do
 
       channel_id ->
         send_embed(channel_id, embed)
+    end
+  end
+
+  @doc """
+  Opens a DM with the given Discord user (snowflake string), then sends an embed.
+
+  Returns `{:error, :invalid_discord_user_id}` if the ID is not a valid snowflake.
+  """
+  @spec send_dm_embed(String.t(), map()) :: {:ok, map()} | {:error, term()}
+  def send_dm_embed(discord_user_id, embed) when is_binary(discord_user_id) do
+    id = String.trim(discord_user_id)
+
+    case Integer.parse(id) do
+      {user_id, ""} ->
+        Logger.info("Sending Discord DM embed to user #{user_id}")
+
+        case Nostrum.Api.User.create_dm(user_id) do
+          {:ok, channel} ->
+            case Nostrum.Api.Message.create(channel.id, content: "", embeds: [embed]) do
+              {:ok, message} ->
+                Logger.info("Discord DM sent successfully (message_id: #{message.id})")
+                {:ok, message}
+
+              {:error, reason} = err ->
+                Logger.error("Failed to send Discord DM message: #{inspect(reason)}")
+                err
+            end
+
+          {:error, reason} = err ->
+            Logger.error("Failed to create Discord DM channel: #{inspect(reason)}")
+            err
+        end
+
+      _ ->
+        Logger.error("Invalid Discord user snowflake for DM: #{inspect(id)}")
+        {:error, :invalid_discord_user_id}
     end
   end
 

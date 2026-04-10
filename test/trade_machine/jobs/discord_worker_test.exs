@@ -141,4 +141,46 @@ defmodule TradeMachine.Jobs.DiscordWorkerTest do
       assert {:error, :trade_not_found} = result
     end
   end
+
+  describe "trade action DM jobs (args shape)" do
+    test "returns error for trade_request_dm missing accept_url" do
+      tid = Ecto.UUID.generate()
+
+      result =
+        perform_job(DiscordWorker, %{
+          job_type: "trade_request_dm",
+          trade_id: tid,
+          recipient_user_id: Ecto.UUID.generate(),
+          decline_url: "https://x/d",
+          env: "staging"
+        })
+
+      assert {:error, :invalid_args} = result
+    end
+
+    test "returns error for trade_submit_dm missing submit_url" do
+      result =
+        perform_job(DiscordWorker, %{
+          job_type: "trade_submit_dm",
+          trade_id: Ecto.UUID.generate(),
+          recipient_user_id: Ecto.UUID.generate(),
+          env: "staging"
+        })
+
+      assert {:error, :invalid_args} = result
+    end
+
+    test "trade_declined_dm with unknown trade/user completes without retry (skipped)" do
+      tid = Ecto.UUID.generate()
+      uid = Ecto.UUID.generate()
+
+      assert :ok =
+               perform_job(DiscordWorker, %{
+                 job_type: "trade_declined_dm",
+                 trade_id: tid,
+                 recipient_user_id: uid,
+                 env: "staging"
+               })
+    end
+  end
 end
