@@ -32,7 +32,7 @@ defmodule TradeMachine.Application do
          |> Keyword.put(:name, Oban.Staging)},
         # Start the Phoenix Endpoint (http/https)
         TradeMachineWeb.Endpoint
-      ] ++ dashboard_uploader_child()
+      ] ++ dashboard_uploader_child() ++ nostrum_children()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
@@ -87,6 +87,15 @@ defmodule TradeMachine.Application do
       ]
     else
       Logger.info("Skipping PromEx dashboard upload (Grafana not configured)")
+      []
+    end
+  end
+
+  defp nostrum_children do
+    if Application.get_env(:nostrum, :token) do
+      [TradeMachine.Discord.Consumer]
+    else
+      Logger.info("Skipping Nostrum bot startup (DISCORD_BOT_TOKEN not configured)")
       []
     end
   end

@@ -16,10 +16,18 @@ TradeMachineEx is an Elixir Phoenix application that serves as the job processin
 - **iex REPL in running container**: `./console.sh` or `./console.sh <name>` (to provide a custom name for the node) eg: `./console.sh myrepl`
 
 ### Testing
-- **Run all tests**: `./test.sh`
+- **Run all tests**: `./test.sh` (preferred — this **`source .env.test`** then runs `mix test`)
 - **Run specific test file**: `./test.sh test/schema_validation_test.exs`
 - **Run tests with HTML coverage report**: `./test.sh --cover` (generates `cover/excoveralls.html`)
 - **Run tests in Docker**: `docker compose -f docker-compose.yml -f docker-compose.test.yml up --build`
+
+**Do not rely on bare `mix test` for the full suite** unless you have already loaded test DB env vars. `config/test.exs` defaults the dual repos to **PostgreSQL ports 5432** (production repo) and **5435** (staging repo). Local Docker from the monorepo typically exposes Postgres on **5438**. File **`.env.test`** sets `PROD_DATABASE_PORT` and `STAGING_DATABASE_PORT` to **5438** (and `DATABASE_HOST`, credentials, etc.) so integration tests hit the running database. If you run `mix test` manually, use:
+
+```bash
+source .env.test && mix test
+```
+
+Adjust `.env.test` if your DB user, password, or host differs.
 
 ### Code Quality
 - **Lint**: `mix credo`
@@ -55,7 +63,7 @@ TradeMachineEx operates as a microservice that connects to **shared infrastructu
 
 **Directory Structure**:
 - `lib/trade_machine/data/` - Ecto schemas and data models
-- `lib/trade_machine/discord/` - Discord integration (trade announcements)
+- `lib/trade_machine/discord/` - Discord integration (trade announcements, slash commands, Nostrum consumer)
 - `lib/trade_machine/jobs/` - Background job processors
 - `lib/trade_machine/mailer/` - Email templates and delivery
 - `lib/trade_machine/minor_leagues/` - Minor league sheet sync (fetch, parse, sync)
@@ -69,6 +77,13 @@ TradeMachineEx operates as a microservice that connects to **shared infrastructu
 - **Usage**: `TradeMachine.Discord.Announcer.announce_trade("trade-id", :production)`
 - **Testing**: `TradeMachine.Discord.EmbedTester` for format experiments with sample data
 - **See**: `DISCORD_IMPLEMENTATION.md` for full documentation
+
+### Discord slash commands (user-facing)
+- **Commands**: `/my-trades` (active trades), `/trade-history` (last 5 trades, optional status filter)
+- **Gateway**: `TradeMachine.Discord.Consumer` uses `use Nostrum.Consumer` (Nostrum **0.10.x**); started from `application.ex` only when `DISCORD_BOT_TOKEN` configures Nostrum
+- **Registration**: Guild-scoped commands on READY via **`DISCORD_GUILD_ID`** (`config/runtime.exs`, `.env.example`, Docker Compose)
+- **Auth / data**: Maps Discord user → `User.discordUserId`; ephemeral replies; embeds link to V3 review and `/my-trades` on the configured frontend URL
+- **Tests**: `mix test test/trade_machine/discord/` (or `./test.sh test/trade_machine/discord/…` after `test.sh`’s env is loaded)
 
 ### Email System
 - **Provider**: Brevo (SendInBlue) via Swoosh adapter
@@ -85,8 +100,8 @@ TradeMachineEx operates as a microservice that connects to **shared infrastructu
 
 ### Environment Files
 - `.env.development` - Development template (copy to `.env`)
-- `.env.test` - Test environment (sourced by `test.sh`)
-- `.env.example` - Environment variable documentation
+- `.env.test` - Test environment (**sourced by `test.sh`**; required for correct DB ports when running tests against local Docker Postgres on **5438**)
+- `.env.example` - Environment variable documentation (includes **`DISCORD_GUILD_ID`** for slash command registration)
 
 ### Config Files
 - `config/config.exs` - Base configuration
