@@ -225,27 +225,33 @@ end
 # OpenTelemetry runtime configuration - using official documented format
 otlp_endpoint = System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT") || "http://localhost:4318"
 
-# OpenTelemetry configuration - using processors config for full control
+# Set OTEL_TRACES_EXPORTER=none to disable trace export when the
+# Alloy/Grafana collector isn't running (avoids connection-refused log spam).
+traces_exporter =
+  case System.get_env("OTEL_TRACES_EXPORTER") do
+    "none" -> :none
+    _ -> :otlp
+  end
+
 config :opentelemetry,
-  #  span_processor: :batch,
-  traces_exporter: :otlp
+  traces_exporter: traces_exporter
 
-# Custom batch processor configuration to ensure faster exports for debugging
-config :opentelemetry, :processors,
-  otel_batch_processor: %{
-    exporter: {:opentelemetry_exporter, :otlp_traces},
-    config: %{
-      # Export every 1 second for debugging
-      scheduled_delay_ms: 1_000,
-      max_queue_size: 2048,
-      export_timeout_ms: 30_000,
-      max_export_batch_size: 512
+if traces_exporter == :otlp do
+  config :opentelemetry, :processors,
+    otel_batch_processor: %{
+      exporter: {:opentelemetry_exporter, :otlp_traces},
+      config: %{
+        scheduled_delay_ms: 1_000,
+        max_queue_size: 2048,
+        export_timeout_ms: 30_000,
+        max_export_batch_size: 512
+      }
     }
-  }
 
-config :opentelemetry_exporter,
-  otlp_protocol: :http_protobuf,
-  otlp_endpoint: otlp_endpoint
+  config :opentelemetry_exporter,
+    otlp_protocol: :http_protobuf,
+    otlp_endpoint: otlp_endpoint
+end
 
 # Optional: Configure trace sampling
 if System.get_env("OTEL_TRACES_SAMPLER") == "traceidratio" do
@@ -293,10 +299,15 @@ if config_env() != :test do
   if discord_token = System.get_env("DISCORD_BOT_TOKEN") do
     config :nostrum,
       token: discord_token,
-      # Gateway intents - minimal for now, add more when needed
       gateway_intents: [
         :guilds,
         :guild_messages
-      ]
+      ],
+      ffmpeg: nil
+  end
+
+  if discord_guild_id = System.get_env("DISCORD_GUILD_ID") do
+    config :trade_machine,
+      discord_guild_id: String.to_integer(discord_guild_id)
   end
 end
