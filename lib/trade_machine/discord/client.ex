@@ -42,27 +42,34 @@ defmodule TradeMachine.Discord.Client do
     case Integer.parse(id) do
       {user_id, ""} ->
         Logger.info("Sending Discord DM embed to user #{user_id}")
-
-        case Nostrum.Api.User.create_dm(user_id) do
-          {:ok, channel} ->
-            case Nostrum.Api.Message.create(channel.id, content: "", embeds: [embed]) do
-              {:ok, message} ->
-                Logger.info("Discord DM sent successfully (message_id: #{message.id})")
-                {:ok, message}
-
-              {:error, reason} = err ->
-                Logger.error("Failed to send Discord DM message: #{inspect(reason)}")
-                err
-            end
-
-          {:error, reason} = err ->
-            Logger.error("Failed to create Discord DM channel: #{inspect(reason)}")
-            err
-        end
+        dm_embed_after_parse(user_id, embed)
 
       _ ->
         Logger.error("Invalid Discord user snowflake for DM: #{inspect(id)}")
         {:error, :invalid_discord_user_id}
+    end
+  end
+
+  defp dm_embed_after_parse(user_id, embed) do
+    case Nostrum.Api.User.create_dm(user_id) do
+      {:ok, channel} ->
+        dm_send_message(channel.id, embed)
+
+      {:error, reason} = err ->
+        Logger.error("Failed to create Discord DM channel: #{inspect(reason)}")
+        err
+    end
+  end
+
+  defp dm_send_message(channel_id, embed) do
+    case Nostrum.Api.Message.create(channel_id, content: "", embeds: [embed]) do
+      {:ok, message} ->
+        Logger.info("Discord DM sent successfully (message_id: #{message.id})")
+        {:ok, message}
+
+      {:error, reason} = err ->
+        Logger.error("Failed to send Discord DM message: #{inspect(reason)}")
+        err
     end
   end
 
