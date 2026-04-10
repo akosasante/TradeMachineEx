@@ -9,6 +9,7 @@ defmodule TradeMachine.Discord.Commands.TradeHistory do
 
   require Logger
 
+  alias TradeMachine.Discord.Runtime
   alias TradeMachine.Discord.TradeListEmbedBuilder
   alias TradeMachine.Discord.Trades
 
@@ -52,7 +53,7 @@ defmodule TradeMachine.Discord.Commands.TradeHistory do
             total_count: total_count
           )
 
-        Nostrum.Api.Interaction.create_response(interaction, %{
+        Runtime.interaction_api().create_response(interaction, %{
           type: 4,
           data: %{embeds: [embed], flags: 64}
         })
@@ -75,7 +76,7 @@ defmodule TradeMachine.Discord.Commands.TradeHistory do
   end
 
   defp respond_ephemeral(interaction, message) do
-    Nostrum.Api.Interaction.create_response(interaction, %{
+    Runtime.interaction_api().create_response(interaction, %{
       type: 4,
       data: %{content: message, flags: 64}
     })

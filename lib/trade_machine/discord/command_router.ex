@@ -9,6 +9,7 @@ defmodule TradeMachine.Discord.CommandRouter do
 
   alias TradeMachine.Discord.Commands.MyTrades
   alias TradeMachine.Discord.Commands.TradeHistory
+  alias TradeMachine.Discord.Runtime
 
   @my_trades_command %{
     name: "my-trades",
@@ -43,7 +44,7 @@ defmodule TradeMachine.Discord.CommandRouter do
       Logger.info("Registering slash commands for guild #{guild_id} (app #{app_id})")
 
       for command <- [@my_trades_command, @trade_history_command] do
-        case Nostrum.Api.ApplicationCommand.create_guild_command(guild_id, command) do
+        case Runtime.application_command_api().create_guild_command(guild_id, command) do
           {:ok, _cmd} ->
             Logger.info("Registered /#{command.name}")
 
@@ -73,7 +74,7 @@ defmodule TradeMachine.Discord.CommandRouter do
   def handle(interaction) do
     Logger.warning("Unknown command: #{inspect(interaction.data.name)}")
 
-    Nostrum.Api.Interaction.create_response(interaction, %{
+    Runtime.interaction_api().create_response(interaction, %{
       type: 4,
       data: %{content: "Unknown command.", flags: 64}
     })

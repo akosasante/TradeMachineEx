@@ -1,41 +1,47 @@
 defmodule TradeMachine.Discord.CommandRouterTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias TradeMachine.Discord.CommandRouter
 
-  describe "handle/1 dispatching" do
-    test "routes my-trades to MyTrades handler" do
-      interaction = build_interaction("my-trades")
+  setup do
+    prev_guild = Application.get_env(:trade_machine, :discord_guild_id)
 
-      # handle/1 will call MyTrades.handle which calls Nostrum API;
-      # in test env Nostrum is not running, so we just verify no crash on dispatch.
-      # The actual command logic is tested via integration tests.
-      assert_raise RuntimeError, fn ->
-        CommandRouter.handle(interaction)
+    on_exit(fn ->
+      if prev_guild == nil do
+        Application.delete_env(:trade_machine, :discord_guild_id)
+      else
+        Application.put_env(:trade_machine, :discord_guild_id, prev_guild)
       end
-    rescue
-      # Expected: Nostrum is not started in test, so the handler will fail
-      # trying to call Nostrum.Api. That's fine -- we're testing dispatch, not API calls.
-      _ -> :ok
+    end)
+
+    :ok
+  end
+
+  describe "register_commands/1" do
+    test "skips Discord API when DISCORD_GUILD_ID is unset" do
+      Application.delete_env(:trade_machine, :discord_guild_id)
+
+      assert CommandRouter.register_commands(123_456_789_012_345_678) == :ok
     end
 
-    test "routes trade-history to TradeHistory handler" do
-      interaction = build_interaction("trade-history")
+    test "parses string guild id and completes (API may fail in test)" do
+      Application.put_env(:trade_machine, :discord_guild_id, "999888777666555444")
 
-      assert_raise RuntimeError, fn ->
-        CommandRouter.handle(interaction)
-      end
-    rescue
-      _ -> :ok
+      assert CommandRouter.register_commands(111) == :ok
+    end
+
+    test "registers when guild id is an integer" do
+      Application.put_env(:trade_machine, :discord_guild_id, 999_888_777_666_555_444)
+
+      assert CommandRouter.register_commands(222) == :ok
     end
   end
 
-  defp build_interaction(name) do
-    %{
-      data: %{name: name, options: nil},
-      member: %{user_id: 123_456_789},
-      token: "test-token",
-      id: 1
-    }
+  describe "handle/1" do
+    test "returns API result for unknown commands" do
+      interaction = %{data: %{name: "unknown"}, token: "test-token", id: 1}
+
+      assert CommandRouter.handle(interaction) == {:ok}
+    end
   end
 end
