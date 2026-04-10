@@ -70,6 +70,29 @@ jobs:
           export DATABASE_URL="postgresql://trader_test:test_password@localhost:5432/trade_machine_test?schema=test"
           prisma db push --force-reset
 
+      # prisma db push materializes models (tables) but does not run prisma/migrations/*.sql and does
+      # not create PostgreSQL VIEWs declared as Prisma `view` blocks. Elixir queries hydrated_* views.
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Apply hydrated view SQL from TradeMachineServer
+        env:
+          PGPASSWORD: test_password
+        run: |
+          BASE="https://raw.githubusercontent.com/${{ github.repository_owner }}/TradeMachineServer/main/prisma/migrations"
+          apply_migration() {
+            local dir="$1"
+            echo "::group::Applying ${dir}"
+            {
+              echo "SET search_path TO test;"
+              curl -fsSL "${BASE}/${dir}/migration.sql"
+            } | psql -v ON_ERROR_STOP=1 -h localhost -p 5432 -U trader_test -d trade_machine_test
+            echo "::endgroup::"
+          }
+          apply_migration "20250527131228_add_views"
+          apply_migration "20251002030632_add_missing_test_views"
+          apply_migration "20260315222332_update_hydrated_trades_view"
+
       - name: Install dependencies
         run: mix deps.get
 
