@@ -43,6 +43,9 @@ npm-debug.log
 # Ignore generated script output (CSV exports from SQL scripts, etc.)
 /priv/scripts/output/
 
+# Local log dumps / exports (do not commit)
+Logs*.txt
+
 # Ignore intellij idea IDE specific stuff
 .idea/
 *.iml

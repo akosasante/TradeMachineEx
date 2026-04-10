@@ -32,7 +32,9 @@ defmodule TradeMachineWeb.Endpoint do
     socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
     plug Phoenix.LiveReloader
     plug Phoenix.CodeReloader
-    plug Phoenix.Ecto.CheckRepoStatus, otp_app: :trade_machine
+    # Prisma (TypeScript) owns schema migrations, not Ecto, so the
+    # default CheckRepoStatus plug is removed to avoid false-positive
+    # "pending migration" errors on every request.
   end
 
   plug Phoenix.LiveDashboard.RequestLogger,
