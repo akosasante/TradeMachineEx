@@ -1,22 +1,31 @@
 defmodule TradeMachine.Jobs.DiscordWorker do
   @moduledoc """
-  Oban worker that processes Discord trade announcement jobs.
+  Oban worker that processes Discord jobs: channel trade announcements and trade action DMs.
 
   Jobs are enqueued by the TypeScript server via direct insertion into the
-  `oban_jobs` table. The worker delegates to `TradeMachine.Discord.Announcer`
-  for the actual announcement logic.
+  `oban_jobs` table.
 
   ## Job Args
 
-      %{
-        "job_type" => "trade_announcement",
-        "data" => "trade-uuid",
-        "env" => "production" | "staging"
-      }
+  Announcement:
+
+      %{"job_type" => "trade_announcement", "data" => "trade-uuid", "env" => "production" | "staging"}
+
+  Direct messages (URLs mirror email jobs, snake_case keys):
+
+      %{"job_type" => "trade_request_dm", "trade_id" => ..., "recipient_user_id" => ...,
+        "accept_url" => ..., "decline_url" => ..., "env" => ...}
+
+      %{"job_type" => "trade_submit_dm", "trade_id" => ..., "recipient_user_id" => ...,
+        "submit_url" => ..., "env" => ...}
+
+      %{"job_type" => "trade_declined_dm", "trade_id" => ..., "recipient_user_id" => ...,
+        "is_creator" => true | false, "decline_url" => optional, "env" => ...}
   """
 
   use Oban.Worker, queue: :discord, max_attempts: 3
 
+  alias TradeMachine.Discord.ActionDm
   alias TradeMachine.Discord.Announcer
   alias TradeMachine.Tracing.TraceContext
 
@@ -51,9 +60,165 @@ defmodule TradeMachine.Jobs.DiscordWorker do
     )
   end
 
+  def perform(%Oban.Job{
+        id: job_id,
+        args:
+          %{
+            "job_type" => "trade_request_dm",
+            "trade_id" => trade_id,
+            "recipient_user_id" => recipient_user_id,
+            "accept_url" => accept_url,
+            "decline_url" => decline_url,
+            "env" => env
+          } = args
+      }) do
+    repo = select_repo(env)
+
+    TraceContext.with_extracted_context(
+      args,
+      "trademachine.elixir.discord_worker.execute",
+      dm_span_attrs(job_id, "trade_request_dm", trade_id, recipient_user_id),
+      fn ->
+        Logger.info("Processing Discord trade_request_dm",
+          job_id: job_id,
+          trade_id: trade_id,
+          recipient_user_id: recipient_user_id
+        )
+
+        result =
+          ActionDm.send_trade_request_dm(
+            trade_id,
+            recipient_user_id,
+            accept_url,
+            decline_url,
+            repo
+          )
+
+        finalize_dm_job(job_id, trade_id, "trade_request_dm", result)
+      end
+    )
+  end
+
+  def perform(%Oban.Job{
+        id: job_id,
+        args:
+          %{
+            "job_type" => "trade_submit_dm",
+            "trade_id" => trade_id,
+            "recipient_user_id" => recipient_user_id,
+            "submit_url" => submit_url,
+            "env" => env
+          } = args
+      }) do
+    repo = select_repo(env)
+
+    TraceContext.with_extracted_context(
+      args,
+      "trademachine.elixir.discord_worker.execute",
+      dm_span_attrs(job_id, "trade_submit_dm", trade_id, recipient_user_id),
+      fn ->
+        Logger.info("Processing Discord trade_submit_dm",
+          job_id: job_id,
+          trade_id: trade_id,
+          recipient_user_id: recipient_user_id
+        )
+
+        result = ActionDm.send_trade_submit_dm(trade_id, recipient_user_id, submit_url, repo)
+        finalize_dm_job(job_id, trade_id, "trade_submit_dm", result)
+      end
+    )
+  end
+
+  def perform(%Oban.Job{
+        id: job_id,
+        args:
+          %{
+            "job_type" => "trade_declined_dm",
+            "trade_id" => trade_id,
+            "recipient_user_id" => recipient_user_id,
+            "env" => env
+          } = args
+      }) do
+    repo = select_repo(env)
+    is_creator = Map.get(args, "is_creator", false)
+    decline_url = Map.get(args, "decline_url")
+
+    TraceContext.with_extracted_context(
+      args,
+      "trademachine.elixir.discord_worker.execute",
+      dm_span_attrs(job_id, "trade_declined_dm", trade_id, recipient_user_id),
+      fn ->
+        Logger.info("Processing Discord trade_declined_dm",
+          job_id: job_id,
+          trade_id: trade_id,
+          recipient_user_id: recipient_user_id
+        )
+
+        result =
+          ActionDm.send_trade_declined_dm(
+            trade_id,
+            recipient_user_id,
+            is_creator,
+            decline_url,
+            repo
+          )
+
+        finalize_dm_job(job_id, trade_id, "trade_declined_dm", result)
+      end
+    )
+  end
+
   def perform(%Oban.Job{id: job_id, args: args}) do
     Logger.error("Invalid Discord job args", job_id: job_id, args: inspect(args))
     {:error, :invalid_args}
+  end
+
+  defp dm_span_attrs(job_id, dm_kind, trade_id, recipient_user_id) do
+    %{
+      "oban.job_id" => job_id,
+      "oban.queue" => "discord",
+      "oban.worker" => "TradeMachine.Jobs.DiscordWorker",
+      "discord.job_type" => dm_kind,
+      "discord.trade_id" => trade_id,
+      "discord.recipient_user_id" => recipient_user_id,
+      "user.id" => recipient_user_id,
+      "service.name" => "trademachine-elixir",
+      "component" => "discord_worker"
+    }
+  end
+
+  defp finalize_dm_job(job_id, trade_id, kind, result) do
+    case result do
+      {:ok, _message} ->
+        Logger.info("Discord DM job completed", job_id: job_id, trade_id: trade_id, kind: kind)
+        :ok
+
+      {:error, reason}
+      when reason in [
+             :no_discord_user_id,
+             :invalid_discord_user_id,
+             :trade_not_found,
+             :user_not_found
+           ] ->
+        Logger.info("Discord DM skipped (non-retryable)",
+          job_id: job_id,
+          trade_id: trade_id,
+          kind: kind,
+          reason: reason
+        )
+
+        :ok
+
+      {:error, reason} = err ->
+        Logger.error("Discord DM failed",
+          job_id: job_id,
+          trade_id: trade_id,
+          kind: kind,
+          error: inspect(reason)
+        )
+
+        err
+    end
   end
 
   defp announce(job_id, trade_id, environment) do
@@ -88,4 +253,7 @@ defmodule TradeMachine.Jobs.DiscordWorker do
 
   defp select_environment("production"), do: :production
   defp select_environment(_), do: :staging
+
+  defp select_repo("production"), do: TradeMachine.Repo.Production
+  defp select_repo(_), do: TradeMachine.Repo.Staging
 end

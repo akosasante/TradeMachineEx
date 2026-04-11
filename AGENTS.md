@@ -78,6 +78,11 @@ TradeMachineEx operates as a microservice that connects to **shared infrastructu
 - **Testing**: `TradeMachine.Discord.EmbedTester` for format experiments with sample data
 - **See**: `DISCORD_IMPLEMENTATION.md` for full documentation
 
+### Discord trade action DMs (Oban)
+- **Worker**: `TradeMachine.Jobs.DiscordWorker` also handles `trade_request_dm`, `trade_submit_dm`, and `trade_declined_dm` jobs (same `discord` queue as announcements).
+- **Content**: `action_dm.ex` builds embeds with action links; URLs are precomputed by TradeMachineServer (mirrors trade emails).
+- **Recipients**: Uses `user.discordUserId` from the database (no `DISCORD_CHANNEL_ID_*` involved). Staging QA: use test Discord IDs in the staging DB only.
+
 ### Discord slash commands (user-facing)
 - **Commands**: `/my-trades` (active trades), `/trade-history` (last 5 trades, optional status filter)
 - **Gateway**: `TradeMachine.Discord.Consumer` uses `use Nostrum.Consumer` (Nostrum **0.10.x**); started from `application.ex` only when `DISCORD_BOT_TOKEN` configures Nostrum
@@ -253,6 +258,18 @@ See `test/trade_machine/espn/client_test.exs`, `test/trade_machine/espn/search_t
 - Use `Oban.Testing` (`use Oban.Testing, repo: TradeMachine.Repo.Production`) for `assert_enqueued` and related helpers.
 - Test worker configuration (`queue`, `max_attempts`, `unique`) separately from `perform/1` business logic.
 - **Avoid row-lock deadlocks**: When a job syncs to both `Repo.Production` and `Repo.Staging`, both operations hit the same physical database (same test schema) inside sandbox transactions. If both repos try to upsert the same row, the second operation deadlocks waiting on the first's uncommitted lock. To avoid this, stub the external API to return an empty result set in happy-path tests, or scope DB-interaction tests to a single repo.
+
+### Testing External I/O (Discord / Nostrum)
+
+For boundaries where a third-party library owns the HTTP stack (e.g. Nostrum for Discord), use **behaviour + Application-config test double** instead of Bypass or runtime patching. Full rationale and decision criteria live in [`docs/adr/0001-testing-external-io-and-test-doubles.md`](docs/adr/0001-testing-external-io-and-test-doubles.md).
+
+**Quick reference:**
+
+- **Test doubles** are registered in `test/test_helper.exs` via `Application.put_env/3` and implemented in `test/support/`.
+- **`mock` / Meck are banned** — no runtime function patching.
+- **Bypass** is for boundaries where *our* code controls the HTTP base URL (i.e. `Req`-based clients). Use `Req.Test` for those instead (see section above).
+- **Mox/Hammox** may be added later per the ADR's criteria; for now, hand-rolled modules with `@behaviour` are sufficient.
+- **Database tests** should `use TradeMachine.DataCase, async: false` for Ecto Sandbox setup covering both repos.
 
 ### Email Testing
 
