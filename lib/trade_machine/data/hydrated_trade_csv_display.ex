@@ -158,7 +158,10 @@ defmodule TradeMachine.Data.HydratedTradeCsvDisplay do
       end
 
     row
-    |> put_row(:original_owner, relabel_owner_field(row_value(row, :original_owner, "original_owner"), labels))
+    |> put_row(
+      :original_owner,
+      relabel_owner_field(row_value(row, :original_owner, "original_owner"), labels)
+    )
     |> put_row(:owned_by, relabel_owner_field(row_value(row, :owned_by, "owned_by"), labels))
   end
 
