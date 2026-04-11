@@ -7,18 +7,24 @@ defmodule TradeMachine.Discord.ActionDm do
 
   alias TradeMachine.Data.HydratedTrade
   alias TradeMachine.Data.User
+  alias TradeMachine.Discord.ActionDmEmbed
   alias TradeMachine.Discord.Client
 
   require Logger
-
-  @embed_color 0x3498DB
 
   @spec send_trade_request_dm(String.t(), String.t(), String.t(), String.t(), Ecto.Repo.t()) ::
           {:ok, map()} | {:error, term()}
   def send_trade_request_dm(trade_id, recipient_user_id, accept_url, decline_url, repo) do
     with {:ok, hydrated} <- fetch_hydrated_trade(trade_id, repo),
          {:ok, discord_id} <- discord_id_for_user(recipient_user_id, repo) do
-      embed = build_request_embed(hydrated, accept_url, decline_url)
+      embed =
+        ActionDmEmbed.build_request_embed(
+          hydrated.creator,
+          hydrated.recipients,
+          accept_url,
+          decline_url
+        )
+
       Client.send_dm_embed(discord_id, embed)
     end
   end
@@ -28,7 +34,7 @@ defmodule TradeMachine.Discord.ActionDm do
   def send_trade_submit_dm(trade_id, recipient_user_id, submit_url, repo) do
     with {:ok, hydrated} <- fetch_hydrated_trade(trade_id, repo),
          {:ok, discord_id} <- discord_id_for_user(recipient_user_id, repo) do
-      embed = build_submit_embed(hydrated, submit_url)
+      embed = ActionDmEmbed.build_submit_embed(hydrated.recipients, submit_url)
       Client.send_dm_embed(discord_id, embed)
     end
   end
@@ -38,7 +44,7 @@ defmodule TradeMachine.Discord.ActionDm do
   def send_trade_declined_dm(trade_id, recipient_user_id, is_creator, view_url, repo) do
     with {:ok, hydrated} <- fetch_hydrated_trade(trade_id, repo),
          {:ok, discord_id} <- discord_id_for_user(recipient_user_id, repo) do
-      embed = build_declined_embed(hydrated, is_creator, view_url)
+      embed = ActionDmEmbed.build_declined_embed(hydrated.declined_by, is_creator, view_url)
       Client.send_dm_embed(discord_id, embed)
     end
   end
@@ -80,81 +86,5 @@ defmodule TradeMachine.Discord.ActionDm do
 
         {:error, :no_discord_user_id}
     end
-  end
-
-  defp build_request_embed(hydrated, accept_url, decline_url) do
-    title =
-      if length(hydrated.recipients) == 1 do
-        "#{hydrated.creator} requested a trade with you"
-      else
-        "#{hydrated.creator} requested a trade with you and others"
-      end
-
-    description = """
-    **#{title}**
-
-    [Accept](#{accept_url}) · [Decline](#{decline_url})
-    """
-
-    %{
-      title: "TradeMachine — action needed",
-      description: String.trim(description),
-      color: @embed_color
-    }
-  end
-
-  defp build_submit_embed(hydrated, submit_url) do
-    recipient_count = length(hydrated.recipients)
-
-    title =
-      if recipient_count == 1 do
-        "#{hd(hydrated.recipients)} accepted your trade proposal"
-      else
-        "Recipients accepted your trade proposal"
-      end
-
-    description = """
-    **#{title}**
-
-    Submit the trade to the league: [Submit trade](#{submit_url})
-    """
-
-    %{
-      title: "TradeMachine — submit your trade",
-      description: String.trim(description),
-      color: @embed_color
-    }
-  end
-
-  defp build_declined_embed(hydrated, is_creator, view_url) do
-    decliner = hydrated.declined_by || "Someone"
-
-    title_text =
-      if is_creator do
-        "Your trade proposal was declined by #{decliner}"
-      else
-        "A trade you were part of was declined by #{decliner}"
-      end
-
-    description =
-      case view_url do
-        url when is_binary(url) and url != "" ->
-          """
-          **#{title_text}**
-
-          [View trade](#{url})
-          """
-
-        _ ->
-          """
-          **#{title_text}**
-          """
-      end
-
-    %{
-      title: "TradeMachine — trade declined",
-      description: String.trim(description),
-      color: @embed_color
-    }
   end
 end

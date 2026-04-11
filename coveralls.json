@@ -35,6 +35,7 @@
     "lib/trade_machine/data/sync_job_execution.ex",
 
     "lib/trade_machine/discord/embed_tester.ex",
+    "lib/trade_machine/discord/client.ex",
     "lib/trade_machine/minor_league_reconciliation.ex"
   ]
 }
