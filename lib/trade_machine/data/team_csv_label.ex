@@ -23,32 +23,44 @@ defmodule TradeMachine.Data.TeamCsvLabel do
     if team_ids == [] do
       %{}
     else
-      team_names =
-        from(t in Team,
-          where: t.id in ^team_ids,
-          select: {t.id, t.name}
-        )
-        |> repo.all()
-        |> Map.new(fn {id, name} -> {id_key(id), name} end)
-
-      csv_first =
-        from(u in User,
-          where: u.teamId in ^team_ids,
-          where: not is_nil(u.csv_name),
-          where: u.csv_name != "",
-          order_by: [asc: u.id],
-          select: {u.teamId, u.csv_name}
-        )
-        |> repo.all()
-        |> Enum.reduce(%{}, fn {team_id, csv}, acc ->
-          k = id_key(team_id)
-          if Map.has_key?(acc, k), do: acc, else: Map.put(acc, k, csv)
-        end)
+      team_names = team_name_by_id(team_ids, repo)
+      csv_first = first_csv_name_by_team_id(team_ids, repo)
 
       Map.new(team_ids, fn team_id ->
         label = Map.get(csv_first, team_id) || Map.get(team_names, team_id) || "Unknown"
         {team_id, label}
       end)
+    end
+  end
+
+  defp team_name_by_id(team_ids, repo) do
+    from(t in Team,
+      where: t.id in ^team_ids,
+      select: {t.id, t.name}
+    )
+    |> repo.all()
+    |> Map.new(fn {id, name} -> {id_key(id), name} end)
+  end
+
+  defp first_csv_name_by_team_id(team_ids, repo) do
+    from(u in User,
+      where: u.teamId in ^team_ids,
+      where: not is_nil(u.csv_name),
+      where: u.csv_name != "",
+      order_by: [asc: u.id],
+      select: {u.teamId, u.csv_name}
+    )
+    |> repo.all()
+    |> Enum.reduce(%{}, &put_first_csv_for_team/2)
+  end
+
+  defp put_first_csv_for_team({team_id, csv}, acc) do
+    k = id_key(team_id)
+
+    if Map.has_key?(acc, k) do
+      acc
+    else
+      Map.put(acc, k, csv)
     end
   end
 

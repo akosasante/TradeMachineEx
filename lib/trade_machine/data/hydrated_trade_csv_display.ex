@@ -14,10 +14,10 @@ defmodule TradeMachine.Data.HydratedTradeCsvDisplay do
   """
   @spec apply(HydratedTrade.t(), Ecto.UUID.t(), module()) :: HydratedTrade.t()
   def apply(%HydratedTrade{} = h, trade_id, repo) do
-    if not function_exported?(repo, :all, 1) do
-      h
-    else
+    if function_exported?(repo, :all, 1) do
       do_apply(h, trade_id, repo)
+    else
+      h
     end
   end
 
