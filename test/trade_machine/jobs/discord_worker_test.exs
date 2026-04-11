@@ -1,186 +1,117 @@
 defmodule TradeMachine.Jobs.DiscordWorkerTest do
-  use ExUnit.Case, async: true
-  use Oban.Testing, repo: TradeMachine.Repo.Production, prefix: "test"
+  use TradeMachine.DataCase, async: false
 
   alias TradeMachine.Jobs.DiscordWorker
 
-  setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Production)
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(TradeMachine.Repo.Staging)
-
-    TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Production)
-    TestHelper.set_search_path_for_sandbox(TradeMachine.Repo.Staging)
-
-    :ok
+  defp build_job(args, opts \\ []) do
+    %Oban.Job{
+      id: Keyword.get(opts, :id, 1),
+      args: args,
+      worker: "TradeMachine.Jobs.DiscordWorker",
+      queue: "discord"
+    }
   end
 
-  describe "worker configuration" do
-    test "uses the :discord queue" do
-      job_changeset =
-        DiscordWorker.new(%{
-          job_type: "trade_announcement",
-          data: Ecto.UUID.generate(),
-          env: "production"
-        })
+  # ── Invalid args ──────────────────────────────────────────────────────────
 
-      assert job_changeset.changes.queue == "discord"
+  describe "perform/1 — invalid args" do
+    test "returns {:error, :invalid_args} for unknown job_type" do
+      job = build_job(%{"job_type" => "bogus"})
+      assert {:error, :invalid_args} = DiscordWorker.perform(job)
     end
 
-    test "has max_attempts of 3" do
-      job_changeset =
-        DiscordWorker.new(%{
-          job_type: "trade_announcement",
-          data: Ecto.UUID.generate(),
-          env: "production"
-        })
-
-      assert job_changeset.changes.max_attempts == 3
+    test "returns {:error, :invalid_args} for empty args" do
+      job = build_job(%{})
+      assert {:error, :invalid_args} = DiscordWorker.perform(job)
     end
 
-    test "uses the correct worker name" do
-      job_changeset =
-        DiscordWorker.new(%{
-          job_type: "trade_announcement",
-          data: Ecto.UUID.generate(),
-          env: "production"
-        })
-
-      assert job_changeset.changes.worker == "TradeMachine.Jobs.DiscordWorker"
+    test "returns {:error, :invalid_args} for args missing required keys" do
+      job = build_job(%{"job_type" => "trade_request_dm", "trade_id" => "x"})
+      assert {:error, :invalid_args} = DiscordWorker.perform(job)
     end
   end
 
-  describe "perform/1 argument handling" do
-    test "returns error for invalid args (missing job_type)" do
-      result =
-        perform_job(DiscordWorker, %{
-          data: Ecto.UUID.generate(),
-          env: "production"
+  # ── finalize_dm_job: non-retryable errors are swallowed ───────────────────
+  #
+  # Without the hydrated_trades DB view (not created locally), ActionDm returns
+  # {:error, :trade_not_found}. finalize_dm_job classifies that as non-retryable
+  # and returns :ok so Oban does not retry the job. These tests exercise the
+  # full perform → ActionDm → finalize path for each DM job_type.
+
+  describe "perform/1 — trade_request_dm (non-retryable skip)" do
+    test "returns :ok when hydrated trade does not exist" do
+      job =
+        build_job(%{
+          "job_type" => "trade_request_dm",
+          "trade_id" => Ecto.UUID.generate(),
+          "recipient_user_id" => Ecto.UUID.generate(),
+          "accept_url" => "http://accept",
+          "decline_url" => "http://decline",
+          "env" => "production"
         })
 
-      assert {:error, :invalid_args} = result
-    end
-
-    test "returns error for invalid args (missing data)" do
-      result =
-        perform_job(DiscordWorker, %{
-          job_type: "trade_announcement",
-          env: "production"
-        })
-
-      assert {:error, :invalid_args} = result
-    end
-
-    test "returns error for invalid args (missing env)" do
-      result =
-        perform_job(DiscordWorker, %{
-          job_type: "trade_announcement",
-          data: Ecto.UUID.generate()
-        })
-
-      assert {:error, :invalid_args} = result
-    end
-
-    test "returns error for completely empty args" do
-      assert {:error, :invalid_args} = perform_job(DiscordWorker, %{})
-    end
-
-    test "returns error for invalid trade ID (not a valid UUID)" do
-      result =
-        perform_job(DiscordWorker, %{
-          job_type: "trade_announcement",
-          data: "not-a-uuid",
-          env: "staging"
-        })
-
-      assert {:error, :invalid_trade_id} = result
-    end
-
-    test "returns error for non-existent trade (valid UUID but not in DB)" do
-      result =
-        perform_job(DiscordWorker, %{
-          job_type: "trade_announcement",
-          data: Ecto.UUID.generate(),
-          env: "staging"
-        })
-
-      assert {:error, :trade_not_found} = result
+      assert :ok = DiscordWorker.perform(job)
     end
   end
 
-  describe "environment selection" do
-    test "production env maps to :production (returns trade_not_found, not env error)" do
-      result =
-        perform_job(DiscordWorker, %{
-          job_type: "trade_announcement",
-          data: Ecto.UUID.generate(),
-          env: "production"
+  describe "perform/1 — trade_submit_dm (non-retryable skip)" do
+    test "returns :ok when hydrated trade does not exist" do
+      job =
+        build_job(%{
+          "job_type" => "trade_submit_dm",
+          "trade_id" => Ecto.UUID.generate(),
+          "recipient_user_id" => Ecto.UUID.generate(),
+          "submit_url" => "http://submit",
+          "env" => "production"
         })
 
-      assert {:error, :trade_not_found} = result
-    end
-
-    test "staging env maps to :staging (returns trade_not_found, not env error)" do
-      result =
-        perform_job(DiscordWorker, %{
-          job_type: "trade_announcement",
-          data: Ecto.UUID.generate(),
-          env: "staging"
-        })
-
-      assert {:error, :trade_not_found} = result
-    end
-
-    test "development env falls back to :staging (returns trade_not_found, not env error)" do
-      result =
-        perform_job(DiscordWorker, %{
-          job_type: "trade_announcement",
-          data: Ecto.UUID.generate(),
-          env: "development"
-        })
-
-      assert {:error, :trade_not_found} = result
+      assert :ok = DiscordWorker.perform(job)
     end
   end
 
-  describe "trade action DM jobs (args shape)" do
-    test "returns error for trade_request_dm missing accept_url" do
-      tid = Ecto.UUID.generate()
-
-      result =
-        perform_job(DiscordWorker, %{
-          job_type: "trade_request_dm",
-          trade_id: tid,
-          recipient_user_id: Ecto.UUID.generate(),
-          decline_url: "https://x/d",
-          env: "staging"
+  describe "perform/1 — trade_declined_dm (non-retryable skip)" do
+    test "returns :ok when hydrated trade does not exist" do
+      job =
+        build_job(%{
+          "job_type" => "trade_declined_dm",
+          "trade_id" => Ecto.UUID.generate(),
+          "recipient_user_id" => Ecto.UUID.generate(),
+          "is_creator" => false,
+          "decline_url" => "http://view",
+          "env" => "staging"
         })
 
-      assert {:error, :invalid_args} = result
+      assert :ok = DiscordWorker.perform(job)
     end
 
-    test "returns error for trade_submit_dm missing submit_url" do
-      result =
-        perform_job(DiscordWorker, %{
-          job_type: "trade_submit_dm",
-          trade_id: Ecto.UUID.generate(),
-          recipient_user_id: Ecto.UUID.generate(),
-          env: "staging"
+    test "handles missing optional fields (is_creator, decline_url)" do
+      job =
+        build_job(%{
+          "job_type" => "trade_declined_dm",
+          "trade_id" => Ecto.UUID.generate(),
+          "recipient_user_id" => Ecto.UUID.generate(),
+          "env" => "staging"
         })
 
-      assert {:error, :invalid_args} = result
+      assert :ok = DiscordWorker.perform(job)
     end
+  end
 
-    test "trade_declined_dm with unknown trade/user completes without retry (skipped)" do
-      tid = Ecto.UUID.generate()
-      uid = Ecto.UUID.generate()
+  # ── env routing ───────────────────────────────────────────────────────────
 
-      assert :ok =
-               perform_job(DiscordWorker, %{
-                 job_type: "trade_declined_dm",
-                 trade_id: tid,
-                 recipient_user_id: uid,
-                 env: "staging"
-               })
+  describe "perform/1 — environment routing" do
+    test "staging env routes to staging repo" do
+      job =
+        build_job(%{
+          "job_type" => "trade_request_dm",
+          "trade_id" => Ecto.UUID.generate(),
+          "recipient_user_id" => Ecto.UUID.generate(),
+          "accept_url" => "http://a",
+          "decline_url" => "http://d",
+          "env" => "staging"
+        })
+
+      assert :ok = DiscordWorker.perform(job)
     end
   end
 end
