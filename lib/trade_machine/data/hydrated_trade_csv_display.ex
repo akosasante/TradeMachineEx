@@ -13,7 +13,7 @@ defmodule TradeMachine.Data.HydratedTradeCsvDisplay do
   return no rows, the original hydrated row is returned unchanged.
   """
   @spec apply(HydratedTrade.t(), Ecto.UUID.t(), module()) :: HydratedTrade.t()
-  def apply(%HydratedTrade{} = h, trade_id, repo) do
+  def apply(h = %HydratedTrade{}, trade_id, repo) do
     if function_exported?(repo, :all, 1) do
       do_apply(h, trade_id, repo)
     else
@@ -21,7 +21,7 @@ defmodule TradeMachine.Data.HydratedTradeCsvDisplay do
     end
   end
 
-  defp do_apply(%HydratedTrade{} = h, trade_id, repo) do
+  defp do_apply(h = %HydratedTrade{}, trade_id, repo) do
     player_map = trade_item_endpoints(repo, trade_id, :player)
     pick_map = trade_item_endpoints(repo, trade_id, :pick)
 
@@ -169,12 +169,12 @@ defmodule TradeMachine.Data.HydratedTradeCsvDisplay do
 
   defp put_row(row, key, value), do: Map.put(row, key, value)
 
-  defp relabel_owner_field(%{"id" => id} = m, labels) do
+  defp relabel_owner_field(m = %{"id" => id}, labels) do
     fb = Map.get(m, "name")
     Map.get(labels, id_key(id), fb || "Unknown")
   end
 
-  defp relabel_owner_field(%{id: id} = m, labels) do
+  defp relabel_owner_field(m = %{id: id}, labels) do
     fb = Map.get(m, :name) || Map.get(m, "name")
     Map.get(labels, id_key(id), fb || "Unknown")
   end

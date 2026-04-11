@@ -105,6 +105,8 @@ defmodule TradeMachine.MixProject do
       # Safe aliases that don't modify database schema
       # Only install dependencies
       setup: ["deps.get"],
+      # Match CI + local gates before pushing (format, credo, dialyzer, compile, test --cover)
+      prepush: ["cmd bash scripts/prepush.sh"],
       # Run tests without migrations
       "test.local": ["cmd ./test.sh"],
       "assets.deploy": ["esbuild default --minify", "phx.digest"]
