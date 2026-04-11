@@ -4,6 +4,7 @@ defmodule TradeMachine.Mailer.TradeSubmitEmail do
   require Logger
 
   alias TradeMachine.Data.HydratedTrade
+  alias TradeMachine.Data.HydratedTradeCsvDisplay
   alias TradeMachine.Data.User
 
   @spec send(String.t(), String.t(), String.t(), String.t(), Ecto.Repo.t()) ::
@@ -12,6 +13,8 @@ defmodule TradeMachine.Mailer.TradeSubmitEmail do
     with hydrated_trade when not is_nil(hydrated_trade) <-
            HydratedTrade.get_by_trade_id(trade_id, repo),
          user when not is_nil(user) <- User.get_by_id(recipient_user_id, repo) do
+      hydrated_trade = HydratedTradeCsvDisplay.apply(hydrated_trade, trade_id, repo)
+
       generate_email(hydrated_trade, user, submit_url, frontend_environment)
       |> do_deliver(frontend_environment, repo, trade_id)
     else

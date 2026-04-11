@@ -257,6 +257,9 @@ defmodule TradeMachine.Discord.ActionDmTest do
 
     def get(schema, id), do: get(schema, id, [])
     def get(_schema, _id, _opts), do: Process.get(:mock_user)
+
+    def all(_query), do: []
+    def all(_query, _opts), do: []
   end
 
   defmodule NilHydratedRepo do
@@ -266,5 +269,8 @@ defmodule TradeMachine.Discord.ActionDmTest do
 
     def get(schema, id), do: get(schema, id, [])
     def get(_schema, _id, _opts), do: nil
+
+    def all(_query), do: []
+    def all(_query, _opts), do: []
   end
 end

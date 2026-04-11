@@ -6,6 +6,7 @@ defmodule TradeMachine.Discord.ActionDm do
   """
 
   alias TradeMachine.Data.HydratedTrade
+  alias TradeMachine.Data.HydratedTradeCsvDisplay
   alias TradeMachine.Data.User
   alias TradeMachine.Discord.ActionDmEmbed
   alias TradeMachine.Discord.ActionDmTradeSummary
@@ -18,6 +19,8 @@ defmodule TradeMachine.Discord.ActionDm do
   def send_trade_request_dm(trade_id, recipient_user_id, accept_url, decline_url, repo) do
     with {:ok, hydrated} <- fetch_hydrated_trade(trade_id, repo),
          {:ok, discord_id} <- discord_id_for_user(recipient_user_id, repo) do
+      hydrated = HydratedTradeCsvDisplay.apply(hydrated, trade_id, repo)
+
       fields =
         ActionDmTradeSummary.embed_fields_for_items(
           hydrated.traded_majors,
@@ -37,6 +40,8 @@ defmodule TradeMachine.Discord.ActionDm do
   def send_trade_submit_dm(trade_id, recipient_user_id, submit_url, repo) do
     with {:ok, hydrated} <- fetch_hydrated_trade(trade_id, repo),
          {:ok, discord_id} <- discord_id_for_user(recipient_user_id, repo) do
+      hydrated = HydratedTradeCsvDisplay.apply(hydrated, trade_id, repo)
+
       fields =
         ActionDmTradeSummary.embed_fields_for_items(
           hydrated.traded_majors,

@@ -330,11 +330,15 @@ defmodule TradeMachine.Mailer.TradeDeclinedEmailTest do
     def one(_query), do: nil
     def get(_schema, _id), do: nil
     def insert(%_{}), do: {:ok, nil}
+    def all(_query), do: []
+    def all(_query, _opts), do: []
   end
 
   defmodule MockRepo do
     def one(_query), do: Process.get(:mock_trade)
     def get(_schema, _id), do: Process.get(:mock_user)
     def insert(%_{}), do: {:ok, nil}
+    def all(_query), do: []
+    def all(_query, _opts), do: []
   end
 end
