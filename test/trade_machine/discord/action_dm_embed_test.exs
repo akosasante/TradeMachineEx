@@ -3,32 +3,73 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
 
   alias TradeMachine.Discord.ActionDmEmbed
 
-  describe "build_request_embed/4" do
+  describe "request_action_components/2" do
+    test "returns one action row with two link buttons" do
+      [row] = ActionDmEmbed.request_action_components("https://ex/a", "https://ex/d")
+      assert row.type == 1
+      assert length(row.components) == 2
+      [accept, decline] = row.components
+
+      for btn <- [accept, decline] do
+        assert btn.type == 2
+        assert btn.style == 5
+        assert is_binary(btn.label)
+        assert is_binary(btn.url)
+        refute Map.has_key?(btn, :custom_id)
+      end
+
+      assert accept.label == "Accept"
+      assert accept.url == "https://ex/a"
+      assert decline.label == "Decline"
+      assert decline.url == "https://ex/d"
+    end
+  end
+
+  describe "submit_action_components/1" do
+    test "returns a single submit link button" do
+      [row] = ActionDmEmbed.submit_action_components("https://ex/s")
+      assert row.type == 1
+      assert [btn] = row.components
+      assert btn.label == "Submit trade" and btn.style == 5 and btn.url == "https://ex/s"
+      refute Map.has_key?(btn, :custom_id)
+    end
+  end
+
+  describe "declined_action_components/1" do
+    test "returns empty list when no URL" do
+      assert ActionDmEmbed.declined_action_components(nil) == []
+      assert ActionDmEmbed.declined_action_components("") == []
+    end
+
+    test "returns view button when URL present" do
+      [row] = ActionDmEmbed.declined_action_components("https://ex/v")
+      btn = hd(row.components)
+      assert btn.label == "View trade" and btn.style == 5 and btn.url == "https://ex/v"
+    end
+  end
+
+  describe "build_request_embed/3" do
     test "single recipient copy" do
-      embed =
-        ActionDmEmbed.build_request_embed(
-          "Alice",
-          ["Bob"],
-          "https://example.com/accept",
-          "https://example.com/decline"
-        )
+      embed = ActionDmEmbed.build_request_embed("Alice", ["Bob"], [])
 
       assert embed.title == "TradeMachine — action needed"
       assert embed.color == 0x3498DB
       assert embed.description =~ "Alice requested a trade with you"
       refute embed.description =~ "and others"
-      assert embed.description =~ "[Accept](https://example.com/accept)"
-      assert embed.description =~ "[Decline](https://example.com/decline)"
+      assert embed.description =~ "Review what each team would receive"
+      refute Map.has_key?(embed, :fields)
+    end
+
+    test "includes fields when provided" do
+      fields = [%{name: "Receiving: T1", value: "• x", inline: false}]
+
+      embed = ActionDmEmbed.build_request_embed("Alice", ["Bob"], fields)
+
+      assert embed.fields == fields
     end
 
     test "multiple recipients copy" do
-      embed =
-        ActionDmEmbed.build_request_embed(
-          "Alice",
-          ["Bob", "Carol"],
-          "https://example.com/a",
-          "https://example.com/d"
-        )
+      embed = ActionDmEmbed.build_request_embed("Alice", ["Bob", "Carol"], [])
 
       assert embed.description =~ "Alice requested a trade with you and others"
     end
@@ -36,23 +77,23 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
 
   describe "build_submit_embed/2" do
     test "single recipient uses their name" do
-      embed =
-        ActionDmEmbed.build_submit_embed(
-          ["Bob"],
-          "https://example.com/submit"
-        )
+      embed = ActionDmEmbed.build_submit_embed(["Bob"], [])
 
       assert embed.title == "TradeMachine — submit your trade"
       assert embed.description =~ "Bob accepted your trade proposal"
-      assert embed.description =~ "[Submit trade](https://example.com/submit)"
+      assert embed.description =~ "button below"
+      refute embed.description =~ "[Submit trade]"
+    end
+
+    test "includes trade summary fields when provided" do
+      fields = [%{name: "Receiving: T1", value: "• item", inline: false}]
+      embed = ActionDmEmbed.build_submit_embed(["Bob"], fields)
+
+      assert embed.fields == fields
     end
 
     test "multiple recipients uses generic line" do
-      embed =
-        ActionDmEmbed.build_submit_embed(
-          ["Bob", "Carol"],
-          "https://example.com/submit"
-        )
+      embed = ActionDmEmbed.build_submit_embed(["Bob", "Carol"], [])
 
       assert embed.description =~ "Recipients accepted your trade proposal"
       refute embed.description =~ "Bob accepted"
@@ -60,7 +101,7 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
   end
 
   describe "build_declined_embed/3" do
-    test "creator sees decliner name and view link" do
+    test "creator sees decliner name and view instructions when URL set" do
       embed =
         ActionDmEmbed.build_declined_embed(
           "Pat",
@@ -70,14 +111,15 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
 
       assert embed.title == "TradeMachine — trade declined"
       assert embed.description =~ "Your trade proposal was declined by Pat"
-      assert embed.description =~ "[View trade](https://example.com/view)"
+      assert embed.description =~ "button below"
+      refute embed.description =~ "[View trade]"
     end
 
     test "non-creator copy" do
       embed = ActionDmEmbed.build_declined_embed("Pat", false, nil)
 
       assert embed.description =~ "A trade you were part of was declined by Pat"
-      refute embed.description =~ "[View trade]"
+      refute embed.description =~ "button below"
     end
 
     test "nil declined_by becomes Someone" do
@@ -86,16 +128,16 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
       assert embed.description =~ "declined by Someone"
     end
 
-    test "empty view_url omits link" do
+    test "empty view_url omits link hint" do
       embed = ActionDmEmbed.build_declined_embed("Pat", true, "")
 
-      refute embed.description =~ "[View trade]"
+      refute embed.description =~ "button below"
     end
 
-    test "non-binary view_url omits link" do
+    test "non-binary view_url omits link hint" do
       embed = ActionDmEmbed.build_declined_embed("Pat", false, :not_a_url)
 
-      refute embed.description =~ "[View trade]"
+      refute embed.description =~ "button below"
     end
   end
 end

@@ -6,7 +6,7 @@ defmodule TradeMachine.Discord.DmSender do
   In test, a stub is registered via `Application.put_env/3` in `test_helper.exs`.
   """
 
-  @callback send_dm_embed(String.t(), map()) :: {:ok, map()} | {:error, term()}
+  @callback send_dm_embed(String.t(), map(), [map()]) :: {:ok, map()} | {:error, term()}
 
   @doc """
   Returns the configured implementation module.
@@ -26,5 +26,6 @@ defmodule TradeMachine.Discord.DmSender.Default do
   @behaviour TradeMachine.Discord.DmSender
 
   @impl true
-  defdelegate send_dm_embed(discord_user_id, embed), to: TradeMachine.Discord.Client
+  defdelegate send_dm_embed(discord_user_id, embed, components),
+    to: TradeMachine.Discord.Client
 end

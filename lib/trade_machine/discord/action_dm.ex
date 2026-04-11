@@ -8,6 +8,7 @@ defmodule TradeMachine.Discord.ActionDm do
   alias TradeMachine.Data.HydratedTrade
   alias TradeMachine.Data.User
   alias TradeMachine.Discord.ActionDmEmbed
+  alias TradeMachine.Discord.ActionDmTradeSummary
   alias TradeMachine.Discord.DmSender
 
   require Logger
@@ -17,15 +18,17 @@ defmodule TradeMachine.Discord.ActionDm do
   def send_trade_request_dm(trade_id, recipient_user_id, accept_url, decline_url, repo) do
     with {:ok, hydrated} <- fetch_hydrated_trade(trade_id, repo),
          {:ok, discord_id} <- discord_id_for_user(recipient_user_id, repo) do
-      embed =
-        ActionDmEmbed.build_request_embed(
-          hydrated.creator,
-          hydrated.recipients,
-          accept_url,
-          decline_url
+      fields =
+        ActionDmTradeSummary.embed_fields_for_items(
+          hydrated.traded_majors,
+          hydrated.traded_minors,
+          hydrated.traded_picks
         )
 
-      DmSender.impl().send_dm_embed(discord_id, embed)
+      embed = ActionDmEmbed.build_request_embed(hydrated.creator, hydrated.recipients, fields)
+
+      components = ActionDmEmbed.request_action_components(accept_url, decline_url)
+      DmSender.impl().send_dm_embed(discord_id, embed, components)
     end
   end
 
@@ -34,8 +37,16 @@ defmodule TradeMachine.Discord.ActionDm do
   def send_trade_submit_dm(trade_id, recipient_user_id, submit_url, repo) do
     with {:ok, hydrated} <- fetch_hydrated_trade(trade_id, repo),
          {:ok, discord_id} <- discord_id_for_user(recipient_user_id, repo) do
-      embed = ActionDmEmbed.build_submit_embed(hydrated.recipients, submit_url)
-      DmSender.impl().send_dm_embed(discord_id, embed)
+      fields =
+        ActionDmTradeSummary.embed_fields_for_items(
+          hydrated.traded_majors,
+          hydrated.traded_minors,
+          hydrated.traded_picks
+        )
+
+      embed = ActionDmEmbed.build_submit_embed(hydrated.recipients, fields)
+      components = ActionDmEmbed.submit_action_components(submit_url)
+      DmSender.impl().send_dm_embed(discord_id, embed, components)
     end
   end
 
@@ -45,7 +56,8 @@ defmodule TradeMachine.Discord.ActionDm do
     with {:ok, hydrated} <- fetch_hydrated_trade(trade_id, repo),
          {:ok, discord_id} <- discord_id_for_user(recipient_user_id, repo) do
       embed = ActionDmEmbed.build_declined_embed(hydrated.declined_by, is_creator, view_url)
-      DmSender.impl().send_dm_embed(discord_id, embed)
+      components = ActionDmEmbed.declined_action_components(view_url)
+      DmSender.impl().send_dm_embed(discord_id, embed, components)
     end
   end
 

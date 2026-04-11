@@ -1,50 +1,46 @@
 defmodule TradeMachine.Discord.ActionDmTest do
-  use TradeMachine.DataCase, async: false
+  use ExUnit.Case, async: true
 
   alias TradeMachine.Data.HydratedTrade
   alias TradeMachine.Data.User
   alias TradeMachine.Discord.ActionDm
 
-  @repo TradeMachine.Repo.Production
-
-  # ── trade_not_found (real Sandbox DB — no view row exists) ────────────────
+  # ── trade_not_found (repo stub — no DB) ────────────────────────────────────
 
   describe "send_trade_request_dm/5 — trade_not_found" do
-    test "returns {:error, :trade_not_found} for unknown trade_id" do
-      user = insert_user!(%{discord_user_id: "123456789"})
-
+    test "returns {:error, :trade_not_found} when hydrated trade is missing" do
       assert {:error, :trade_not_found} =
                ActionDm.send_trade_request_dm(
                  Ecto.UUID.generate(),
-                 user.id,
+                 Ecto.UUID.generate(),
                  "http://accept",
                  "http://decline",
-                 @repo
+                 __MODULE__.NilHydratedRepo
                )
     end
   end
 
   describe "send_trade_submit_dm/4 — trade_not_found" do
-    test "returns {:error, :trade_not_found} for unknown trade_id" do
+    test "returns {:error, :trade_not_found} when hydrated trade is missing" do
       assert {:error, :trade_not_found} =
                ActionDm.send_trade_submit_dm(
                  Ecto.UUID.generate(),
                  Ecto.UUID.generate(),
                  "http://submit",
-                 @repo
+                 __MODULE__.NilHydratedRepo
                )
     end
   end
 
   describe "send_trade_declined_dm/5 — trade_not_found" do
-    test "returns {:error, :trade_not_found} for unknown trade_id" do
+    test "returns {:error, :trade_not_found} when hydrated trade is missing" do
       assert {:error, :trade_not_found} =
                ActionDm.send_trade_declined_dm(
                  Ecto.UUID.generate(),
                  Ecto.UUID.generate(),
                  true,
                  "http://view",
-                 @repo
+                 __MODULE__.NilHydratedRepo
                )
     end
   end
@@ -90,14 +86,71 @@ defmodule TradeMachine.Discord.ActionDmTest do
 
   describe "send_trade_request_dm/5 — happy path" do
     test "sends DM via stub when trade and user exist" do
+      trade_id = Ecto.UUID.generate()
+      user_id = Ecto.UUID.generate()
+
       assert {:ok, %{id: "stub-dm-message-id"}} =
                ActionDm.send_trade_request_dm(
-                 Ecto.UUID.generate(),
-                 Ecto.UUID.generate(),
-                 "http://accept",
-                 "http://decline",
+                 trade_id,
+                 user_id,
+                 "https://ex/accept",
+                 "https://ex/decline",
                  full_mock_repo()
                )
+
+      assert Process.get(:test_last_dm_discord_user_id) == "123456789"
+      embed = Process.get(:test_last_dm_embed)
+      assert embed.title == "TradeMachine — action needed"
+      assert is_list(embed.fields)
+      assert hd(embed.fields).name =~ "Trade details"
+
+      [row] = Process.get(:test_last_dm_components)
+      assert row.type == 1
+      [accept, decline] = row.components
+      assert accept.url == "https://ex/accept"
+      assert decline.url == "https://ex/decline"
+    end
+
+    test "includes trade item fields when hydrated trade has majors" do
+      uid = Ecto.UUID.generate()
+      tid = Ecto.UUID.generate()
+
+      base = build_hydrated_trade()
+
+      trade = %HydratedTrade{
+        base
+        | trade_id: tid,
+          traded_majors: [
+            %{name: "Star Player", sender: "Team A", recipient: "Team B"}
+          ]
+      }
+
+      Process.put(:mock_hydrated_trade, trade)
+
+      Process.put(
+        :mock_user,
+        struct(User, %{
+          id: uid,
+          display_name: "Mock",
+          email: "mock@example.com",
+          status: :active,
+          role: :owner,
+          discord_user_id: "999"
+        })
+      )
+
+      assert {:ok, _} =
+               ActionDm.send_trade_request_dm(
+                 tid,
+                 uid,
+                 "https://a",
+                 "https://d",
+                 __MODULE__.TradeOnlyRepo
+               )
+
+      embed = Process.get(:test_last_dm_embed)
+      assert Enum.any?(embed.fields, &(&1.name =~ "Team B"))
+      assert Enum.any?(embed.fields, &(&1.value =~ "Star Player"))
     end
   end
 
@@ -107,9 +160,16 @@ defmodule TradeMachine.Discord.ActionDmTest do
                ActionDm.send_trade_submit_dm(
                  Ecto.UUID.generate(),
                  Ecto.UUID.generate(),
-                 "http://submit",
+                 "https://ex/submit",
                  full_mock_repo()
                )
+
+      embed = Process.get(:test_last_dm_embed)
+      assert embed.title == "TradeMachine — submit your trade"
+
+      [row] = Process.get(:test_last_dm_components)
+      assert hd(row.components).url == "https://ex/submit"
+      assert hd(row.components).label == "Submit trade"
     end
   end
 
@@ -120,26 +180,29 @@ defmodule TradeMachine.Discord.ActionDmTest do
                  Ecto.UUID.generate(),
                  Ecto.UUID.generate(),
                  false,
-                 "http://view",
+                 "https://ex/view",
                  full_mock_repo()
                )
+
+      [row] = Process.get(:test_last_dm_components)
+      assert hd(row.components).url == "https://ex/view"
+    end
+
+    test "omits components when view_url is nil" do
+      assert {:ok, _} =
+               ActionDm.send_trade_declined_dm(
+                 Ecto.UUID.generate(),
+                 Ecto.UUID.generate(),
+                 true,
+                 nil,
+                 full_mock_repo()
+               )
+
+      assert Process.get(:test_last_dm_components) == []
     end
   end
 
   # ── Helpers ───────────────────────────────────────────────────────────────
-
-  defp insert_user!(attrs) do
-    defaults = %{
-      id: Ecto.UUID.generate(),
-      display_name: "Test User",
-      email: "test-#{System.unique_integer([:positive])}@example.com",
-      status: :active,
-      role: :owner
-    }
-
-    params = Map.merge(defaults, attrs)
-    %User{} |> Ecto.Changeset.change(params) |> @repo.insert!()
-  end
 
   defp build_hydrated_trade do
     %HydratedTrade{
@@ -189,7 +252,19 @@ defmodule TradeMachine.Discord.ActionDmTest do
 
   defmodule TradeOnlyRepo do
     @moduledoc false
-    def one(_query), do: Process.get(:mock_hydrated_trade)
-    def get(_schema, _id), do: Process.get(:mock_user)
+    def one(query), do: one(query, [])
+    def one(_query, _opts), do: Process.get(:mock_hydrated_trade)
+
+    def get(schema, id), do: get(schema, id, [])
+    def get(_schema, _id, _opts), do: Process.get(:mock_user)
+  end
+
+  defmodule NilHydratedRepo do
+    @moduledoc false
+    def one(query), do: one(query, [])
+    def one(_query, _opts), do: nil
+
+    def get(schema, id), do: get(schema, id, [])
+    def get(_schema, _id, _opts), do: nil
   end
 end
