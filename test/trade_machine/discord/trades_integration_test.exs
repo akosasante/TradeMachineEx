@@ -1,5 +1,5 @@
 defmodule TradeMachine.Discord.TradesIntegrationTest do
-  use ExUnit.Case, async: false
+  use TradeMachine.DataCase, async: false
 
   alias Decimal, as: D
   alias TradeMachine.Data.DraftPick
@@ -16,11 +16,6 @@ defmodule TradeMachine.Discord.TradesIntegrationTest do
   @repo TradeMachine.Repo.Production
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(@repo)
-    TestHelper.set_search_path_for_sandbox(@repo)
-    Ecto.Adapters.SQL.Sandbox.mode(@repo, {:shared, self()})
-    Ecto.Adapters.SQL.Sandbox.allow(@repo, self(), self())
-
     team_a = insert_team!(@repo, %{name: "Discord Team A"})
     team_b = insert_team!(@repo, %{name: "Discord Team B"})
 
