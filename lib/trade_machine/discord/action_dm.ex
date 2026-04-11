@@ -8,7 +8,7 @@ defmodule TradeMachine.Discord.ActionDm do
   alias TradeMachine.Data.HydratedTrade
   alias TradeMachine.Data.User
   alias TradeMachine.Discord.ActionDmEmbed
-  alias TradeMachine.Discord.Client
+  alias TradeMachine.Discord.DmSender
 
   require Logger
 
@@ -25,7 +25,7 @@ defmodule TradeMachine.Discord.ActionDm do
           decline_url
         )
 
-      Client.send_dm_embed(discord_id, embed)
+      DmSender.impl().send_dm_embed(discord_id, embed)
     end
   end
 
@@ -35,7 +35,7 @@ defmodule TradeMachine.Discord.ActionDm do
     with {:ok, hydrated} <- fetch_hydrated_trade(trade_id, repo),
          {:ok, discord_id} <- discord_id_for_user(recipient_user_id, repo) do
       embed = ActionDmEmbed.build_submit_embed(hydrated.recipients, submit_url)
-      Client.send_dm_embed(discord_id, embed)
+      DmSender.impl().send_dm_embed(discord_id, embed)
     end
   end
 
@@ -45,7 +45,7 @@ defmodule TradeMachine.Discord.ActionDm do
     with {:ok, hydrated} <- fetch_hydrated_trade(trade_id, repo),
          {:ok, discord_id} <- discord_id_for_user(recipient_user_id, repo) do
       embed = ActionDmEmbed.build_declined_embed(hydrated.declined_by, is_creator, view_url)
-      Client.send_dm_embed(discord_id, embed)
+      DmSender.impl().send_dm_embed(discord_id, embed)
     end
   end
 
