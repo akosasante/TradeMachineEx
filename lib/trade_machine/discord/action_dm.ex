@@ -135,25 +135,7 @@ defmodule TradeMachine.Discord.ActionDm do
         {:error, :user_not_found}
 
       %User{discord_user_id: raw, user_settings: settings} when is_binary(raw) ->
-        case String.trim(raw) do
-          "" ->
-            Logger.info("Skipping Discord DM: user has no discord_user_id",
-              recipient_user_id: recipient_user_id
-            )
-
-            {:error, :no_discord_user_id}
-
-          id ->
-            if UserSettings.discord_dm_enabled?(settings) do
-              {:ok, id}
-            else
-              Logger.info("Skipping Discord DM: user disabled via settings",
-                recipient_user_id: recipient_user_id
-              )
-
-              {:error, :discord_dm_disabled_by_user}
-            end
-        end
+        resolve_discord_id(String.trim(raw), settings, recipient_user_id)
 
       _ ->
         Logger.info("Skipping Discord DM: user has no discord_user_id",
@@ -161,6 +143,26 @@ defmodule TradeMachine.Discord.ActionDm do
         )
 
         {:error, :no_discord_user_id}
+    end
+  end
+
+  defp resolve_discord_id("", _settings, recipient_user_id) do
+    Logger.info("Skipping Discord DM: user has no discord_user_id",
+      recipient_user_id: recipient_user_id
+    )
+
+    {:error, :no_discord_user_id}
+  end
+
+  defp resolve_discord_id(id, settings, recipient_user_id) do
+    if UserSettings.discord_dm_enabled?(settings) do
+      {:ok, id}
+    else
+      Logger.info("Skipping Discord DM: user disabled via settings",
+        recipient_user_id: recipient_user_id
+      )
+
+      {:error, :discord_dm_disabled_by_user}
     end
   end
 end
