@@ -62,7 +62,6 @@ defmodule TradeMachine.Discord.ActionDm do
          {:ok, discord_id} <- discord_id_for_user(recipient_user_id, repo) do
       embed =
         ActionDmEmbed.build_declined_embed(hydrated.declined_by, is_creator, view_url,
-          trade_id: trade_id,
           declined_reason: hydrated.declined_reason
         )
 

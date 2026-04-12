@@ -140,14 +140,11 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
       refute embed.description =~ "View trade"
     end
 
-    test "includes trade ID in footer and lookup hint when no view URL" do
-      tid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    test "no view URL omits footer and extra lookup copy" do
+      embed = ActionDmEmbed.build_declined_embed("Pat", true, nil)
 
-      embed =
-        ActionDmEmbed.build_declined_embed("Pat", true, nil, trade_id: tid)
-
-      assert embed.footer.text =~ tid
-      assert embed.description =~ "trade ID"
+      refute Map.has_key?(embed, :footer)
+      refute embed.description =~ "trade ID"
     end
 
     test "includes decline reason when provided" do
