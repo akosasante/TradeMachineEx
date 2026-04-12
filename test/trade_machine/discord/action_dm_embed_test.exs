@@ -169,7 +169,7 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
         )
 
       assert result.footer.text ==
-               "Manage notifications: https://trades.akosua.xyz/settings/notifications"
+               "Manage your email/Discord trade notifications at https://trades.akosua.xyz/settings/notifications"
     end
 
     test "skips for nil" do

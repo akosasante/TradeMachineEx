@@ -197,7 +197,7 @@ defmodule TradeMachine.Discord.ActionDmEmbed do
   def with_settings_footer(embed, url) when is_binary(url) do
     case String.trim(url) do
       "" -> embed
-      trimmed -> Map.put(embed, :footer, %{text: "Manage notifications: #{trimmed}"})
+      trimmed -> Map.put(embed, :footer, %{text: "Manage your email/Discord trade notifications at #{trimmed}"})
     end
   end
 
