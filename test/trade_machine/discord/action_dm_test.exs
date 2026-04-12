@@ -100,7 +100,7 @@ defmodule TradeMachine.Discord.ActionDmTest do
 
       assert Process.get(:test_last_dm_discord_user_id) == "123456789"
       embed = Process.get(:test_last_dm_embed)
-      assert embed.title == "TradeMachine — action needed"
+      assert embed.title == "Action Needed"
       assert is_list(embed.fields)
       assert hd(embed.fields).name =~ "Trade details"
 
@@ -165,7 +165,7 @@ defmodule TradeMachine.Discord.ActionDmTest do
                )
 
       embed = Process.get(:test_last_dm_embed)
-      assert embed.title == "TradeMachine — submit your trade"
+      assert embed.title == "Submit Your Trade"
 
       [row] = Process.get(:test_last_dm_components)
       assert hd(row.components).url == "https://ex/submit"

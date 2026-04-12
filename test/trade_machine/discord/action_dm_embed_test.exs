@@ -52,7 +52,7 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
     test "single recipient copy" do
       embed = ActionDmEmbed.build_request_embed("Alice", ["Bob"], [])
 
-      assert embed.title == "TradeMachine — action needed"
+      assert embed.title == "Action Needed"
       assert embed.color == 0x3498DB
       assert embed.description =~ "Alice requested a trade with you"
       refute embed.description =~ "and others"
@@ -79,7 +79,7 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
     test "single recipient uses their name" do
       embed = ActionDmEmbed.build_submit_embed(["Bob"], [])
 
-      assert embed.title == "TradeMachine — submit your trade"
+      assert embed.title == "Submit Your Trade"
       assert embed.description =~ "Bob accepted your trade proposal"
       assert embed.description =~ "button below"
       refute embed.description =~ "[Submit trade]"
@@ -109,7 +109,7 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
           "https://example.com/view"
         )
 
-      assert embed.title == "TradeMachine — trade declined"
+      assert embed.title == "Trade Declined"
       assert embed.description =~ "Your trade proposal was declined by Pat"
       assert embed.description =~ "View trade"
       refute embed.description =~ "[View trade]"

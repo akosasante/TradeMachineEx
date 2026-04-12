@@ -82,7 +82,7 @@ defmodule TradeMachine.Discord.ActionDmEmbed do
     """
 
     base = %{
-      title: "TradeMachine — action needed",
+      title: "Action Needed",
       description: String.trim(description),
       color: @embed_color
     }
@@ -116,7 +116,7 @@ defmodule TradeMachine.Discord.ActionDmEmbed do
     """
 
     base = %{
-      title: "TradeMachine — submit your trade",
+      title: "Submit Your Trade",
       description: String.trim(description),
       color: @embed_color
     }
@@ -184,7 +184,7 @@ defmodule TradeMachine.Discord.ActionDmEmbed do
       |> String.trim()
 
     base = %{
-      title: "TradeMachine — trade declined",
+      title: "Trade Declined",
       description: description,
       color: @embed_color
     }
