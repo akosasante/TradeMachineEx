@@ -130,12 +130,23 @@ defmodule TradeMachine.Discord.ActionDmEmbed do
 
   @doc """
   Embed for a declined trade. `declined_by` may be nil (shown as \"Someone\").
-  `view_url` may be nil or empty to omit the link line.
+
+  `view_url` may be nil or empty to omit the **View trade** hint (link buttons still
+  come from `declined_action_components/1`).
+
+  ## Options
+
+    * `:trade_id` — UUID string; shown in the embed footer so the recipient can tell
+      which trade this was.
+    * `:declined_reason` — optional free-text reason from the decliner; truncated for length.
+
   """
-  @spec build_declined_embed(String.t() | nil, boolean(), String.t() | nil) :: map()
-  def build_declined_embed(declined_by, is_creator, view_url)
-      when is_boolean(is_creator) do
+  @spec build_declined_embed(String.t() | nil, boolean(), String.t() | nil, keyword()) :: map()
+  def build_declined_embed(declined_by, is_creator, view_url, opts \\ [])
+      when is_boolean(is_creator) and is_list(opts) do
     decliner = declined_by || "Someone"
+    trade_id = trade_id_opt(Keyword.get(opts, :trade_id))
+    reason = declined_reason_opt(Keyword.get(opts, :declined_reason))
 
     title_text =
       if is_creator do
@@ -144,25 +155,84 @@ defmodule TradeMachine.Discord.ActionDmEmbed do
         "A trade you were part of was declined by #{decliner}"
       end
 
-    description =
-      case view_url do
-        url when is_binary(url) and url != "" ->
-          """
-          **#{title_text}**
+    reason_section =
+      case reason do
+        nil ->
+          ""
 
-          Open the trade in TradeMachine with the button below if you want the full picture.
-          """
-
-        _ ->
-          """
-          **#{title_text}**
-          """
+        text ->
+          "\n\n**Decline reason**\n#{text}\n"
       end
 
-    %{
+    view_section =
+      case view_url do
+        url when is_binary(url) ->
+          if String.trim(url) != "" do
+            "\n\nOpen the trade in your browser with **View trade** below."
+          else
+            no_url_hint(trade_id)
+          end
+
+        _ ->
+          no_url_hint(trade_id)
+      end
+
+    description =
+      """
+      **#{title_text}**#{reason_section}#{view_section}
+      """
+      |> String.trim()
+
+    base = %{
       title: "TradeMachine — trade declined",
-      description: String.trim(description),
+      description: description,
       color: @embed_color
     }
+
+    case footer_for_trade_id(trade_id) do
+      nil -> base
+      footer -> Map.put(base, :footer, footer)
+    end
+  end
+
+  defp trade_id_opt(tid) when is_binary(tid) do
+    case String.trim(tid) do
+      "" -> nil
+      t -> t
+    end
+  end
+
+  defp trade_id_opt(_), do: nil
+
+  defp declined_reason_opt(reason) when is_binary(reason) do
+    case String.trim(reason) do
+      "" ->
+        nil
+
+      t ->
+        truncate_reason(t, 450)
+    end
+  end
+
+  defp declined_reason_opt(_), do: nil
+
+  defp truncate_reason(text, max) do
+    if String.length(text) <= max do
+      text
+    else
+      String.slice(text, 0..(max - 2)) <> "…"
+    end
+  end
+
+  defp no_url_hint(nil), do: ""
+
+  defp no_url_hint(_trade_id) do
+    "\n\nIf you are not sure which proposal this was, use the **trade ID** in the footer to look it up in TradeMachine."
+  end
+
+  defp footer_for_trade_id(nil), do: nil
+
+  defp footer_for_trade_id(tid) when is_binary(tid) do
+    %{text: "Trade ID: #{tid}"}
   end
 end

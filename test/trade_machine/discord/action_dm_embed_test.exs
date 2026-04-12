@@ -100,7 +100,7 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
     end
   end
 
-  describe "build_declined_embed/3" do
+  describe "build_declined_embed/4" do
     test "creator sees decliner name and view instructions when URL set" do
       embed =
         ActionDmEmbed.build_declined_embed(
@@ -111,7 +111,7 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
 
       assert embed.title == "TradeMachine — trade declined"
       assert embed.description =~ "Your trade proposal was declined by Pat"
-      assert embed.description =~ "button below"
+      assert embed.description =~ "View trade"
       refute embed.description =~ "[View trade]"
     end
 
@@ -119,7 +119,7 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
       embed = ActionDmEmbed.build_declined_embed("Pat", false, nil)
 
       assert embed.description =~ "A trade you were part of was declined by Pat"
-      refute embed.description =~ "button below"
+      refute embed.description =~ "View trade"
     end
 
     test "nil declined_by becomes Someone" do
@@ -131,13 +131,33 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
     test "empty view_url omits link hint" do
       embed = ActionDmEmbed.build_declined_embed("Pat", true, "")
 
-      refute embed.description =~ "button below"
+      refute embed.description =~ "View trade"
     end
 
     test "non-binary view_url omits link hint" do
       embed = ActionDmEmbed.build_declined_embed("Pat", false, :not_a_url)
 
-      refute embed.description =~ "button below"
+      refute embed.description =~ "View trade"
+    end
+
+    test "includes trade ID in footer and lookup hint when no view URL" do
+      tid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
+      embed =
+        ActionDmEmbed.build_declined_embed("Pat", true, nil, trade_id: tid)
+
+      assert embed.footer.text =~ tid
+      assert embed.description =~ "trade ID"
+    end
+
+    test "includes decline reason when provided" do
+      embed =
+        ActionDmEmbed.build_declined_embed("Pat", true, "https://ex/v",
+          declined_reason: "  Not enough pitching depth  "
+        )
+
+      assert embed.description =~ "Decline reason"
+      assert embed.description =~ "Not enough pitching depth"
     end
   end
 end

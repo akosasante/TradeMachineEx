@@ -60,7 +60,12 @@ defmodule TradeMachine.Discord.ActionDm do
   def send_trade_declined_dm(trade_id, recipient_user_id, is_creator, view_url, repo) do
     with {:ok, hydrated} <- fetch_hydrated_trade(trade_id, repo),
          {:ok, discord_id} <- discord_id_for_user(recipient_user_id, repo) do
-      embed = ActionDmEmbed.build_declined_embed(hydrated.declined_by, is_creator, view_url)
+      embed =
+        ActionDmEmbed.build_declined_embed(hydrated.declined_by, is_creator, view_url,
+          trade_id: trade_id,
+          declined_reason: hydrated.declined_reason
+        )
+
       components = ActionDmEmbed.declined_action_components(view_url)
       DmSender.impl().send_dm_embed(discord_id, embed, components)
     end
