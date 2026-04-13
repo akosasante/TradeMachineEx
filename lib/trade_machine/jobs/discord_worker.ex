@@ -73,6 +73,7 @@ defmodule TradeMachine.Jobs.DiscordWorker do
           } = args
       }) do
     repo = select_repo(env)
+    notification_settings_url = Map.get(args, "notification_settings_url")
 
     TraceContext.with_extracted_context(
       args,
@@ -91,7 +92,8 @@ defmodule TradeMachine.Jobs.DiscordWorker do
             recipient_user_id,
             accept_url,
             decline_url,
-            repo
+            repo,
+            notification_settings_url
           )
 
         finalize_dm_job(job_id, trade_id, "trade_request_dm", result)
@@ -111,6 +113,7 @@ defmodule TradeMachine.Jobs.DiscordWorker do
           } = args
       }) do
     repo = select_repo(env)
+    notification_settings_url = Map.get(args, "notification_settings_url")
 
     TraceContext.with_extracted_context(
       args,
@@ -123,7 +126,15 @@ defmodule TradeMachine.Jobs.DiscordWorker do
           recipient_user_id: recipient_user_id
         )
 
-        result = ActionDm.send_trade_submit_dm(trade_id, recipient_user_id, submit_url, repo)
+        result =
+          ActionDm.send_trade_submit_dm(
+            trade_id,
+            recipient_user_id,
+            submit_url,
+            repo,
+            notification_settings_url
+          )
+
         finalize_dm_job(job_id, trade_id, "trade_submit_dm", result)
       end
     )
@@ -142,6 +153,7 @@ defmodule TradeMachine.Jobs.DiscordWorker do
     repo = select_repo(env)
     is_creator = Map.get(args, "is_creator", false)
     decline_url = Map.get(args, "decline_url")
+    notification_settings_url = Map.get(args, "notification_settings_url")
 
     TraceContext.with_extracted_context(
       args,
@@ -160,7 +172,8 @@ defmodule TradeMachine.Jobs.DiscordWorker do
             recipient_user_id,
             is_creator,
             decline_url,
-            repo
+            repo,
+            notification_settings_url
           )
 
         finalize_dm_job(job_id, trade_id, "trade_declined_dm", result)
@@ -198,7 +211,8 @@ defmodule TradeMachine.Jobs.DiscordWorker do
              :no_discord_user_id,
              :invalid_discord_user_id,
              :trade_not_found,
-             :user_not_found
+             :user_not_found,
+             :discord_dm_disabled_by_user
            ] ->
         Logger.info("Discord DM skipped (non-retryable)",
           job_id: job_id,

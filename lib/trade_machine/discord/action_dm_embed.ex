@@ -187,6 +187,25 @@ defmodule TradeMachine.Discord.ActionDmEmbed do
     }
   end
 
+  @doc """
+  Appends a notification-settings footer to an embed map.
+  Skips when `settings_url` is nil or empty.
+  """
+  @spec with_settings_footer(map(), String.t() | nil) :: map()
+  def with_settings_footer(embed, nil), do: embed
+
+  def with_settings_footer(embed, url) when is_binary(url) do
+    case String.trim(url) do
+      "" ->
+        embed
+
+      trimmed ->
+        Map.put(embed, :footer, %{
+          text: "Manage your email/Discord trade notifications at #{trimmed}"
+        })
+    end
+  end
+
   defp declined_reason_opt(reason) when is_binary(reason) do
     case String.trim(reason) do
       "" ->

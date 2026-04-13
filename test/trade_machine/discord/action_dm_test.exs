@@ -135,7 +135,8 @@ defmodule TradeMachine.Discord.ActionDmTest do
           email: "mock@example.com",
           status: :active,
           role: :owner,
-          discord_user_id: "999"
+          discord_user_id: "999",
+          user_settings: %{"notifications" => %{"tradeActionDiscordDm" => true}}
         })
       )
 
@@ -246,8 +247,10 @@ defmodule TradeMachine.Discord.ActionDmTest do
     __MODULE__.TradeOnlyRepo
   end
 
+  @dm_enabled_settings %{"notifications" => %{"tradeActionDiscordDm" => true}}
+
   defp full_mock_repo do
-    repo_with_user(%{discord_user_id: "123456789"})
+    repo_with_user(%{discord_user_id: "123456789", user_settings: @dm_enabled_settings})
   end
 
   defmodule TradeOnlyRepo do

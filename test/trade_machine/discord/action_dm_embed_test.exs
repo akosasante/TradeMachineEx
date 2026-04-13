@@ -157,4 +157,29 @@ defmodule TradeMachine.Discord.ActionDmEmbedTest do
       assert embed.description =~ "Not enough pitching depth"
     end
   end
+
+  describe "with_settings_footer/2" do
+    test "adds footer with URL" do
+      embed = %{title: "Test"}
+
+      result =
+        ActionDmEmbed.with_settings_footer(
+          embed,
+          "https://trades.akosua.xyz/settings/notifications"
+        )
+
+      assert result.footer.text ==
+               "Manage your email/Discord trade notifications at https://trades.akosua.xyz/settings/notifications"
+    end
+
+    test "skips for nil" do
+      embed = %{title: "Test"}
+      assert ActionDmEmbed.with_settings_footer(embed, nil) == embed
+    end
+
+    test "skips for empty string" do
+      embed = %{title: "Test"}
+      assert ActionDmEmbed.with_settings_footer(embed, "") == embed
+    end
+  end
 end

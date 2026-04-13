@@ -18,6 +18,7 @@ defmodule TradeMachine.Data.User do
     field(:csv_name, :string)
     field(:role, Ecto.Enum, values: [admin: "1", owner: "2", commissioner: "3"], null: false)
     field(:espn_member, :map, load_in_query: false)
+    field(:user_settings, :map)
     field(:last_logged_in, :naive_datetime)
     field(:password, :string, redact: true, load_in_query: false)
     field(:password_reset_expires_on, :naive_datetime, load_in_query: false)
