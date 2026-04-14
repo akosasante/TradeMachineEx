@@ -306,8 +306,28 @@ if config_env() != :test do
       ffmpeg: nil
   end
 
-  if discord_guild_id = System.get_env("DISCORD_GUILD_ID") do
-    config :trade_machine,
-      discord_guild_id: String.to_integer(discord_guild_id)
+  parse_discord_guild_id_list = fn
+    nil ->
+      []
+
+    "" ->
+      []
+
+    str when is_binary(str) ->
+      str
+      |> String.split(",", trim: true)
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.map(&String.to_integer/1)
   end
+
+  discord_staging_guild_ids =
+    parse_discord_guild_id_list.(System.get_env("DISCORD_STAGING_GUILD_IDS"))
+
+  discord_production_guild_ids =
+    parse_discord_guild_id_list.(System.get_env("DISCORD_PRODUCTION_GUILD_IDS"))
+
+  config :trade_machine,
+    discord_staging_guild_ids: discord_staging_guild_ids,
+    discord_production_guild_ids: discord_production_guild_ids
 end

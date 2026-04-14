@@ -86,7 +86,7 @@ TradeMachineEx operates as a microservice that connects to **shared infrastructu
 ### Discord slash commands (user-facing)
 - **Commands**: `/my-trades` (active trades), `/trade-history` (last 5 trades, optional status filter)
 - **Gateway**: `TradeMachine.Discord.Consumer` uses `use Nostrum.Consumer` (Nostrum **0.10.x**); started from `application.ex` only when `DISCORD_BOT_TOKEN` configures Nostrum
-- **Registration**: Guild-scoped commands on READY via **`DISCORD_GUILD_ID`** (`config/runtime.exs`, `.env.example`, Docker Compose)
+- **Registration**: Guild-scoped commands on READY via **`DISCORD_STAGING_GUILD_IDS`** and **`DISCORD_PRODUCTION_GUILD_IDS`** (comma-separated); each command lists `guild_scopes` in `CommandRouter` (`config/runtime.exs`, `.env.example`, Docker Compose)
 - **Auth / data**: Maps Discord user → `User.discordUserId`; ephemeral replies; embeds link to V3 review and `/my-trades` on the configured frontend URL
 - **Tests**: `mix test test/trade_machine/discord/` (or `./test.sh test/trade_machine/discord/…` after `test.sh`’s env is loaded)
 
@@ -106,7 +106,7 @@ TradeMachineEx operates as a microservice that connects to **shared infrastructu
 ### Environment Files
 - `.env.development` - Development template (copy to `.env`)
 - `.env.test` - Test environment (**sourced by `test.sh`**; required for correct DB ports when running tests against local Docker Postgres on **5438**)
-- `.env.example` - Environment variable documentation (includes **`DISCORD_GUILD_ID`** for slash command registration)
+- `.env.example` - Environment variable documentation (includes **`DISCORD_STAGING_GUILD_IDS`** / **`DISCORD_PRODUCTION_GUILD_IDS`** for slash command registration)
 
 ### Config Files
 - `config/config.exs` - Base configuration

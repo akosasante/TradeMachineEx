@@ -2,7 +2,9 @@ defmodule TradeMachine.Discord.CommandRouter do
   @moduledoc """
   Registers Discord slash commands and dispatches interactions to handlers.
 
-  Commands are registered per-guild (instant propagation) using `DISCORD_GUILD_ID`.
+  Commands are registered per-guild (instant propagation). Each command declares
+  which guild pools it uses — `:staging` guilds from `DISCORD_STAGING_GUILD_IDS`,
+  `:production` guilds from `DISCORD_PRODUCTION_GUILD_IDS` (comma-separated snowflakes).
   """
 
   require Logger
@@ -33,30 +35,58 @@ defmodule TradeMachine.Discord.CommandRouter do
     ]
   }
 
+  # `guild_scopes`: where this command is registered (staging guild list, production list, or both).
+  @commands [
+    %{definition: @my_trades_command, guild_scopes: [:staging, :production]},
+    %{definition: @trade_history_command, guild_scopes: [:staging, :production]}
+  ]
+
   @doc """
   Registers guild-scoped slash commands. Called on the READY event.
   """
   @spec register_commands(Nostrum.Snowflake.t()) :: :ok
   def register_commands(app_id) do
-    guild_id = guild_id()
+    staging_ids = Application.get_env(:trade_machine, :discord_staging_guild_ids) || []
+    prod_ids = Application.get_env(:trade_machine, :discord_production_guild_ids) || []
 
-    if guild_id do
-      Logger.info("Registering slash commands for guild #{guild_id} (app #{app_id})")
-
-      for command <- [@my_trades_command, @trade_history_command] do
-        case Runtime.application_command_api().create_guild_command(guild_id, command) do
-          {:ok, _cmd} ->
-            Logger.info("Registered /#{command.name}")
-
-          {:error, reason} ->
-            Logger.error("Failed to register /#{command.name}: #{inspect(reason)}")
+    registrations =
+      @commands
+      |> Enum.flat_map(fn spec ->
+        for guild_id <- guild_ids_for_scopes(spec.guild_scopes, staging_ids, prod_ids) do
+          {guild_id, spec.definition}
         end
-      end
+      end)
+      |> Enum.uniq_by(fn {guild_id, command} -> {guild_id, command.name} end)
 
-      :ok
-    else
-      Logger.warning("DISCORD_GUILD_ID not set — skipping slash command registration")
-      :ok
+    case registrations do
+      [] ->
+        Logger.warning(
+          "No Discord guild targets for slash commands — set DISCORD_STAGING_GUILD_IDS " <>
+            "and/or DISCORD_PRODUCTION_GUILD_IDS (comma-separated) so they match each command's guild_scopes; skipping registration"
+        )
+
+        :ok
+
+      list ->
+        distinct_guilds = list |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+
+        Logger.info(
+          "Registering slash commands on #{length(distinct_guilds)} guild(s) (app #{app_id})"
+        )
+
+        for {guild_id, command} <- list do
+          case Runtime.application_command_api().create_guild_command(guild_id, command) do
+            {:ok, _cmd} ->
+              Logger.info("Registered /#{command.name} on guild #{guild_id}")
+
+            {:error, reason} ->
+              Logger.error(
+                "Failed to register /#{command.name} on guild #{guild_id}: #{inspect(reason)}"
+              )
+          end
+        end
+
+        :ok
     end
   end
 
@@ -80,11 +110,13 @@ defmodule TradeMachine.Discord.CommandRouter do
     })
   end
 
-  defp guild_id do
-    case Application.get_env(:trade_machine, :discord_guild_id) do
-      nil -> nil
-      id when is_integer(id) -> id
-      id when is_binary(id) -> String.to_integer(id)
-    end
+  @spec guild_ids_for_scopes([:staging | :production], [integer()], [integer()]) :: [integer()]
+  defp guild_ids_for_scopes(scopes, staging_ids, prod_ids) do
+    scopes
+    |> Enum.flat_map(fn
+      :staging -> staging_ids
+      :production -> prod_ids
+    end)
+    |> Enum.uniq()
   end
 end
