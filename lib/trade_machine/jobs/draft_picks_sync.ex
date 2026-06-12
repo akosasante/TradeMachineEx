@@ -5,7 +5,7 @@ defmodule TradeMachine.Jobs.DraftPicksSync do
   Fetches the sheet as CSV via Req, parses the multi-team layout, then runs the
   sync engine against both Production and Staging databases.
 
-  Schedule: daily at 3:00 AM UTC via cron (configured in config.exs / runtime.exs).
+  Schedule: daily at 5:00 AM UTC via cron (configured in config/runtime.exs).
   Queue: `draft_sync`
   """
 
