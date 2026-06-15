@@ -123,6 +123,27 @@ end
 # Oban configuration with environment-based settings
 # Skip Oban runtime config in test mode - test.exs handles it
 if config_env() != :test do
+  parse_oban_ms = fn env, default ->
+    case System.get_env(env) do
+      nil -> default
+      val -> String.to_integer(val)
+    end
+  end
+
+  oban_prod_stage_interval = parse_oban_ms.("OBAN_PROD_STAGE_INTERVAL_MS", 5_000)
+  oban_staging_stage_interval = parse_oban_ms.("OBAN_STAGING_STAGE_INTERVAL_MS", 15_000)
+  oban_sync_refresh_interval = parse_oban_ms.("OBAN_SYNC_REFRESH_INTERVAL_MS", 60_000)
+
+  sync_queue = fn limit ->
+    [limit: limit, refresh_interval: oban_sync_refresh_interval]
+  end
+
+  minors_sync_concurrency =
+    String.to_integer(System.get_env("OBAN_MINORS_SYNC_CONCURRENCY") || "1")
+
+  draft_sync_concurrency =
+    String.to_integer(System.get_env("OBAN_DRAFT_SYNC_CONCURRENCY") || "1")
+
   prod_oban_plugins =
     if System.get_env("ENABLE_CRON") == "true" do
       [
@@ -131,9 +152,9 @@ if config_env() != :test do
         {Oban.Plugins.Cron,
          crontab: [
            {"0 2 * * *", TradeMachine.Jobs.MinorsSync},
+           {"0 5 * * *", TradeMachine.Jobs.DraftPicksSync},
            {"22 7 * * *", TradeMachine.Jobs.EspnTeamSync},
-           {"32 7 * * *", TradeMachine.Jobs.EspnMlbPlayersSync},
-           {"0 3 * * *", TradeMachine.Jobs.DraftPicksSync}
+           {"32 7 * * *", TradeMachine.Jobs.EspnMlbPlayersSync}
          ]}
       ]
     else
@@ -148,11 +169,12 @@ if config_env() != :test do
     name: Oban.Production,
     repo: TradeMachine.Repo.Production,
     plugins: prod_oban_plugins,
+    stage_interval: oban_prod_stage_interval,
     queues: [
-      minors_sync: String.to_integer(System.get_env("OBAN_MINORS_SYNC_CONCURRENCY") || "1"),
-      draft_sync: String.to_integer(System.get_env("OBAN_DRAFT_SYNC_CONCURRENCY") || "1"),
+      minors_sync: sync_queue.(minors_sync_concurrency),
+      draft_sync: sync_queue.(draft_sync_concurrency),
       emails: 2,
-      espn_sync: 1,
+      espn_sync: sync_queue.(1),
       discord: 1
     ],
     prefix: prod_schema
@@ -165,6 +187,7 @@ if config_env() != :test do
       {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
       Oban.Plugins.Lifeline
     ],
+    stage_interval: oban_staging_stage_interval,
     queues: [
       emails: 2,
       discord: 1

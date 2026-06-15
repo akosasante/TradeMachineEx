@@ -80,22 +80,8 @@ config :esbuild,
     }
   ]
 
-# Configure Oban for job processing
-# Note: Oban uses Production repo for job persistence
-config :trade_machine, Oban,
-  repo: TradeMachine.Repo.Production,
-  plugins: [
-    {Oban.Plugins.Pruner, max_age: div(:timer.hours(48), 1_000)},
-    Oban.Plugins.Lifeline,
-    {Oban.Plugins.Cron,
-     crontab: [
-       {"*/5 * * * *", TradeMachine.Jobs.MinorsSync},
-       {"22 7 * * *", TradeMachine.Jobs.EspnTeamSync},
-       {"32 7 * * *", TradeMachine.Jobs.EspnMlbPlayersSync},
-       {"0 3 * * *", TradeMachine.Jobs.DraftPicksSync}
-     ]}
-  ],
-  queues: [minors_sync: 1, draft_sync: 1, emails: 2, espn_sync: 1, discord: 1]
+# Oban is configured in config/runtime.exs (Oban.Production + Oban.Staging).
+# Test uses config/test.exs. Do not add a legacy `config :trade_machine, Oban` block here.
 
 # Emailing
 config :swoosh,

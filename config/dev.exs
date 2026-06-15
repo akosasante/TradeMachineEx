@@ -107,16 +107,6 @@ config :phoenix, :stacktrace_depth, 20
 # Initialize plugs at runtime for faster development compilation
 config :phoenix, :plug_init_mode, :runtime
 
-# Configure Oban for job processing - uses Production repo
-config :trade_machine, Oban,
-  repo: TradeMachine.Repo.Production,
-  prefix: prod_schema,
-  plugins: [
-    {Oban.Plugins.Pruner, max_age: 300},
-    Oban.Plugins.Lifeline,
-    {Oban.Plugins.Cron,
-     crontab: [
-       {"*/2 * * * *", TradeMachine.Jobs.MinorsSync},
-       {"*/5 * * * *", TradeMachine.Jobs.DraftPicksSync}
-     ]}
-  ]
+# Oban (Oban.Production + Oban.Staging) is configured in config/runtime.exs.
+# Set ENABLE_CRON=true locally to exercise production cron schedules, or enqueue
+# jobs manually / via IEx helpers in .iex.exs.
